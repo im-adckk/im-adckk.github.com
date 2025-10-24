@@ -20,6 +20,18 @@ let invoice = {
 const fmt = (n) => Number(n || 0).toFixed(2);
 
 // ------------------------------------------------------------
+// Spinner control
+// ------------------------------------------------------------
+function showSpinner() {
+  document.getElementById('spinner').style.display = 'flex';
+}
+
+function hideSpinner() {
+  document.getElementById('spinner').style.display = 'none';
+}
+
+
+// ------------------------------------------------------------
 // 3️⃣ Load item catalog
 // ------------------------------------------------------------
 async function loadCatalog() {
