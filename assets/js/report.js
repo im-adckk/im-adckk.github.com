@@ -22,12 +22,8 @@ function renderReport(inv) {
   container.innerHTML = `
   <div class="report">
     <div class="header">
-      <img src="assets/logo.png" alt="Logo" class="logo">
-      <div class="company">
-        <h2>UNIVERSAL HEAVY INDUSTRIES SDN. BHD.</h2>
-        <p>No. 123, Jalan Industri, 88100 Kota Kinabalu, Sabah<br>
-           Tel: +60 88-123456 | Email: info@uhisbh.com</p>
-      </div>
+      <img src="assets/letterhead.png" alt="Logo" class="logo">
+      
     </div>
     <div class="doc-info">
       <h3>${inv.type === 'invoice' ? 'INVOICE' : 'SEBUT HARGA / QUOTATION'}</h3>
