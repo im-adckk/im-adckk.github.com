@@ -260,6 +260,7 @@ document.getElementById('export-pdf').addEventListener('click', () => {
   header.style.textAlign = 'center';
   header.style.marginBottom = '20px';
   header.innerHTML = `
+    <img src="assets/logo.png" style="width:100px;">
     <h1 style="margin:0;font-size:22px;">${headerText}</h1>
     <small>Date: ${dateStr}</small>
     <hr style="margin:10px 0;">
