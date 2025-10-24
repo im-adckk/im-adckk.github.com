@@ -82,7 +82,7 @@ async function loadItemsByGroup(groupId, groupName) {
     .select('*')
     .eq('group_id', groupId)
     .order('name');
-
+  hideSpinner();
   if (error) {
     console.error(error);
     alert('Failed to load items for ' + groupName);
