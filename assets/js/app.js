@@ -23,52 +23,104 @@ const fmt = (n) => Number(n || 0).toFixed(2);
 // 3️⃣ Load item catalog
 // ------------------------------------------------------------
 async function loadCatalog() {
-  const { data: groups, error: gErr } = await client
+  const { data: groups, error } = await client
     .from('item_groups')
     .select('*')
     .order('name');
-  const { data: items, error: iErr } = await client
-    .from('items')
-    .select('*')
-    .order('name');
 
-  if (gErr || iErr) {
-    console.error(gErr || iErr);
-    alert('Failed to load catalog');
+  if (error) {
+    console.error(error);
+    alert('Failed to load item groups');
     return;
   }
 
   renderGroups(groups);
-  renderItems(items);
 }
 
 function renderGroups(groups) {
   const el = document.getElementById('groups');
   el.innerHTML = groups
     .map(
-      (g) =>
-        `<button class="group-btn" data-id="${g.id}">${g.name}</button>`
+      (g) => `
+        <button class="group-btn" data-id="${g.id}">
+          ${g.name}
+        </button>
+      `
     )
     .join('');
+
+  // Handle group button clicks
+  el.querySelectorAll('.group-btn').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const groupId = btn.dataset.id;
+      // Highlight selected
+      el.querySelectorAll('.group-btn').forEach((b) =>
+        b.classList.remove('active')
+      );
+      btn.classList.add('active');
+      await loadItemsByGroup(groupId, btn.textContent.trim());
+    })
+  );
 }
 
-function renderItems(items) {
-  const el = document.getElementById('items');
-  el.innerHTML = items
-    .map(
-      (i) => `
-    <div class="item" data-id="${i.id}">
-      <div class="item-name">${i.name}</div>
-      <div class="item-price">RM ${fmt(i.unit_price)}</div>
-      <button class="add-btn" data-id="${i.id}">Add</button>
-    </div>
-  `
-    )
-    .join('');
+async function loadItemsByGroup(groupId, groupName) {
+  const { data: items, error } = await client
+    .from('items')
+    .select('*')
+    .eq('group_id', groupId)
+    .order('name');
 
+  if (error) {
+    console.error(error);
+    alert('Failed to load items for ' + groupName);
+    return;
+  }
+
+  renderItems(items, groupName);
+}
+
+function renderItems(items, groupName) {
+  const el = document.getElementById('items');
+
+  if (!items || items.length === 0) {
+    el.innerHTML = `<p style="text-align:center;color:#777;">No items in ${groupName}</p>`;
+    return;
+  }
+
+  // Header + Add All button
+  el.innerHTML = `
+    <div class="group-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;font-size:1rem;color:#007bff;">${groupName}</h3>
+      <button id="add-all-btn" class="add-all-btn">Add All</button>
+    </div>
+    <div class="item-grid">
+      ${items
+        .map(
+          (i) => `
+        <div class="item-card" data-id="${i.id}">
+          <div class="item-name">${i.name}</div>
+          <div class="item-price">RM ${fmt(i.unit_price)}</div>
+          <button class="add-btn" data-id="${i.id}">Add</button>
+        </div>
+      `
+        )
+        .join('')}
+    </div>
+  `;
+
+  // Attach single item add events
   el.querySelectorAll('.add-btn').forEach((btn) =>
     btn.addEventListener('click', () => addItemToInvoice(btn.dataset.id, items))
   );
+
+  // Attach "Add All" button event
+  document
+    .getElementById('add-all-btn')
+    .addEventListener('click', () => addAllToInvoice(items));
+}
+
+function addAllToInvoice(items) {
+  items.forEach((item) => addItemToInvoice(item.id, items));
 }
 
 function addItemToInvoice(id, items) {
