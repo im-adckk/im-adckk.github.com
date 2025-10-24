@@ -1,37 +1,276 @@
-body {
-  font-family: Inter, Arial, sans-serif;
+/* =============================
+   ADC Invoice / Quotation App
+   Mobile-first UI (GitHub Pages + Supabase)
+   ============================= */
+
+:root {
+  --primary: #007bff;
+  --primary-dark: #0056b3;
+  --bg: #f8f9fb;
+  --card-bg: #ffffff;
+  --text: #1e1e1e;
+  --border: #e0e0e0;
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --transition: all 0.2s ease-in-out;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
   margin: 0;
-  padding: 10px;
-  background: #f8f9fb;
+  padding: 0;
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100%;
 }
 
+/* HEADER */
 header {
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  padding: 0.75rem 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-#items .item {
+header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+header div {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  background: #fff;
-  padding: 10px;
-  margin-bottom: 6px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  gap: 0.5rem;
 }
 
+/* Buttons */
 button {
-  background: #007bff;
+  background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 15px;
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: var(--transition);
 }
 
+button:hover {
+  background: var(--primary-dark);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* Toggle Checkbox */
+label {
+  font-size: 0.8rem;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#toggle-type {
+  transform: scale(1.2);
+}
+
+/* MAIN GRID */
+main.grid {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  gap: 1rem;
+}
+
+/* CATALOG SECTION */
+#catalog {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+#catalog h2 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  color: var(--primary);
+}
+
+#groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+#groups button {
+  background: #f1f3f6;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+#groups button.active {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+}
+
+#items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.item-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.item-card:active {
+  transform: scale(0.97);
+  background: #f0f4ff;
+}
+
+/* INVOICE SECTION */
+#invoice {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+#invoice h2 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--primary);
+}
+
+#lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.line-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.line-item span.name {
+  flex: 1;
+}
+
+.line-item input.qty {
+  width: 50px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px;
+  font-size: 0.85rem;
+}
+
+/* SUMMARY BOX */
+#summary {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+#summary div {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.3rem 0;
+}
+
+#summary strong {
+  font-size: 1.1rem;
+  color: var(--primary-dark);
+}
+
+#notes {
+  width: 100%;
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+  resize: vertical;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+/* FLOATING SAVE BUTTON FOR MOBILE */
+@media (max-width: 600px) {
+  #save-btn {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    padding: 0.9rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  }
+
+  header div button:nth-child(3) {
+    display: none; /* hide Export PDF button in mobile header */
+  }
+}
+
+/* DESKTOP LAYOUT */
 @media (min-width: 768px) {
-  #items { max-width: 600px; margin: auto; }
+  main.grid {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  #catalog, #invoice {
+    flex: 1;
+  }
+
+  #invoice {
+    max-width: 420px;
+  }
+
+  #save-btn {
+    position: static;
+    border-radius: var(--radius);
+    box-shadow: none;
+  }
+}
+
+/* SMOOTH INTERACTIONS */
+button, .item-card, input, textarea {
+  transition: var(--transition);
 }
