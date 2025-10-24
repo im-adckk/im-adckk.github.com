@@ -1,1 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ADC Invoice / Quotation App</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Invoice / Quotation</h1>
+    <div>
+      <label>
+        <input id="toggle-type" type="checkbox"> Toggle Invoice / Quotation
+      </label>
+      <button id="save-btn">Save</button>
+      <button id="export-pdf">Export PDF</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section id="catalog">
+      <h2>Items</h2>
+      <div id="groups"></div>
+      <div id="items"></div>
+    </section>
+
+    <section id="invoice">
+      <h2 id="doc-title">Quotation</h2>
+      <div id="lines"></div>
+      <div id="summary">
+        <div>Subtotal: <span id="subtotal">0.00</span></div>
+        <div>SST (<span id="sst-rate">8</span>%): <span id="sst-amount">0.00</span></div>
+        <div>Total: <strong id="total">0.00</strong></div>
+        <textarea id="notes" placeholder="Notes"></textarea>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
 
