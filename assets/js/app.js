@@ -242,3 +242,39 @@ document.getElementById('save-btn').addEventListener('click', async () => {
 // 8️⃣ On load
 // ------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', loadCatalog);
+// ------------------------------------------------------------
+// 9️⃣ Export to PDF
+// ------------------------------------------------------------
+
+document.getElementById('export-pdf').addEventListener('click', () => {
+  // Choose what to export (the #invoice section)
+  const invoiceSection = document.getElementById('invoice');
+
+  // Add a print header dynamically (for cleaner PDF)
+  const headerText = invoice.type === 'invoice' ? 'INVOICE' : 'QUOTATION';
+  const dateStr = new Date().toLocaleDateString();
+
+  // Clone content for PDF (so we can add header without affecting UI)
+  const clone = invoiceSection.cloneNode(true);
+  const header = document.createElement('div');
+  header.style.textAlign = 'center';
+  header.style.marginBottom = '20px';
+  header.innerHTML = `
+    <h1 style="margin:0;font-size:22px;">${headerText}</h1>
+    <small>Date: ${dateStr}</small>
+    <hr style="margin:10px 0;">
+  `;
+  clone.prepend(header);
+
+  // PDF options
+  const options = {
+    margin: 10,
+    filename: `${headerText}_${dateStr.replace(/\//g, '-')}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  html2pdf().set(options).from(clone).save();
+});
