@@ -235,7 +235,63 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     return;
   }
 
+  // ✅ After invoice + items are saved successfully
   alert(`${docNumber} saved successfully!`);
+  
+  // ✅ Success — custom popup with WhatsApp share
+  const reportLink = `${window.location.origin}/report.html?id=${inv.id}`;
+  const message = encodeURIComponent(
+    `Hi, here's the ${invoice.type.toUpperCase()} (${docNumber}) from Universal Heavy Industries:\n${reportLink}`
+  );
+  
+  // Create popup container
+  const popup = document.createElement('div');
+  popup.style.position = 'fixed';
+  popup.style.top = '0';
+  popup.style.left = '0';
+  popup.style.width = '100vw';
+  popup.style.height = '100vh';
+  popup.style.background = 'rgba(0,0,0,0.4)';
+  popup.style.display = 'flex';
+  popup.style.alignItems = 'center';
+  popup.style.justifyContent = 'center';
+  popup.style.zIndex = '9999';
+  
+  popup.innerHTML = `
+    <div style="
+      background:#fff;
+      padding:20px;
+      border-radius:12px;
+      text-align:center;
+      max-width:300px;
+      width:90%;
+      box-shadow:0 4px 10px rgba(0,0,0,0.2);
+    ">
+      <h3 style="margin-top:0;">✅ ${docNumber} Saved!</h3>
+      <p>Your ${invoice.type} has been saved successfully.</p>
+      <button id="view-report" style="background:#007bff;color:#fff;border:none;padding:10px 15px;border-radius:8px;margin:5px;width:100%;">📄 View Report</button>
+      <button id="share-whatsapp" style="background:#25D366;color:#fff;border:none;padding:10px 15px;border-radius:8px;margin:5px;width:100%;">💬 Share via WhatsApp</button>
+      <button id="close-popup" style="background:#ccc;color:#000;border:none;padding:8px 15px;border-radius:8px;margin-top:10px;width:100%;">Close</button>
+    </div>
+  `;
+  
+  // Append to body
+  document.body.appendChild(popup);
+  
+  // Button actions
+  document.getElementById('view-report').addEventListener('click', () => {
+    window.open(reportLink, '_blank');
+  });
+  
+  document.getElementById('share-whatsapp').addEventListener('click', () => {
+    window.open(`https://wa.me/?text=${message}`, '_blank');
+  });
+  
+  document.getElementById('close-popup').addEventListener('click', () => {
+    popup.remove();
+  });
+
+
 });
 
 // ------------------------------------------------------------
