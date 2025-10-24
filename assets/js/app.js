@@ -76,6 +76,7 @@ function renderGroups(groups) {
 }
 
 async function loadItemsByGroup(groupId, groupName) {
+  showSpinner();
   const { data: items, error } = await client
     .from('items')
     .select('*')
