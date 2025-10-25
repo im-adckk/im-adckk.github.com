@@ -11,9 +11,8 @@ const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 🧩 2. Invoice data object
 let invoice = {
-  type: 'quotation', // default mode
-  lines: [],
-  sst_rate: 8.0,
+  type: 'quotation',
+  lines: []
 };
 
 // Utility: format to 2 decimal places
@@ -23,13 +22,66 @@ const fmt = (n) => Number(n || 0).toFixed(2);
 // Spinner control
 // ------------------------------------------------------------
 function showSpinner() {
-  document.getElementById('spinner').style.display = 'flex';
+    document.getElementById('spinner').style.display = 'flex';
+  }
+  
+  function hideSpinner() {
+    document.getElementById('spinner').style.display = 'none';
 }
 
-function hideSpinner() {
-  document.getElementById('spinner').style.display = 'none';
+// ------------------------------------------------------------
+//  Customer handling before invoice insert
+// ------------------------------------------------------------
+const custName = document.getElementById('cust-name').value.trim();
+const custContact = document.getElementById('cust-phone').value.trim();
+const custAddress = document.getElementById('cust-address').value.trim();
+const custEmail = document.getElementById('cust-email')?.value.trim() || '';
+
+if (!custName) {
+  alert('Please enter a customer name.');
+  return;
 }
 
+// Check if the customer already exists (optional match by name + contact)
+let customer_id = null;
+const { data: existingCust, error: findErr } = await client
+  .from('customers')
+  .select('id')
+  .ilike('name', custName)
+  .maybeSingle();
+
+if (findErr) {
+  console.error(findErr);
+  alert('Failed to fetch customer.');
+  return;
+}
+
+if (existingCust) {
+  // Reuse existing customer
+  customer_id = existingCust.id;
+} else {
+  // Insert new customer
+  const { data: newCust, error: custErr } = await client
+    .from('customers')
+    .insert([
+      {
+        name: custName,
+        contact: custContact,
+        address: custAddress,
+        email: custEmail,
+      },
+    ])
+    .select()
+    .single();
+
+  if (custErr) {
+    console.error(custErr);
+    alert('Failed to save customer.');
+    return;
+  }
+
+  customer_id = newCust.id;
+}
 
 // ------------------------------------------------------------
 // 3️⃣ Load item catalog
@@ -211,18 +263,13 @@ function recalc() {
     (s, l) => s + (Number(l.line_total) || 0),
     0
   );
-  const sst_amount = +(subtotal * (invoice.sst_rate / 100));
-  const total = +(subtotal + sst_amount);
 
-  document.getElementById('subtotal').textContent = fmt(subtotal);
-  document.getElementById('sst-amount').textContent = fmt(sst_amount);
-  document.getElementById('total').textContent = fmt(total);
-  document.getElementById('sst-rate').textContent = fmt(invoice.sst_rate);
+  document.getElementById('total').textContent = fmt(subtotal);
 
+  invoice.total = subtotal;
   invoice.subtotal = subtotal;
-  invoice.sst_amount = sst_amount;
-  invoice.total = total;
 }
+
 
 // ------------------------------------------------------------
 // 5️⃣ Document type toggle (Quotation / Invoice)
@@ -268,10 +315,9 @@ document.getElementById('save-btn').addEventListener('click', async () => {
         invoice_no: docNumber,
         type,
         subtotal: invoice.subtotal,
-        sst_rate: invoice.sst_rate,
-        sst_amount: invoice.sst_amount,
         total: invoice.total,
         notes,
+        customer_id,
       },
     ])
     .select()
