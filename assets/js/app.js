@@ -29,59 +29,6 @@ function showSpinner() {
     document.getElementById('spinner').style.display = 'none';
 }
 
-// ------------------------------------------------------------
-//  Customer handling before invoice insert
-// ------------------------------------------------------------
-const custName = document.getElementById('cust-name').value.trim();
-const custContact = document.getElementById('cust-phone').value.trim();
-const custAddress = document.getElementById('cust-address').value.trim();
-const custEmail = document.getElementById('cust-email')?.value.trim() || '';
-
-if (!custName) {
-  alert('Please enter a customer name.');
-  return;
-}
-
-// Check if the customer already exists (optional match by name + contact)
-let customer_id = null;
-const { data: existingCust, error: findErr } = await client
-  .from('customers')
-  .select('id')
-  .ilike('name', custName)
-  .maybeSingle();
-
-if (findErr) {
-  console.error(findErr);
-  alert('Failed to fetch customer.');
-  return;
-}
-
-if (existingCust) {
-  // Reuse existing customer
-  customer_id = existingCust.id;
-} else {
-  // Insert new customer
-  const { data: newCust, error: custErr } = await client
-    .from('customers')
-    .insert([
-      {
-        name: custName,
-        contact: custContact,
-        address: custAddress,
-        email: custEmail,
-      },
-    ])
-    .select()
-    .single();
-
-  if (custErr) {
-    console.error(custErr);
-    alert('Failed to save customer.');
-    return;
-  }
-
-  customer_id = newCust.id;
-}
 
 // ------------------------------------------------------------
 // 3️⃣ Load item catalog
@@ -298,16 +245,66 @@ async function getNextNumber(type) {
 }
 
 // ------------------------------------------------------------
-// 7️⃣ Save invoice + items
+// 7️⃣ Save invoice + items (with customer info)
 // ------------------------------------------------------------
 document.getElementById('save-btn').addEventListener('click', async () => {
   const type = invoice.type;
   const notes = document.getElementById('notes').value || null;
 
+  const custName = document.getElementById('cust-name').value.trim();
+  const custContact = document.getElementById('cust-phone').value.trim();
+  const custEmail = document.getElementById('cust-email').value.trim();
+  const custAddress = document.getElementById('cust-address').value.trim();
+
+  if (!custName) {
+    alert('Please enter a customer name.');
+    return;
+  }
+
+  // 🔹 Step 1: Insert or fetch customer
+  let customer_id = null;
+  const { data: existingCust, error: findErr } = await client
+    .from('customers')
+    .select('id')
+    .eq('contact', custContact)
+    .maybeSingle();
+
+  if (findErr) {
+    console.error(findErr);
+    alert('Failed to fetch customer.');
+    return;
+  }
+
+  if (existingCust) {
+    customer_id = existingCust.id;
+  } else {
+    const { data: newCust, error: custErr } = await client
+      .from('customers')
+      .insert([
+        {
+          name: custName,
+          contact: custContact,
+          email: custEmail,
+          address: custAddress,
+        },
+      ])
+      .select()
+      .single();
+
+    if (custErr) {
+      console.error(custErr);
+      alert('Failed to save customer.');
+      return;
+    }
+
+    customer_id = newCust.id;
+  }
+
+  // 🔹 Step 2: Get next document number
   const docNumber = await getNextNumber(type);
   if (!docNumber) return;
 
-  // Insert invoice
+  // 🔹 Step 3: Insert invoice
   const { data: inv, error: invErr } = await client
     .from('invoices')
     .insert([
@@ -329,6 +326,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     return;
   }
 
+  // 🔹 Step 4: Insert invoice items
   const inv_id = inv.id;
   const lines = invoice.lines.map((l) => ({
     invoice_id: inv_id,
@@ -346,16 +344,12 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     return;
   }
 
-  // ✅ After invoice + items are saved successfully
-  alert(`${docNumber} saved successfully!`);
-  
-  // ✅ Success — custom popup with WhatsApp share
+  // 🔹 Step 5: Success popup
   const reportLink = `${window.location.origin}/report.html?id=${inv.id}`;
   const message = encodeURIComponent(
-    `Hi, here's the ${invoice.type.toUpperCase()} (${docNumber}) from Universal Heavy Industries:\n${reportLink}`
+    `Hi, here is your ${invoice.type.toUpperCase()} (${docNumber}) from Universal Heavy Industries:\n${reportLink}`
   );
-  
-  // Create popup container
+
   const popup = document.createElement('div');
   popup.style.position = 'fixed';
   popup.style.top = '0';
@@ -367,14 +361,14 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   popup.style.alignItems = 'center';
   popup.style.justifyContent = 'center';
   popup.style.zIndex = '9999';
-  
+
   popup.innerHTML = `
     <div style="
       background:#fff;
       padding:20px;
       border-radius:12px;
       text-align:center;
-      max-width:300px;
+      max-width:320px;
       width:90%;
       box-shadow:0 4px 10px rgba(0,0,0,0.2);
     ">
@@ -385,25 +379,22 @@ document.getElementById('save-btn').addEventListener('click', async () => {
       <button id="close-popup" style="background:#ccc;color:#000;border:none;padding:8px 15px;border-radius:8px;margin-top:10px;width:100%;">Close</button>
     </div>
   `;
-  
-  // Append to body
+
   document.body.appendChild(popup);
-  
-  // Button actions
+
   document.getElementById('view-report').addEventListener('click', () => {
     window.open(reportLink, '_blank');
   });
-  
+
   document.getElementById('share-whatsapp').addEventListener('click', () => {
     window.open(`https://wa.me/?text=${message}`, '_blank');
   });
-  
+
   document.getElementById('close-popup').addEventListener('click', () => {
     popup.remove();
   });
-
-
 });
+
 
 // ------------------------------------------------------------
 // 8️⃣ On load
