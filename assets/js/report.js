@@ -7,33 +7,72 @@ const params = new URLSearchParams(window.location.search);
 const invoiceId = params.get('id');
 
 async function loadReport() {
+  if (!invoiceId) {
+    document.body.innerHTML = '<p>No invoice ID provided.</p>';
+    return;
+  }
+
   const { data: invoice, error } = await client
     .from('invoices')
-    .select('*, invoice_items(*)')
+    .select('*, invoice_items(*), customers(*)')
     .eq('id', invoiceId)
     .single();
-  if (error) return alert('Error loading report');
+
+  if (error || !invoice) {
+    console.error(error);
+    document.body.innerHTML = '<p>Failed to load report data.</p>';
+    return;
+  }
 
   renderReport(invoice);
 }
 
+// ------------------------------------------------------------
+// Render invoice + customer info
+// ------------------------------------------------------------
 function renderReport(inv) {
   const container = document.getElementById('report-container');
+  const isInvoice = inv.type === 'invoice';
+  const docTitle = isInvoice ? 'INVOICE' : 'QUOTATION / SEBUT HARGA';
+  const dateStr = new Date(inv.created_at).toLocaleDateString();
+
+  const cust = inv.customers || {};
+  const items = inv.invoice_items || [];
+
   container.innerHTML = `
   <div class="report">
     <div class="header">
-      <img src="assets/letterhead.png" alt="Logo" class="logo">
-      
+      <div class="company-info">
+        <img src="assets/letterhead.png" alt="Logo" class="logo">
+      </div>
+      <div class="doc-info">
+        <h3>${docTitle}</h3>
+        <p>No.: ${inv.invoice_no}<br>Date: ${dateStr}</p>
+      </div>
     </div>
-    <div class="doc-info">
-      <h3>${inv.type === 'invoice' ? 'INVOICE' : 'SEBUT HARGA / QUOTATION'}</h3>
-      <p>No.: ${inv.invoice_no}<br>Date: ${new Date(inv.created_at).toLocaleDateString()}</p>
+
+    <div class="customer-section">
+      <h4>Customer / Pelanggan</h4>
+      <p>
+        <strong>${cust.name || '-'}</strong><br>
+        ${cust.address || ''}<br>
+        ${cust.contact ? '📞 ' + cust.contact + '<br>' : ''}
+        ${cust.email ? '✉️ ' + cust.email : ''}
+      </p>
     </div>
 
     <table class="item-table">
-      <thead><tr><th>No.</th><th>Description / Keterangan</th><th>Qty</th><th>Unit Price (RM)</th><th>Total (RM)</th></tr></thead>
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Description / Keterangan</th>
+          <th>Qty</th>
+          <th>Unit Price (RM)</th>
+          <th>Total (RM)</th>
+        </tr>
+      </thead>
       <tbody>
-        ${inv.invoice_items
+        ${items
           .map(
             (item, i) => `
               <tr>
@@ -49,24 +88,28 @@ function renderReport(inv) {
     </table>
 
     <div class="summary">
-      <p>Subtotal: RM ${inv.subtotal.toFixed(2)}</p>
-      <p>SST (${inv.sst_rate}%): RM ${inv.sst_amount.toFixed(2)}</p>
-      <h3>Total: RM ${inv.total.toFixed(2)}</h3>
+      <p><strong>Total:</strong> RM ${inv.total.toFixed(2)}</p>
+      <p class="note">* Prices are inclusive of tax (SST included)</p>
     </div>
 
     <div class="footer">
       <p><strong>Remarks / Nota:</strong> ${inv.notes || '-'}</p>
-      <p style="margin-top:40px;">_________________________<br>Authorized Signature</p>
+      <div class="signature">
+        <p>_________________________<br>Authorized Signature</p>
+      </div>
     </div>
   </div>
   `;
 
-  // Auto-generate PDF after render
-  html2pdf().from(container).set({
-    filename: `${inv.invoice_no}.pdf`,
-    jsPDF: { format: 'a4', orientation: 'portrait' },
-    margin: 10,
-  }).save();
+  // Optional: Auto-generate PDF
+  html2pdf()
+    .from(container)
+    .set({
+      filename: `${inv.invoice_no}.pdf`,
+      jsPDF: { format: 'a4', orientation: 'portrait' },
+      margin: 10,
+    })
+    .save();
 }
 
 loadReport();
