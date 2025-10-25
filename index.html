@@ -27,11 +27,20 @@
 
     <section id="invoice">
       <h2 id="doc-title">Quotation</h2>
+
+      <div id="customer-section" class="card">
+        <h3>Customer Details</h3>
+        <input id="cust-name" type="text" placeholder="Customer Name" required />
+        <input id="cust-phone" type="text" placeholder="Phone Number" />
+        <input id="cust-email" type="email" placeholder="Email" />
+        <textarea id="cust-address" placeholder="Address"></textarea>
+      </div>
+
       <div id="lines"></div>
+    
       <div id="summary">
-        <div>Subtotal: <span id="subtotal">0.00</span></div>
-        <div>SST (<span id="sst-rate">8</span>%): <span id="sst-amount">0.00</span></div>
         <div>Total: <strong id="total">0.00</strong></div>
+        <p class="tax-note">* Prices are inclusive of tax (SST included)</p>
         <textarea id="notes" placeholder="Notes"></textarea>
       </div>
     </section>
