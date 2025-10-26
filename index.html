@@ -29,11 +29,25 @@
       <h2 id="doc-title">Quotation</h2>
 
       <div id="customer-section" class="card">
-        <h3>Customer Details</h3>
-        <input id="cust-name" type="text" placeholder="Customer Name" required />
-        <input id="cust-phone" type="text" placeholder="Phone Number" />
-        <input id="cust-email" type="email" placeholder="Email" />
-        <textarea id="cust-address" placeholder="Address"></textarea>
+        <section id="customer-info">
+          <h3>Customer Details</h3>
+        
+          <div class="form-group">
+            <input
+              type="text"
+              id="customer-search"
+              placeholder="🔍 Search customer by name, phone, or email..."
+              autocomplete="off"
+            />
+            <div id="customer-results" class="dropdown"></div>
+          </div>
+        
+          <input type="text" id="cust-name" placeholder="Customer Name" />
+          <input type="text" id="cust-phone" placeholder="Contact Number" />
+          <input type="text" id="cust-email" placeholder="Email Address" />
+          <textarea id="cust-address" placeholder="Customer Address"></textarea>
+        </section>
+
       </div>
 
       <div id="lines"></div>
