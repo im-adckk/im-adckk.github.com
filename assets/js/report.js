@@ -63,7 +63,7 @@ async function loadReport() {
 // ------------------------------------------------------------
 // Render A4 layout (exact Sebut Harga / Invois style)
 // ------------------------------------------------------------
-function renderReport(inv) {
+async function renderReport(inv) {
   const container = document.getElementById('report-container');
   const isInvoice = inv.type === 'invoice';
   const docTitle = isInvoice ? 'INVOIS' : 'SEBUT HARGA';
@@ -71,6 +71,18 @@ function renderReport(inv) {
 
   const cust = inv.customers || {};
   const items = inv.invoice_items || [];
+
+  // 🔹 Fetch group info if available
+  let groupInfo = null;
+  if (inv.group_id) {
+    const { data: g, error: gErr } = await client
+      .from('item_groups')
+      .select('*')
+      .eq('id', inv.group_id)
+      .single();
+    if (!gErr) groupInfo = g;
+  }
+
   const totalWords = `Ringgit Malaysia: ${numberToBahasaWords(Math.floor(inv.total))} Sahaja`;
 
   container.innerHTML = `
@@ -79,10 +91,17 @@ function renderReport(inv) {
       <img src="assets/letterhead.png" alt="Letterhead" class="letterhead">
     </div>
 
+    <!-- Top Title Section -->
     <div class="doc-top-title">
       <h2>${docTitle}</h2>
+      ${
+        groupInfo
+          ? `<p class="group-info"><strong>${groupInfo.name}</strong> — ${groupInfo.description || ''}</p>`
+          : ''
+      }
     </div>
 
+    <!-- Customer + Doc Info -->
     <div class="doc-info-row">
       <div class="doc-left">
         <div class="kepada">
@@ -100,6 +119,7 @@ function renderReport(inv) {
       </div>
     </div>
 
+    <!-- Items Table -->
     <table class="item-table">
       <thead>
         <tr>
@@ -126,12 +146,14 @@ function renderReport(inv) {
       </tbody>
     </table>
 
+    <!-- Totals -->
     <div class="total-section">
       <p><strong>Jumlah Keseluruhan (RM):</strong> ${inv.total.toFixed(2)}</p>
       <p><em>${totalWords}</em></p>
       <p class="note">* Harga termasuk cukai (SST telah disertakan)</p>
     </div>
 
+    <!-- Nota -->
     <div class="nota">
       <p><strong>Nota **</strong></p>
       <ol>
@@ -157,32 +179,28 @@ function renderReport(inv) {
   </div>
   `;
 
-  // PDF Download
+  // ✅ PDF Export (no overflow)
   document.getElementById('download-btn').addEventListener('click', () => {
-  const element = document.querySelector('.a4-page');
-  const opt = {
-    margin: [0, 5, 5, 5], // top, right, bottom, left (top margin = 0)
-    filename: `${inv.invoice_no}.pdf`,
-    image: { type: 'jpeg', quality: 1 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      scrollY: 0,
-      backgroundColor: null,
-      y: 0,
-    },
-    jsPDF: {
-      format: 'a4',
-      orientation: 'portrait',
-      unit: 'mm',
-      hotfixes: ['px_scaling'],
-    },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
-  };
-
-  html2pdf().set(opt).from(element).save();
-});
-
+    const element = document.querySelector('.a4-page');
+    const opt = {
+      margin: [0, 5, 5, 5],
+      filename: `${inv.invoice_no}.pdf`,
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        scrollY: 0,
+        backgroundColor: null,
+      },
+      jsPDF: {
+        format: 'a4',
+        orientation: 'portrait',
+        unit: 'mm',
+      },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+    };
+    html2pdf().set(opt).from(element).save();
+  });
 }
 
 loadReport();
