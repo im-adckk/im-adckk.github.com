@@ -64,13 +64,27 @@ function renderGroups(groups) {
   el.querySelectorAll('.group-btn').forEach((btn) =>
     btn.addEventListener('click', async () => {
       const groupId = btn.dataset.id;
-      // Highlight selected
-      el.querySelectorAll('.group-btn').forEach((b) =>
-        b.classList.remove('active')
-      );
+      const groupName = btn.textContent.trim();
+    
+      // store globally
+      selectedGroupId = groupId;
+      selectedGroupName = groupName;
+    
+      // Highlight selected button
+      el.querySelectorAll('.group-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      await loadItemsByGroup(groupId, btn.textContent.trim());
-    })
+    
+      // Fetch description (optional)
+      const { data: g, error: gErr } = await client
+        .from('item_groups')
+        .select('description')
+        .eq('id', groupId)
+        .single();
+    
+      selectedGroupDescription = g?.description || null;
+    
+      await loadItemsByGroup(groupId, groupName);
+    });
   );
 }
 
@@ -315,6 +329,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
         total: invoice.total,
         notes,
         customer_id,
+        group_id: selectedGroupId,
       },
     ])
     .select()
