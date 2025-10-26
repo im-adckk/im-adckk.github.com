@@ -182,6 +182,9 @@ async function renderReport(inv) {
   // ✅ PDF Export (no overflow)
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
+    const downloadBtn = document.getElementById('download-btn');
+
+    downloadBtn.style.display = 'none';
     const opt = {
       margin: [0, 5, 5, 5],
       filename: `${inv.invoice_no}.pdf`,
@@ -199,7 +202,18 @@ async function renderReport(inv) {
       },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
     };
-    html2pdf().set(opt).from(element).save();
+    html2pdf()
+    .set(opt)
+    .from(element)
+    .save()
+    .then(() => {
+      // Show the button again after PDF is saved
+      downloadBtn.style.display = 'inline-block';
+    })
+    .catch((err) => {
+      console.error('PDF generation failed:', err);
+      downloadBtn.style.display = 'inline-block';
+    });
   });
 }
 
