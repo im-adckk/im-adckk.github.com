@@ -29,6 +29,115 @@ function showSpinner() {
     document.getElementById('spinner').style.display = 'none';
 }
 
+// ------------------------------------------------------------
+// 🔍 Customer Search + Add New Feature
+// ------------------------------------------------------------
+const searchInput = document.getElementById('customer-search');
+const resultsBox = document.getElementById('customer-results');
+
+searchInput.addEventListener('input', async (e) => {
+  const query = e.target.value.trim();
+
+  // If empty, hide dropdown
+  if (!query) {
+    resultsBox.style.display = 'none';
+    resultsBox.innerHTML = '';
+    return;
+  }
+
+  // Query Supabase (search name/contact/email)
+  const { data: matches, error } = await client
+    .from('customers')
+    .select('*')
+    .or(`name.ilike.%${query}%,contact.ilike.%${query}%,email.ilike.%${query}%`)
+    .limit(8);
+
+  if (error) {
+    console.error('Search error:', error);
+    return;
+  }
+
+  // Build dropdown HTML
+  let html = '';
+
+  if (matches.length > 0) {
+    html += matches
+      .map(
+        (c) => `
+        <div class="customer-result" data-id="${c.id}"
+             data-name="${c.name}"
+             data-contact="${c.contact || ''}"
+             data-email="${c.email || ''}"
+             data-address="${c.address || ''}">
+          ${c.name} <small style="color:#666;">(${c.contact || c.email || 'no contact'})</small>
+        </div>`
+      )
+      .join('');
+  } else {
+    html = `<div class="no-match">No matching customer found.</div>`;
+  }
+
+  // ➕ Add "Add new customer" option
+  html += `
+    <div class="add-new" id="add-new-customer" style="background:#f9f9f9;color:#007bff;font-weight:bold;text-align:center;">
+      + Add New Customer "${query}"
+    </div>
+  `;
+
+  resultsBox.innerHTML = html;
+  resultsBox.style.display = 'block';
+
+  // Attach events
+  document.querySelectorAll('.customer-result').forEach((item) => {
+    item.addEventListener('click', () => {
+      document.getElementById('cust-name').value = item.dataset.name;
+      document.getElementById('cust-phone').value = item.dataset.contact;
+      document.getElementById('cust-email').value = item.dataset.email;
+      document.getElementById('cust-address').value = item.dataset.address;
+
+      resultsBox.style.display = 'none';
+      searchInput.value = item.dataset.name;
+    });
+  });
+
+  // Handle "Add New" button click
+  document.getElementById('add-new-customer').addEventListener('click', async () => {
+    const newName = query;
+    if (!newName) return;
+
+    // Optional: ask for confirmation
+    const confirmAdd = confirm(`Add new customer "${newName}"?`);
+    if (!confirmAdd) return;
+
+    const { data: newCust, error: addErr } = await client
+      .from('customers')
+      .insert([{ name: newName }])
+      .select()
+      .single();
+
+    if (addErr) {
+      console.error(addErr);
+      alert('Failed to add new customer.');
+      return;
+    }
+
+    // Autofill with new customer details
+    document.getElementById('cust-name').value = newCust.name;
+    document.getElementById('cust-phone').value = newCust.contact || '';
+    document.getElementById('cust-email').value = newCust.email || '';
+    document.getElementById('cust-address').value = newCust.address || '';
+
+    searchInput.value = newCust.name;
+    resultsBox.style.display = 'none';
+  });
+});
+
+// Hide dropdown if clicked outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#customer-search') && !e.target.closest('#customer-results')) {
+    resultsBox.style.display = 'none';
+  }
+});
 
 // ------------------------------------------------------------
 // 3️⃣ Load item catalog
