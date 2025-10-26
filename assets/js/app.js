@@ -84,7 +84,7 @@ function renderGroups(groups) {
       selectedGroupDescription = g?.description || null;
     
       await loadItemsByGroup(groupId, groupName);
-    });
+    }
   );
 }
 
