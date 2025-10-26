@@ -186,6 +186,50 @@ main.grid {
   background: #f0f4ff;
 }
 
+/* Customer search dropdown */
+#customer-results {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  margin-top: 5px;
+  display: none;
+  position: absolute;
+  width: 95%;
+  z-index: 999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#customer-results div {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+#customer-results div:hover {
+  background: #007bff;
+  color: white;
+}
+
+.no-match {
+  padding: 8px 10px;
+  color: #666;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.add-new {
+  padding: 10px;
+  cursor: pointer;
+  border-top: 1px solid #ddd;
+}
+
+.add-new:hover {
+  background: #007bff;
+  color: #fff !important;
+}
+
 /* INVOICE SECTION */
 #invoice {
   background: var(--card-bg);
