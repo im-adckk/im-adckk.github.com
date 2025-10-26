@@ -9,10 +9,7 @@ const invoiceId = params.get('id');
 // Utility: Convert number to Malay words
 // ------------------------------------------------------------
 function numberToBahasaWords(num) {
-  const ones = [
-    "", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam",
-    "Tujuh", "Lapan", "Sembilan", "Sepuluh", "Sebelas"
-  ];
+  const ones = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Lapan", "Sembilan", "Sepuluh", "Sebelas"];
   if (num < 12) return ones[num];
   if (num < 20) return numberToBahasaWords(num - 10) + " Belas";
   if (num < 100)
@@ -40,7 +37,7 @@ function formatMalayDate(dateString) {
 }
 
 // ------------------------------------------------------------
-// Fetch and Render
+// Fetch + Render
 // ------------------------------------------------------------
 async function loadReport() {
   if (!invoiceId) {
@@ -64,7 +61,7 @@ async function loadReport() {
 }
 
 // ------------------------------------------------------------
-// Render professional A4 layout + Preview mode
+// Render A4 layout (exact Sebut Harga / Invois style)
 // ------------------------------------------------------------
 function renderReport(inv) {
   const container = document.getElementById('report-container');
@@ -82,20 +79,21 @@ function renderReport(inv) {
       <img src="assets/letterhead.png" alt="Letterhead" class="letterhead">
     </div>
 
-    <div class="doc-info">
-      <h2>${docTitle}</h2>
-      <table class="info-table">
-        <tr><td>No. Dokumen:</td><td>${inv.invoice_no}</td></tr>
-        <tr><td>Tarikh:</td><td>${dateStr}</td></tr>
-      </table>
-    </div>
-
-    <div class="customer-info">
-      <strong>Kepada:</strong><br>
-      ${cust.name || '-'}<br>
-      ${cust.address || ''}<br>
-      ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
-      ${cust.email ? 'Emel: ' + cust.email : ''}
+    <div class="doc-header">
+      <div class="doc-left">
+        <h2>${docTitle}</h2>
+        <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
+        <p><strong>Tarikh:</strong> ${dateStr}</p>
+      </div>
+      <div class="doc-right">
+        <div class="kepada">
+          <strong>Kepada:</strong><br>
+          ${cust.name || '-'}<br>
+          ${cust.address || ''}<br>
+          ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
+          ${cust.email ? 'Emel: ' + cust.email : ''}
+        </div>
+      </div>
     </div>
 
     <table class="item-table">
@@ -109,14 +107,18 @@ function renderReport(inv) {
         </tr>
       </thead>
       <tbody>
-        ${items.map((item, i) => `
-          <tr>
-            <td style="text-align:center;">${i + 1}</td>
-            <td>${item.description}</td>
-            <td style="text-align:center;">${item.qty}</td>
-            <td style="text-align:right;">${item.unit_price.toFixed(2)}</td>
-            <td style="text-align:right;">${item.line_total.toFixed(2)}</td>
-          </tr>`).join('')}
+        ${items
+          .map(
+            (item, i) => `
+              <tr>
+                <td style="text-align:center;">${i + 1}</td>
+                <td>${item.description}</td>
+                <td style="text-align:center;">${item.qty}</td>
+                <td style="text-align:right;">${item.unit_price.toFixed(2)}</td>
+                <td style="text-align:right;">${item.line_total.toFixed(2)}</td>
+              </tr>`
+          )
+          .join('')}
       </tbody>
     </table>
 
@@ -126,20 +128,23 @@ function renderReport(inv) {
       <p class="note">* Harga termasuk cukai (SST telah disertakan)</p>
     </div>
 
-    <div class="remarks">
-      <strong>Nota:</strong><br>
-      ${inv.notes || '-'}
-    </div>
-
-    <div class="bank-info">
-      <strong>Maklumat Bank:</strong><br>
-      Nama Bank: Maybank Berhad<br>
-      No. Akaun: 512345678901<br>
-      Nama Akaun: Universal Heavy Industries Sdn. Bhd.
-    </div>
-
-    <div class="footer-note">
-      <p><em>Janaan komputer — tandatangan tidak diperlukan / No signature or authorization required</em></p>
+    <div class="nota">
+      <p><strong>Nota **</strong></p>
+      <ol>
+        <li>Pembayaran perlu dibuat sebelum sesi bermula.</li>
+        <li>Semua sesi adalah berdasarkan tempahan sahaja.</li>
+        <li>Sebarang pembayaran dan sesi yang telah dijalankan tidak akan dikembalikan dan tertakluk kepada terma dan syarat yang telah ditetapkan.</li>
+        <li>Pembayaran bolehlah dibuat kepada:</li>
+      </ol>
+      <div class="bank">
+        <strong>API-API DRIVING CENTRE SDN BHD</strong><br>
+        PUBLIC BANK<br>
+        323-727-9005
+      </div>
+      <p style="margin-top:10px;">Sekian, terima kasih.<br>
+      <strong>Api-Api Driving Centre Sdn. Bhd.</strong><br>
+      <em>Drive Safe With Us!</em></p>
+      <p class="footer-note"><em>Janaan komputer — tandatangan tidak diperlukan / No signature or authorization required</em></p>
     </div>
 
     <div class="action-bar">
@@ -148,14 +153,15 @@ function renderReport(inv) {
   </div>
   `;
 
-  // Button: Download PDF
+  // PDF Download button
   document.getElementById('download-btn').addEventListener('click', () => {
     html2pdf()
       .from(document.querySelector('.a4-page'))
       .set({
         filename: `${inv.invoice_no}.pdf`,
         jsPDF: { format: 'a4', orientation: 'portrait' },
-        margin: 10,
+        html2canvas: { scale: 2 },
+        margin: 8,
       })
       .save();
   });
