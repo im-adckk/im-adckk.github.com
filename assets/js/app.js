@@ -30,22 +30,26 @@ function showSpinner() {
 }
 
 // ------------------------------------------------------------
-// 🔍 Customer Search + Add New Feature
+// 🔍 Customer Search + Add New (Modal Version)
 // ------------------------------------------------------------
 const searchInput = document.getElementById('customer-search');
 const resultsBox = document.getElementById('customer-results');
 
+// Modal elements
+const modal = document.getElementById('addCustomerModal');
+const saveNewBtn = document.getElementById('save-new-customer');
+const cancelNewBtn = document.getElementById('cancel-new-customer');
+
+let pendingNewCustomerName = ''; // hold the typed name for prefill
+
 searchInput.addEventListener('input', async (e) => {
   const query = e.target.value.trim();
-
-  // If empty, hide dropdown
   if (!query) {
     resultsBox.style.display = 'none';
     resultsBox.innerHTML = '';
     return;
   }
 
-  // Query Supabase (search name/contact/email)
   const { data: matches, error } = await client
     .from('customers')
     .select('*')
@@ -57,9 +61,7 @@ searchInput.addEventListener('input', async (e) => {
     return;
   }
 
-  // Build dropdown HTML
   let html = '';
-
   if (matches.length > 0) {
     html += matches
       .map(
@@ -74,10 +76,9 @@ searchInput.addEventListener('input', async (e) => {
       )
       .join('');
   } else {
-    html = `<div class="no-match">No matching customer found.</div>`;
+    html += `<div class="no-match">No matching customer found.</div>`;
   }
 
-  // ➕ Add "Add new customer" option
   html += `
     <div class="add-new" id="add-new-customer" style="background:#f9f9f9;color:#007bff;font-weight:bold;text-align:center;">
       + Add New Customer "${query}"
@@ -87,57 +88,81 @@ searchInput.addEventListener('input', async (e) => {
   resultsBox.innerHTML = html;
   resultsBox.style.display = 'block';
 
-  // Attach events
   document.querySelectorAll('.customer-result').forEach((item) => {
     item.addEventListener('click', () => {
       document.getElementById('cust-name').value = item.dataset.name;
       document.getElementById('cust-phone').value = item.dataset.contact;
       document.getElementById('cust-email').value = item.dataset.email;
       document.getElementById('cust-address').value = item.dataset.address;
-
-      resultsBox.style.display = 'none';
       searchInput.value = item.dataset.name;
+      resultsBox.style.display = 'none';
     });
   });
 
-  // Handle "Add New" button click
-  document.getElementById('add-new-customer').addEventListener('click', async () => {
-    const newName = query;
-    if (!newName) return;
-
-    // Optional: ask for confirmation
-    const confirmAdd = confirm(`Add new customer "${newName}"?`);
-    if (!confirmAdd) return;
-
-    const { data: newCust, error: addErr } = await client
-      .from('customers')
-      .insert([{ name: newName }])
-      .select()
-      .single();
-
-    if (addErr) {
-      console.error(addErr);
-      alert('Failed to add new customer.');
-      return;
-    }
-
-    // Autofill with new customer details
-    document.getElementById('cust-name').value = newCust.name;
-    document.getElementById('cust-phone').value = newCust.contact || '';
-    document.getElementById('cust-email').value = newCust.email || '';
-    document.getElementById('cust-address').value = newCust.address || '';
-
-    searchInput.value = newCust.name;
-    resultsBox.style.display = 'none';
+  document.getElementById('add-new-customer').addEventListener('click', () => {
+    pendingNewCustomerName = query;
+    openCustomerModal();
   });
 });
 
-// Hide dropdown if clicked outside
 document.addEventListener('click', (e) => {
   if (!e.target.closest('#customer-search') && !e.target.closest('#customer-results')) {
     resultsBox.style.display = 'none';
   }
 });
+
+// ------------------------------------------------------------
+// Modal Controls
+// ------------------------------------------------------------
+function openCustomerModal() {
+  document.getElementById('new-cust-name').value = pendingNewCustomerName;
+  document.getElementById('new-cust-contact').value = '';
+  document.getElementById('new-cust-email').value = '';
+  document.getElementById('new-cust-address').value = '';
+  modal.style.display = 'flex';
+}
+
+function closeCustomerModal() {
+  modal.style.display = 'none';
+}
+
+cancelNewBtn.addEventListener('click', closeCustomerModal);
+
+// Save New Customer
+saveNewBtn.addEventListener('click', async () => {
+  const name = document.getElementById('new-cust-name').value.trim();
+  const contact = document.getElementById('new-cust-contact').value.trim();
+  const email = document.getElementById('new-cust-email').value.trim();
+  const address = document.getElementById('new-cust-address').value.trim();
+
+  if (!name) {
+    alert('Customer name is required.');
+    return;
+  }
+
+  const { data: newCust, error: addErr } = await client
+    .from('customers')
+    .insert([{ name, contact, email, address }])
+    .select()
+    .single();
+
+  if (addErr) {
+    console.error(addErr);
+    alert('Failed to add new customer.');
+    return;
+  }
+
+  // Autofill fields in main form
+  document.getElementById('cust-name').value = newCust.name;
+  document.getElementById('cust-phone').value = newCust.contact || '';
+  document.getElementById('cust-email').value = newCust.email || '';
+  document.getElementById('cust-address').value = newCust.address || '';
+
+  searchInput.value = newCust.name;
+  closeCustomerModal();
+  resultsBox.style.display = 'none';
+});
+
 
 // ------------------------------------------------------------
 // 3️⃣ Load item catalog
