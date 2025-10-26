@@ -79,7 +79,11 @@ function renderReport(inv) {
       <img src="assets/letterhead.png" alt="Letterhead" class="letterhead">
     </div>
 
-    <div class="doc-header">
+    <div class="doc-top-title">
+      <h2>${docTitle}</h2>
+    </div>
+
+    <div class="doc-info-row">
       <div class="doc-left">
         <div class="kepada">
           <strong>Kepada:</strong><br>
@@ -88,10 +92,6 @@ function renderReport(inv) {
           ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
           ${cust.email ? 'Emel: ' + cust.email : ''}
         </div>
-      </div>
-
-      <div class="doc-center">
-        <h2>${docTitle}</h2>
       </div>
 
       <div class="doc-right">
