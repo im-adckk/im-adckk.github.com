@@ -104,7 +104,7 @@ function renderReport(inv) {
       <thead>
         <tr>
           <th style="width:5%;">Bil</th>
-          <th style="width:55%;">Perihalan Barang / Perkhidmatan</th>
+          <th style="width:55%;">Butir-butir Perkhidmatan</th>
           <th style="width:10%;">Kuantiti</th>
           <th style="width:15%;">Harga Seunit (RM)</th>
           <th style="width:15%;">Jumlah (RM)</th>
@@ -159,16 +159,30 @@ function renderReport(inv) {
 
   // PDF Download
   document.getElementById('download-btn').addEventListener('click', () => {
-    html2pdf()
-      .from(document.querySelector('.a4-page'))
-      .set({
-        filename: `${inv.invoice_no}.pdf`,
-        jsPDF: { format: 'a4', orientation: 'portrait' },
-        html2canvas: { scale: 2 },
-        margin: 8,
-      })
-      .save();
-  });
+  const element = document.querySelector('.a4-page');
+  const opt = {
+    margin: [0, 5, 5, 5], // top, right, bottom, left (top margin = 0)
+    filename: `${inv.invoice_no}.pdf`,
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      scrollY: 0,
+      backgroundColor: null,
+      y: 0,
+    },
+    jsPDF: {
+      format: 'a4',
+      orientation: 'portrait',
+      unit: 'mm',
+      hotfixes: ['px_scaling'],
+    },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+  };
+
+  html2pdf().set(opt).from(element).save();
+});
+
 }
 
 loadReport();
