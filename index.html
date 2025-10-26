@@ -41,6 +41,30 @@
             />
             <div id="customer-results" class="dropdown"></div>
           </div>
+
+          <!-- Add New Customer Modal -->
+          <div id="addCustomerModal" class="modal-overlay">
+            <div class="modal">
+              <h3>Add New Customer</h3>
+              <label>Name</label>
+              <input type="text" id="new-cust-name" placeholder="Customer Name" required />
+          
+              <label>Contact Number</label>
+              <input type="text" id="new-cust-contact" placeholder="Phone Number" />
+          
+              <label>Email</label>
+              <input type="email" id="new-cust-email" placeholder="Email" />
+          
+              <label>Address</label>
+              <textarea id="new-cust-address" placeholder="Address"></textarea>
+          
+              <div class="modal-actions">
+                <button id="save-new-customer" class="btn-primary">Save</button>
+                <button id="cancel-new-customer" class="btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </div>
+
         
           <input type="text" id="cust-name" placeholder="Customer Name" />
           <input type="text" id="cust-phone" placeholder="Contact Number" />
