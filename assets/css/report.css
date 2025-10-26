@@ -1,26 +1,23 @@
 /* Ensure PDF fits single page cleanly */
+/* Full A4 boundaries — prevent right-side cutoff */
 html, body {
   margin: 0;
   padding: 0;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
   background: #fff;
 }
 
 .a4-page {
-  width: 210mm;
-  min-height: 297mm;
+  width: 190mm; /* keep within printable safe zone */
+  min-height: 277mm;
   margin: 0 auto;
   background: white;
+  padding: 10mm;
   box-sizing: border-box;
-  padding: 10mm 10mm 8mm 10mm;
   font-family: 'Arial', sans-serif;
   position: relative;
-}
-
-/* Letterhead sits flush at top */
-.header {
-  margin: 0;
-  padding: 0;
-  text-align: center;
 }
 
 .letterhead {
@@ -33,7 +30,7 @@ html, body {
 
 .doc-top-title {
   text-align: center;
-  margin-top: 10px;
+  margin-top: 8px;
   margin-bottom: 5px;
 }
 
@@ -45,16 +42,29 @@ html, body {
   text-decoration: underline;
 }
 
+.group-info {
+  font-size: 13px;
+  margin-top: 3px;
+  color: #333;
+}
+
+.item-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.item-table th, .item-table td {
+  border: 1px solid #000;
+  padding: 4px;
+  word-wrap: break-word;
+}
+
 .doc-info-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-top: 5px;
-  margin-bottom: 15px;
-}
-
-.doc-left {
-  width: 55%;
+  margin-top: 8px;
+  margin-bottom: 10px;
 }
 
 .kepada {
@@ -65,10 +75,10 @@ html, body {
 }
 
 .doc-right {
-  width: 40%;
   font-size: 13px;
   text-align: right;
   line-height: 1.4;
+  white-space: nowrap;
 }
 
 .item-table {
