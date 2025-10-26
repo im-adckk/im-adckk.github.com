@@ -60,32 +60,40 @@ function renderGroups(groups) {
     )
     .join('');
 
-  // Handle group button clicks
-  el.querySelectorAll('.group-btn').forEach((btn) =>
+  // ✅ Handle group button clicks
+  el.querySelectorAll('.group-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const groupId = btn.dataset.id;
       const groupName = btn.textContent.trim();
-    
-      // store globally
+
+      // 🔹 Store globally
       selectedGroupId = groupId;
       selectedGroupName = groupName;
-    
-      // Highlight selected button
+
+      // 🔹 Highlight selected button
       el.querySelectorAll('.group-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-    
-      // Fetch description (optional)
-      const { data: g, error: gErr } = await client
-        .from('item_groups')
-        .select('description')
-        .eq('id', groupId)
-        .single();
-    
-      selectedGroupDescription = g?.description || null;
-    
+
+      // 🔹 Fetch group description (optional)
+      let groupDesc = null;
+      try {
+        const { data: g, error: gErr } = await client
+          .from('item_groups')
+          .select('description')
+          .eq('id', groupId)
+          .single();
+        if (gErr) throw gErr;
+        groupDesc = g?.description || null;
+      } catch (err) {
+        console.warn('Could not fetch group description:', err.message);
+      }
+
+      selectedGroupDescription = groupDesc;
+
+      // 🔹 Load items by group
       await loadItemsByGroup(groupId, groupName);
-    }
-  );
+    });
+  });
 }
 
 async function loadItemsByGroup(groupId, groupName) {
