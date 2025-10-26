@@ -81,11 +81,6 @@ function renderReport(inv) {
 
     <div class="doc-header">
       <div class="doc-left">
-        <h2>${docTitle}</h2>
-        <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
-        <p><strong>Tarikh:</strong> ${dateStr}</p>
-      </div>
-      <div class="doc-right">
         <div class="kepada">
           <strong>Kepada:</strong><br>
           ${cust.name || '-'}<br>
@@ -93,6 +88,15 @@ function renderReport(inv) {
           ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
           ${cust.email ? 'Emel: ' + cust.email : ''}
         </div>
+      </div>
+
+      <div class="doc-center">
+        <h2>${docTitle}</h2>
+      </div>
+
+      <div class="doc-right">
+        <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
+        <p><strong>Tarikh:</strong> ${dateStr}</p>
       </div>
     </div>
 
@@ -153,7 +157,7 @@ function renderReport(inv) {
   </div>
   `;
 
-  // PDF Download button
+  // PDF Download
   document.getElementById('download-btn').addEventListener('click', () => {
     html2pdf()
       .from(document.querySelector('.a4-page'))
