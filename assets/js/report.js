@@ -23,7 +23,7 @@ function numberToBahasaWords(num) {
   if (num < 1000000)
     return numberToBahasaWords(Math.floor(num / 1000)) + " Ribu " + numberToBahasaWords(num % 1000);
   if (num < 1000000000)
-    return numberToBahasaWords(Math.floor(num / 1000000)) + " Juta " + numberToBahasaWords(num % 1000000);
+    return numberToBahasaWords(Math.floor(num / 1000000)) + " Juta " + numberToBahasaWords(num % 1000000000);
   return "Nombor Terlalu Besar";
 }
 
@@ -123,11 +123,11 @@ async function renderReport(inv) {
     <table class="item-table">
       <thead>
         <tr>
-          <th style="width:5%;">Bil</th>
-          <th style="width:55%;">Butir-butir Perkhidmatan</th>
-          <th style="width:10%;">Kuantiti</th>
-          <th style="width:15%;">Harga Seunit (RM)</th>
-          <th style="width:15%;">Jumlah (RM)</th>
+          <th>Bil</th>
+          <th>Butir-butir Perkhidmatan</th>
+          <th>Kuantiti</th>
+          <th>Harga Seunit (RM)</th>
+          <th>Jumlah (RM)</th>
         </tr>
       </thead>
       <tbody>
@@ -135,11 +135,11 @@ async function renderReport(inv) {
           .map(
             (item, i) => `
               <tr>
-                <td style="text-align:center;">${i + 1}</td>
+                <td>${i + 1}</td>
                 <td>${item.description}</td>
-                <td style="text-align:center;">${item.qty}</td>
-                <td style="text-align:right;">${item.unit_price.toFixed(2)}</td>
-                <td style="text-align:right;">${item.line_total.toFixed(2)}</td>
+                <td>${item.qty}</td>
+                <td>${item.unit_price.toFixed(2)}</td>
+                <td>${item.line_total.toFixed(2)}</td>
               </tr>`
           )
           .join('')}
@@ -179,57 +179,49 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export — fixed alignment
+  // ✅ PDF Export — simplified and fixed
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
     
-    // Hide the button before rendering
+    // Hide button before capture
     downloadBtn.style.display = 'none';
-    element.classList.add('no-shadow');
-    
-    // Force A4 dimensions for PDF capture
-    const tempElement = element.cloneNode(true);
-    tempElement.style.width = '210mm';
-    tempElement.style.height = '297mm';
-    tempElement.style.margin = '0';
-    tempElement.style.padding = '15mm';
-    document.body.appendChild(tempElement);
     
     const opt = {
-      margin: 0, // ✅ No additional margins
+      margin: [5, 5, 5, 5],
       filename: `${inv.invoice_no}.pdf`,
-      image: { type: 'jpeg', quality: 1 },
+      image: { 
+        type: 'jpeg', 
+        quality: 1 
+      },
       html2canvas: {
         scale: 2,
         useCORS: true,
+        scrollX: 0,
         scrollY: 0,
         backgroundColor: '#ffffff',
-        width: 210 * 3.78, // Convert mm to pixels (210mm * 3.78px/mm)
-        windowWidth: 210 * 3.78,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
       },
       jsPDF: {
         unit: 'mm',
         format: 'a4',
-        orientation: 'portrait',
-      },
-      pagebreak: { mode: ['css', 'avoid-all'] },
+        orientation: 'portrait'
+      }
     };
-  
+
     html2pdf()
       .set(opt)
-      .from(tempElement)
+      .from(element)
       .save()
       .then(() => {
-        element.classList.remove('no-shadow');
         downloadBtn.style.display = 'inline-block';
-        document.body.removeChild(tempElement);
       })
       .catch((err) => {
         console.error('PDF generation failed:', err);
-        element.classList.remove('no-shadow');
         downloadBtn.style.display = 'inline-block';
-        document.body.removeChild(tempElement);
       });
   });
 }
