@@ -173,7 +173,7 @@ document.getElementById('download-btn').addEventListener('click', () => {
 
   // Perfect margin settings for A4
   const opt = {
-    margin: [10, 100, 10, 5],  // [top, left, bottom, right] in mm - Equal small margins
+    margin: [10, 10, 10, 5],  // [top, left, bottom, right] in mm - Equal small margins
     filename: `${inv.invoice_no}.pdf`,
     image: { 
       type: 'jpeg', 
