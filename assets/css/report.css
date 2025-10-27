@@ -42,7 +42,8 @@ html, body {
 .letterhead {
   width: 100%;
   display: block;
-  margin: 0;
+  max-width: 190mm;
+  margin: 0 auto;
   padding: 0;
   vertical-align: top;
 }
