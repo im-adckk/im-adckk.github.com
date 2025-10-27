@@ -1,13 +1,22 @@
 <!doctype html>
-<html>
+<html lang="ms">
 <head>
   <meta charset="utf-8">
-  <title>Quotation / Invoice Report</title>
+  <title>Laporan Sebut Harga / Invois</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="author" content="Api-Api Driving Centre">
   <link rel="stylesheet" href="assets/css/report.css">
+  
+  <!-- Preload critical resources -->
+  <link rel="preload" href="assets/letterhead.png" as="image">
 </head>
 <body>
-  <div id="report-container"></div>
+  <div id="report-container">
+    <!-- Loading state -->
+    <div id="loading" style="text-align: center; padding: 50px;">
+      <p>Generating document...</p>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
