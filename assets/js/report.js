@@ -189,7 +189,7 @@ async function renderReport(inv) {
     element.classList.add('no-shadow');
   
     const opt = {
-      margin: [0, 0, 0, 0],
+      margin: [5, 8, 5, 8], 
       filename: `${inv.invoice_no}.pdf`,
       image: { type: 'jpeg', quality: 1 },
       html2canvas: {
