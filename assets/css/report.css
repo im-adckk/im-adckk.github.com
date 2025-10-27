@@ -8,13 +8,13 @@ html, body {
   overflow-y: auto;
 }
 
-/* A4 layout */
+/* A4 layout for screen */
 .a4-page {
-  width: 190mm;              /* ✅ inner content width */
-  min-height: 277mm;         /* ✅ height adjusted for top/bottom padding */
+  width: 210mm;              /* ✅ Use exact A4 width */
+  min-height: 297mm;         /* ✅ Use exact A4 height */
   background: #fff;
   margin: 10mm auto;         /* centers perfectly in A4 */
-  padding: 10mm;             /* inner space */
+  padding: 15mm;             /* consistent inner padding */
   box-sizing: border-box;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
   overflow: hidden;
@@ -25,27 +25,37 @@ html, body {
   box-shadow: none !important;
 }
 
-/* For html2pdf & printing */
+/* For html2pdf & printing - CRITICAL FIX */
 @media print {
-  body {
-    background: none;
+  body, html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm;
+    height: 297mm;
   }
+  
   .a4-page {
-    width: 210mm;              /* exact A4 width */
-    min-height: 297mm;
-    background: #fff;
-    margin: 10px auto;
-    padding: 10mm;             /* ✅ tighter inner padding */
-    box-sizing: border-box;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    box-shadow: none !important;
+    position: relative;
+    left: 0;
+    top: 0;
+  }
+  
+  /* Hide download button in PDF */
+  .action-bar {
+    display: none !important;
   }
 }
 
 .letterhead {
   width: 100%;
   display: block;
-  max-width: 190mm;
+  max-width: 180mm; /* Account for padding */
   margin: 0 auto;
   padding: 0;
   vertical-align: top;
@@ -75,6 +85,7 @@ html, body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed; /* ✅ Prevent table width issues */
 }
 
 .item-table th, .item-table td {
@@ -82,6 +93,13 @@ html, body {
   padding: 4px;
   word-wrap: break-word;
 }
+
+/* Ensure proper column widths */
+.item-table th:nth-child(1), .item-table td:nth-child(1) { width: 5%; }
+.item-table th:nth-child(2), .item-table td:nth-child(2) { width: 55%; }
+.item-table th:nth-child(3), .item-table td:nth-child(3) { width: 10%; }
+.item-table th:nth-child(4), .item-table td:nth-child(4) { width: 15%; }
+.item-table th:nth-child(5), .item-table td:nth-child(5) { width: 15%; }
 
 .doc-info-row {
   display: flex;
@@ -95,6 +113,7 @@ html, body {
   padding: 8px;
   font-size: 13px;
   line-height: 1.4;
+  width: 60%; /* Prevent overflow */
 }
 
 .doc-right {
@@ -102,23 +121,7 @@ html, body {
   text-align: right;
   line-height: 1.4;
   white-space: nowrap;
-}
-
-.item-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-  font-size: 13px;
-}
-
-.item-table th, .item-table td {
-  border: 1px solid #000;
-  padding: 5px;
-}
-
-.item-table th {
-  background: #f1f1f1;
-  text-align: center;
+  width: 35%; /* Prevent overflow */
 }
 
 .total-section {
@@ -180,7 +183,7 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: auto; /* ✅ enables vertical scroll */
+    overflow-y: auto;
   }
 
   body {
@@ -189,8 +192,4 @@ html, body {
     align-items: flex-start;
     padding: 30px 0;
   }
-
 }
-
-
-
