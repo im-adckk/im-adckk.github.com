@@ -173,7 +173,7 @@ document.getElementById('download-btn').addEventListener('click', () => {
   
   // Critical: Force single page with exact dimensions
   const opt = {
-    margin: 0,
+    margin: [0, 20, 0, 10], // [top, left, bottom, right] in mm
     filename: `${inv.invoice_no}.pdf`,
     image: { 
       type: 'jpeg', 
@@ -183,7 +183,7 @@ document.getElementById('download-btn').addEventListener('click', () => {
       scale: 2,
       useCORS: true,
       scrollX: 0,
-      scrollY: 5,
+      scrollY: 0,
       width: 210 * 3.78, // 210mm in pixels
       height: 297 * 3.78, // 297mm in pixels
       windowWidth: 210 * 3.78,
