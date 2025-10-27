@@ -179,51 +179,47 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export — simplified and fixed
-  document.getElementById('download-btn').addEventListener('click', () => {
-    const element = document.querySelector('.a4-page');
-    const downloadBtn = document.getElementById('download-btn');
-    
-    // Hide button before capture
-    downloadBtn.style.display = 'none';
-    
-    const opt = {
-      margin: [0, 0, 0, 0],
-      filename: `${inv.invoice_no}.pdf`,
-      image: { 
-        type: 'jpeg', 
-        quality: 1 
-      },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        scrollX: 0,
-        scrollY: 0,
-        backgroundColor: '#ffffff',
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait'
-      }
-    };
+  // ✅ PDF Export (hide button during generation + responsive preview)
+document.getElementById('download-btn').addEventListener('click', () => {
+  const element = document.querySelector('.a4-page');
+  const downloadBtn = document.getElementById('download-btn');
 
-    html2pdf()
-      .set(opt)
-      .from(element)
-      .save()
-      .then(() => {
-        downloadBtn.style.display = 'inline-block';
-      })
-      .catch((err) => {
-        console.error('PDF generation failed:', err);
-        downloadBtn.style.display = 'inline-block';
-      });
-  });
+  // Hide the download button before PDF generation
+  downloadBtn.style.display = 'none';
+
+  // Generate PDF
+  const opt = {
+    margin: [0, 5, 5, 5],
+    filename: `${inv.invoice_no}.pdf`,
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      scrollY: 0,
+      backgroundColor: null,
+    },
+    jsPDF: {
+      format: 'a4',
+      orientation: 'portrait',
+      unit: 'mm',
+    },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+  };
+
+  html2pdf()
+    .set(opt)
+    .from(element)
+    .save()
+    .then(() => {
+      // Show the button again after PDF is saved
+      downloadBtn.style.display = 'inline-block';
+    })
+    .catch((err) => {
+      console.error('PDF generation failed:', err);
+      downloadBtn.style.display = 'inline-block';
+    });
+});
+
 }
 
 loadReport();
