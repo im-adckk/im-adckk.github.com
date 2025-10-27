@@ -184,10 +184,7 @@ document.getElementById('download-btn').addEventListener('click', () => {
       useCORS: true,
       scrollX: 0,
       scrollY: 0,
-      width: 190 * 3.78, // Match your CSS width
-      height: 277 * 3.78, // Match your CSS height
-      windowWidth: 190 * 3.78,
-      windowHeight: 277 * 3.78,
+      
       backgroundColor: '#FFFFFF',
       logging: false
     },
