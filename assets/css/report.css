@@ -10,11 +10,11 @@ html, body {
 
 /* A4 layout */
 .a4-page {
-  width: 210mm;              /* exact A4 width */
-  min-height: 297mm;
+  width: 190mm;              /* ✅ inner content width */
+  min-height: 277mm;         /* ✅ height adjusted for top/bottom padding */
   background: #fff;
-  margin: 10px auto;
-  padding: 10mm;             /* ✅ tighter inner padding */
+  margin: 10mm auto;         /* centers perfectly in A4 */
+  padding: 10mm;             /* inner space */
   box-sizing: border-box;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
   overflow: hidden;
