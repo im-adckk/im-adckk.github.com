@@ -1,220 +1,141 @@
-/* Reset and base styles */
+/* Very Basic Reset */
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 210mm;
-  height: 297mm;
-  overflow: hidden;
-  background: #fff;
+body {
+  background: #f5f5f5;
+  font-family: Arial, sans-serif;
+  padding: 20px;
 }
 
+/* Simple A4 Container */
 .a4-page {
-  width: 190mm; /* keep within printable safe zone */
-  min-height: 277mm;
-  margin: 0 auto;
+  width: 210mm;
+  min-height: 297mm;
   background: white;
-  padding: 10mm;
-  box-sizing: border-box;
-  font-family: 'Arial', sans-serif;
-  position: relative;
+  margin: 0 auto;
+  padding: 20mm;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.no-shadow {
-  box-shadow: none !important;
-}
-
-/* Header and letterhead */
+/* Header */
 .header {
   text-align: center;
-  margin-bottom: 5mm;
+  margin-bottom: 15px;
 }
 
 .letterhead {
-  width: 100%;
-  max-width: 180mm;
+  max-width: 100%;
   height: auto;
-  display: block;
-  margin: 0 auto;
 }
 
-/* Document title */
+/* Document Title */
 .doc-top-title {
   text-align: center;
-  margin: 8mm 0 5mm 0;
+  margin: 20px 0;
 }
 
 .doc-top-title h2 {
-  font-size: 22px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0;
+  font-size: 24px;
   text-decoration: underline;
+  margin-bottom: 10px;
 }
 
-.group-info {
-  font-size: 13px;
-  margin-top: 3px;
-  color: #333;
-}
-
-/* Customer and document info */
+/* Customer Info */
 .doc-info-row {
   display: flex;
   justify-content: space-between;
-  margin: 8mm 0 6mm 0;
-  gap: 10mm;
+  margin: 20px 0;
 }
 
 .kepada {
   border: 1px solid #000;
-  padding: 4mm;
-  font-size: 13px;
-  line-height: 1.4;
+  padding: 10px;
   flex: 1;
 }
 
 .doc-right {
-  font-size: 13px;
   text-align: right;
-  line-height: 1.4;
-  white-space: nowrap;
 }
 
-/* Items table */
+/* Table */
 .item-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
-  margin: 5mm 0;
-  table-layout: fixed;
+  margin: 20px 0;
 }
 
 .item-table th, .item-table td {
   border: 1px solid #000;
-  padding: 3mm;
-  word-wrap: break-word;
+  padding: 8px;
+  text-align: left;
 }
 
 .item-table th {
-  background: #f1f1f1;
-  font-weight: bold;
+  background: #f0f0f0;
   text-align: center;
 }
 
-/* Column alignment */
-.item-table td:nth-child(1) { text-align: center; }
-.item-table td:nth-child(2) { text-align: left; }
-.item-table td:nth-child(3) { text-align: center; }
-.item-table td:nth-child(4) { text-align: right; }
-.item-table td:nth-child(5) { text-align: right; }
+.item-table td:first-child,
+.item-table td:nth-child(3) {
+  text-align: center;
+}
 
-/* Column widths */
-.item-table th:nth-child(1), .item-table td:nth-child(1) { width: 8%; }
-.item-table th:nth-child(2), .item-table td:nth-child(2) { width: 52%; }
-.item-table th:nth-child(3), .item-table td:nth-child(3) { width: 10%; }
-.item-table th:nth-child(4), .item-table td:nth-child(4) { width: 15%; }
-.item-table th:nth-child(5), .item-table td:nth-child(5) { width: 15%; }
+.item-table td:nth-child(4),
+.item-table td:nth-child(5) {
+  text-align: right;
+}
 
-/* Total section */
+/* Totals */
 .total-section {
   text-align: right;
-  margin: 8mm 0 5mm 0;
-  font-size: 14px;
-  line-height: 1.6;
+  margin: 20px 0;
 }
 
-.note {
-  font-size: 12px;
-  color: #555;
-  margin: 2mm 0;
-}
-
-/* Notes section */
+/* Notes */
 .nota {
-  margin-top: 8mm;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.nota ol {
-  margin: 3mm 0 3mm 5mm;
-  padding: 0;
-}
-
-.nota li {
-  margin-bottom: 2mm;
+  margin: 20px 0;
 }
 
 .bank {
-  margin: 3mm 0 3mm 5mm;
-  padding: 3mm;
+  margin: 10px 0;
+  padding: 10px;
   border: 1px solid #ccc;
   background: #f9f9f9;
-  display: inline-block;
 }
 
-.footer-note {
-  font-size: 12px;
-  margin-top: 5mm;
-  color: #555;
-  font-style: italic;
-  text-align: center;
-}
-
-/* Action button */
+/* Button */
 .action-bar {
   text-align: center;
-  margin: 5mm 0;
+  margin: 20px 0;
 }
 
 #download-btn {
   background: #007bff;
-  color: #fff;
+  color: white;
   border: none;
   padding: 10px 20px;
-  font-size: 14px;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: background 0.3s;
 }
 
-#download-btn:hover {
-  background: #0056b3;
-}
-
-/* Print styles */
+/* Print Styles */
 @media print {
   body {
-    background: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  .a4-page {
-    width: 190mm; /* keep within printable safe zone */
-    min-height: 277mm;
-    margin: 0 auto;
     background: white;
-    padding: 10mm;
-    box-sizing: border-box;
-    font-family: 'Arial', sans-serif;
-    position: relative;
+    padding: 0;
   }
-
+  
+  .a4-page {
+    box-shadow: none;
+    margin: 0;
+    padding: 15mm;
+  }
+  
   .action-bar {
-    display: none !important;
-  }
-}
-
-/* Screen preview for large screens */
-@media screen and (min-width: 1024px) {
-  body {
-    background: #f5f5f5;
-    padding: 20px 0;
+    display: none;
   }
 }
