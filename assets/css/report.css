@@ -103,10 +103,10 @@ body {
 
 /* Column widths */
 .item-table th:nth-child(1), .item-table td:nth-child(1) { width: 6%; }
-.item-table th:nth-child(2), .item-table td:nth-child(2) { width: 49%; }
+.item-table th:nth-child(2), .item-table td:nth-child(2) { width: 51%; }
 .item-table th:nth-child(3), .item-table td:nth-child(3) { width: 10%; }
 .item-table th:nth-child(4), .item-table td:nth-child(4) { width: 19%; }
-.item-table th:nth-child(5), .item-table td:nth-child(5) { width: 19%; }
+.item-table th:nth-child(5), .item-table td:nth-child(5) { width: 17%; }
 
 /* Column alignment */
 .item-table td:nth-child(1),
