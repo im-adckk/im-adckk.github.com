@@ -224,6 +224,6 @@ async function renderReport(inv) {
         downloadBtn.style.display = 'inline-block';
       });
   });
-
+}
 
 loadReport();
