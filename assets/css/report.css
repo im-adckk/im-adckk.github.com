@@ -1,13 +1,15 @@
 /* Reset and base styles */
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html, body {
-  margin: 0;
-  padding: 0;
   background: #f5f5f5;
   font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
 /* A4 layout for screen preview */
@@ -19,13 +21,6 @@ html, body {
   padding: 15mm;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
   position: relative;
-}
-
-/* PDF-specific styles */
-.a4-page.pdf-mode {
-  margin: 0;
-  padding: 15mm;
-  box-shadow: none;
 }
 
 .no-shadow {
@@ -101,23 +96,21 @@ html, body {
 .item-table th, .item-table td {
   border: 1px solid #000;
   padding: 3mm;
-  text-align: center;
   word-wrap: break-word;
 }
 
 .item-table th {
   background: #f1f1f1;
   font-weight: bold;
+  text-align: center;
 }
 
-.item-table td:nth-child(2) {
-  text-align: left;
-}
-
-.item-table td:nth-child(4),
-.item-table td:nth-child(5) {
-  text-align: right;
-}
+/* Column alignment */
+.item-table td:nth-child(1) { text-align: center; }
+.item-table td:nth-child(2) { text-align: left; }
+.item-table td:nth-child(3) { text-align: center; }
+.item-table td:nth-child(4) { text-align: right; }
+.item-table td:nth-child(5) { text-align: right; }
 
 /* Column widths */
 .item-table th:nth-child(1), .item-table td:nth-child(1) { width: 8%; }
@@ -193,7 +186,7 @@ html, body {
   background: #0056b3;
 }
 
-/* Print and PDF styles */
+/* Print styles */
 @media print {
   body {
     background: white !important;
@@ -207,7 +200,6 @@ html, body {
     margin: 0 !important;
     padding: 15mm !important;
     box-shadow: none !important;
-    position: relative;
   }
   
   .action-bar {
