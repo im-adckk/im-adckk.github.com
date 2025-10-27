@@ -91,14 +91,16 @@ body {
 
 .item-table th, .item-table td {
   border: 1px solid #000;
-  padding: 5px; /* Increased from 3px */
   word-wrap: break-word;
+  height: 40px; 
+  padding: 12px 5px;
 }
 
 .item-table th {
   background: #f0f0f0;
   text-align: center;
   font-weight: bold;
+  height: 35px;
 }
 
 /* Column widths */
