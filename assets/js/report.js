@@ -179,42 +179,51 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export (no overflow)
+  // ✅ PDF Export (centered, single-page, no overflow)
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
-
+  
+    // Hide the button before rendering
     downloadBtn.style.display = 'none';
+  
+    // Temporarily remove box shadow (helps prevent right overflow)
+    element.classList.add('no-shadow');
+  
     const opt = {
-      margin: [0, 5, 5, 5],
+      margin: [0, 0, 0, 0],
       filename: `${inv.invoice_no}.pdf`,
       image: { type: 'jpeg', quality: 1 },
       html2canvas: {
         scale: 2,
         useCORS: true,
         scrollY: 0,
-        backgroundColor: null,
+        windowWidth: element.scrollWidth,  // ✅ ensure proper capture width
+        backgroundColor: '#ffffff',
       },
       jsPDF: {
+        unit: 'mm',
         format: 'a4',
         orientation: 'portrait',
-        unit: 'mm',
       },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+      pagebreak: { mode: ['css', 'avoid-all'] },
     };
+  
     html2pdf()
-    .set(opt)
-    .from(element)
-    .save()
-    .then(() => {
-      // Show the button again after PDF is saved
-      downloadBtn.style.display = 'inline-block';
-    })
-    .catch((err) => {
-      console.error('PDF generation failed:', err);
-      downloadBtn.style.display = 'inline-block';
-    });
+      .set(opt)
+      .from(element)
+      .save()
+      .then(() => {
+        // Restore visuals
+        element.classList.remove('no-shadow');
+        downloadBtn.style.display = 'inline-block';
+      })
+      .catch((err) => {
+        console.error('PDF generation failed:', err);
+        element.classList.remove('no-shadow');
+        downloadBtn.style.display = 'inline-block';
+      });
   });
-}
+
 
 loadReport();
