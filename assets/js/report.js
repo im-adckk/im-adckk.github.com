@@ -179,15 +179,13 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export (centered, single-page, no overflow)
+  // ✅ PDF Export — perfect alignment and single page
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
   
     // Hide the button before rendering
     downloadBtn.style.display = 'none';
-  
-    // Temporarily remove box shadow (helps prevent right overflow)
     element.classList.add('no-shadow');
   
     const opt = {
@@ -198,8 +196,9 @@ async function renderReport(inv) {
         scale: 2,
         useCORS: true,
         scrollY: 0,
-        windowWidth: element.scrollWidth,  // ✅ ensure proper capture width
+        scrollX: 0,
         backgroundColor: '#ffffff',
+        windowWidth: element.offsetWidth, // ✅ capture actual width
       },
       jsPDF: {
         unit: 'mm',
@@ -214,7 +213,6 @@ async function renderReport(inv) {
       .from(element)
       .save()
       .then(() => {
-        // Restore visuals
         element.classList.remove('no-shadow');
         downloadBtn.style.display = 'inline-block';
       })
