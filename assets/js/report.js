@@ -183,7 +183,7 @@ document.getElementById('download-btn').addEventListener('click', () => {
       scale: 2,
       useCORS: true,
       scrollX: 0,
-      scrollY: 0,
+      scrollY: 5,
       width: 210 * 3.78, // 210mm in pixels
       height: 297 * 3.78, // 297mm in pixels
       windowWidth: 210 * 3.78,
