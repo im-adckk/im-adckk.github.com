@@ -123,9 +123,9 @@ async function renderReport(inv) {
     <table class="item-table">
       <thead>
         <tr>
-          <th>Bil</th>
+          <th>#</th>
           <th>Butir-butir Perkhidmatan</th>
-          <th>Kuantiti</th>
+          <th>Qty</th>
           <th>Harga Seunit (RM)</th>
           <th>Jumlah (RM)</th>
         </tr>
