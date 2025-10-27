@@ -1,39 +1,42 @@
 /* Ensure PDF fits single page cleanly */
 /* Full A4 boundaries — prevent right-side cutoff */
+/* Clean A4 PDF alignment */
 html, body {
   margin: 0;
   padding: 0;
-  width: 210mm;
-  height: 297mm;
-  overflow: hidden;
-  background: #fff;
+  background: #f5f5f5;
+  overflow-y: auto;
 }
 
+/* A4 layout */
 .a4-page {
-  width: 210mm;               /* ✅ exact A4 width */
-  min-height: 297mm;          /* ✅ exact A4 height */
-  margin: 0 auto;             /* ✅ center horizontally */
-  padding: 15mm 12mm;         /* ✅ safe inside space */
-  box-sizing: border-box;     /* ✅ prevent overflow from padding */
+  width: 210mm;             /* fixed A4 width */
+  min-height: 297mm;        /* fixed A4 height */
   background: #fff;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-  overflow: hidden;           /* ✅ prevent content overflow */
+  margin: 20px auto;         /* centers perfectly */
+  padding: 10mm 12mm;        /* safe inner spacing */
+  box-sizing: border-box;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
+/* Remove shadows during print/PDF */
+.no-shadow {
+  box-shadow: none !important;
+}
+
+/* For html2pdf & printing */
 @media print {
   body {
     background: none;
   }
   .a4-page {
-    box-shadow: none;
     margin: 0;
+    box-shadow: none;
     width: 210mm;
     min-height: 297mm;
+    padding: 10mm 12mm;
   }
-}
-
-.no-shadow {
-  box-shadow: none !important;
 }
 
 .letterhead {
@@ -184,12 +187,12 @@ html, body {
   }
 
   .a4-page {
+    transform: none;  
     width: 210mm;
     min-height: 297mm;
     background: white;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     padding: 15mm;
-    transform: scale(0.95); /* slightly smaller for viewport */
     transform-origin: top center;
     margin-bottom: 40px; /* spacing between pages if multi-page */
   }
