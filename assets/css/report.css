@@ -195,9 +195,17 @@ html, body {
     margin: 0 !important;
     padding: 0 !important;
   }
-  
+  .a4-page {
+    width: 190mm; /* keep within printable safe zone */
+    min-height: 277mm;
+    margin: 0 auto;
+    background: white;
+    padding: 10mm;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+    position: relative;
+  }
 
-  
   .action-bar {
     display: none !important;
   }
