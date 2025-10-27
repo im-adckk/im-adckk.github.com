@@ -10,14 +10,14 @@ html, body {
 }
 
 .a4-page {
-  width: 190mm; /* keep within printable safe zone */
-  min-height: 277mm;
-  margin: 0 auto;
-  background: white;
-  padding: 10mm;
+  width: 210mm; /* exact A4 width */
+  min-height: 297mm; /* exact A4 height */
+  background: #fff;
+  margin: 0 auto; /* center horizontally */
+  padding: 15mm 12mm; /* balanced inner padding */
   box-sizing: border-box;
-  font-family: 'Arial', sans-serif;
-  position: relative;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
 }
 
 .letterhead {
