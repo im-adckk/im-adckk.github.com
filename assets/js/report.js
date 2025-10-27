@@ -188,7 +188,7 @@ async function renderReport(inv) {
     downloadBtn.style.display = 'none';
     
     const opt = {
-      margin: [5, 5, 5, 5],
+      margin: [0, 0, 0, 0],
       filename: `${inv.invoice_no}.pdf`,
       image: { 
         type: 'jpeg', 
