@@ -179,26 +179,34 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export — perfect alignment and single page
+  // ✅ PDF Export — fixed alignment
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
-  
+    
     // Hide the button before rendering
     downloadBtn.style.display = 'none';
     element.classList.add('no-shadow');
-  
+    
+    // Force A4 dimensions for PDF capture
+    const tempElement = element.cloneNode(true);
+    tempElement.style.width = '210mm';
+    tempElement.style.height = '297mm';
+    tempElement.style.margin = '0';
+    tempElement.style.padding = '15mm';
+    document.body.appendChild(tempElement);
+    
     const opt = {
-      margin: [5, 8, 5, 8], 
+      margin: 0, // ✅ No additional margins
       filename: `${inv.invoice_no}.pdf`,
       image: { type: 'jpeg', quality: 1 },
       html2canvas: {
         scale: 2,
         useCORS: true,
         scrollY: 0,
-        scrollX: 0,
         backgroundColor: '#ffffff',
-        windowWidth: element.offsetWidth, // ✅ capture actual width
+        width: 210 * 3.78, // Convert mm to pixels (210mm * 3.78px/mm)
+        windowWidth: 210 * 3.78,
       },
       jsPDF: {
         unit: 'mm',
@@ -210,16 +218,18 @@ async function renderReport(inv) {
   
     html2pdf()
       .set(opt)
-      .from(element)
+      .from(tempElement)
       .save()
       .then(() => {
         element.classList.remove('no-shadow');
         downloadBtn.style.display = 'inline-block';
+        document.body.removeChild(tempElement);
       })
       .catch((err) => {
         console.error('PDF generation failed:', err);
         element.classList.remove('no-shadow');
         downloadBtn.style.display = 'inline-block';
+        document.body.removeChild(tempElement);
       });
   });
 }
