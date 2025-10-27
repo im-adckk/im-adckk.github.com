@@ -1,70 +1,55 @@
-/* Ensure PDF fits single page cleanly */
-/* Full A4 boundaries — prevent right-side cutoff */
-/* Clean A4 PDF alignment */
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
 html, body {
   margin: 0;
   padding: 0;
   background: #f5f5f5;
-  overflow-y: auto;
+  font-family: Arial, sans-serif;
 }
 
-/* A4 layout for screen */
+/* A4 layout for screen preview */
 .a4-page {
-  width: 210mm;              /* ✅ Use exact A4 width */
-  min-height: 297mm;         /* ✅ Use exact A4 height */
+  width: 210mm;
+  min-height: 297mm;
   background: #fff;
-  margin: 10mm auto;         /* centers perfectly in A4 */
-  padding: 15mm;             /* consistent inner padding */
-  box-sizing: border-box;
+  margin: 10mm auto;
+  padding: 15mm;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
+  position: relative;
 }
 
-/* Remove shadows during print/PDF */
+/* PDF-specific styles */
+.a4-page.pdf-mode {
+  margin: 0;
+  padding: 15mm;
+  box-shadow: none;
+}
+
 .no-shadow {
   box-shadow: none !important;
 }
 
-/* For html2pdf & printing - CRITICAL FIX */
-@media print {
-  body, html {
-    background: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 210mm;
-    height: 297mm;
-  }
-  
-  .a4-page {
-    width: 210mm !important;
-    min-height: 297mm !important;
-    margin: 0 !important;
-    padding: 15mm !important;
-    box-shadow: none !important;
-    position: relative;
-    left: 0;
-    top: 0;
-  }
-  
-  /* Hide download button in PDF */
-  .action-bar {
-    display: none !important;
-  }
+/* Header and letterhead */
+.header {
+  text-align: center;
+  margin-bottom: 5mm;
 }
 
 .letterhead {
   width: 100%;
+  max-width: 180mm;
+  height: auto;
   display: block;
-  max-width: 180mm; /* Account for padding */
   margin: 0 auto;
-  padding: 0;
-  vertical-align: top;
 }
 
+/* Document title */
 .doc-top-title {
   text-align: center;
-  margin-top: 8px;
-  margin-bottom: 5px;
+  margin: 8mm 0 5mm 0;
 }
 
 .doc-top-title h2 {
@@ -81,39 +66,20 @@ html, body {
   color: #333;
 }
 
-.item-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  table-layout: fixed; /* ✅ Prevent table width issues */
-}
-
-.item-table th, .item-table td {
-  border: 1px solid #000;
-  padding: 4px;
-  word-wrap: break-word;
-}
-
-/* Ensure proper column widths */
-.item-table th:nth-child(1), .item-table td:nth-child(1) { width: 5%; }
-.item-table th:nth-child(2), .item-table td:nth-child(2) { width: 55%; }
-.item-table th:nth-child(3), .item-table td:nth-child(3) { width: 10%; }
-.item-table th:nth-child(4), .item-table td:nth-child(4) { width: 15%; }
-.item-table th:nth-child(5), .item-table td:nth-child(5) { width: 15%; }
-
+/* Customer and document info */
 .doc-info-row {
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
-  margin-bottom: 10px;
+  margin: 8mm 0 6mm 0;
+  gap: 10mm;
 }
 
 .kepada {
   border: 1px solid #000;
-  padding: 8px;
+  padding: 4mm;
   font-size: 13px;
   line-height: 1.4;
-  width: 60%; /* Prevent overflow */
+  flex: 1;
 }
 
 .doc-right {
@@ -121,75 +87,138 @@ html, body {
   text-align: right;
   line-height: 1.4;
   white-space: nowrap;
-  width: 35%; /* Prevent overflow */
 }
 
+/* Items table */
+.item-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 5mm 0;
+  table-layout: fixed;
+}
+
+.item-table th, .item-table td {
+  border: 1px solid #000;
+  padding: 3mm;
+  text-align: center;
+  word-wrap: break-word;
+}
+
+.item-table th {
+  background: #f1f1f1;
+  font-weight: bold;
+}
+
+.item-table td:nth-child(2) {
+  text-align: left;
+}
+
+.item-table td:nth-child(4),
+.item-table td:nth-child(5) {
+  text-align: right;
+}
+
+/* Column widths */
+.item-table th:nth-child(1), .item-table td:nth-child(1) { width: 8%; }
+.item-table th:nth-child(2), .item-table td:nth-child(2) { width: 52%; }
+.item-table th:nth-child(3), .item-table td:nth-child(3) { width: 10%; }
+.item-table th:nth-child(4), .item-table td:nth-child(4) { width: 15%; }
+.item-table th:nth-child(5), .item-table td:nth-child(5) { width: 15%; }
+
+/* Total section */
 .total-section {
   text-align: right;
-  margin-top: 10px;
+  margin: 8mm 0 5mm 0;
   font-size: 14px;
+  line-height: 1.6;
 }
 
 .note {
   font-size: 12px;
   color: #555;
+  margin: 2mm 0;
 }
 
+/* Notes section */
 .nota {
-  margin-top: 15px;
+  margin-top: 8mm;
   font-size: 13px;
   line-height: 1.4;
 }
 
 .nota ol {
-  margin: 5px 0 5px 20px;
+  margin: 3mm 0 3mm 5mm;
   padding: 0;
 }
 
+.nota li {
+  margin-bottom: 2mm;
+}
+
 .bank {
-  margin-left: 20px;
-  margin-top: 5px;
+  margin: 3mm 0 3mm 5mm;
+  padding: 3mm;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  display: inline-block;
 }
 
 .footer-note {
   font-size: 12px;
-  margin-top: 10px;
+  margin-top: 5mm;
   color: #555;
   font-style: italic;
+  text-align: center;
 }
 
+/* Action button */
 .action-bar {
   text-align: center;
-  margin-top: 15px;
+  margin: 5mm 0;
 }
 
 #download-btn {
   background: #007bff;
   color: #fff;
   border: none;
-  padding: 8px 15px;
-  font-size: 13px;
+  padding: 10px 20px;
+  font-size: 14px;
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.3s;
 }
 
 #download-btn:hover {
   background: #0056b3;
 }
 
-@media screen and (min-width: 1024px) {
-  html, body {
-    background: #f5f5f5;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow-y: auto;
-  }
-
+/* Print and PDF styles */
+@media print {
   body {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 30px 0;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .a4-page {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    box-shadow: none !important;
+    position: relative;
+  }
+  
+  .action-bar {
+    display: none !important;
+  }
+}
+
+/* Screen preview for large screens */
+@media screen and (min-width: 1024px) {
+  body {
+    background: #f5f5f5;
+    padding: 20px 0;
   }
 }
