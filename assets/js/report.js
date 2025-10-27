@@ -179,39 +179,55 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export (hide button during generation + responsive preview)
-  document.getElementById('download-btn').addEventListener('click', () => {
-    const element = document.querySelector('.a4-page');
-    const downloadBtn = document.getElementById('download-btn');
-    
-    // Hide button
-    downloadBtn.style.display = 'none';
-    
-    // Simple options
-    const opt = {
-      margin: 10,
-      filename: `${inv.invoice_no}.pdf`,
-      image: { type: 'jpeg', quality: 1 },
-      html2canvas: { 
-        scale: 2,
-        useCORS: true 
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait' 
-      }
-    };
-    
-    html2pdf()
-      .set(opt)
-      .from(element)
-      .save()
-      .finally(() => {
-        // Always show button again
-        downloadBtn.style.display = 'inline-block';
-      });
-  });
+  // ✅ FIXED PDF Export - Single page guarantee
+document.getElementById('download-btn').addEventListener('click', () => {
+  const element = document.querySelector('.a4-page');
+  const downloadBtn = document.getElementById('download-btn');
+  
+  // Hide button
+  downloadBtn.style.display = 'none';
+  
+  // Critical: Force single page with exact dimensions
+  const opt = {
+    margin: 0,
+    filename: `${inv.invoice_no}.pdf`,
+    image: { 
+      type: 'jpeg', 
+      quality: 1 
+    },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      scrollX: 0,
+      scrollY: 0,
+      width: 210 * 3.78, // 210mm in pixels
+      height: 297 * 3.78, // 297mm in pixels
+      windowWidth: 210 * 3.78,
+      windowHeight: 297 * 3.78,
+      backgroundColor: '#FFFFFF'
+    },
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    },
+    pagebreak: { 
+      mode: ['avoid-all', 'css', 'legacy'] 
+    }
+  };
+
+  html2pdf()
+    .set(opt)
+    .from(element)
+    .save()
+    .then(() => {
+      downloadBtn.style.display = 'inline-block';
+    })
+    .catch((err) => {
+      console.error('PDF generation failed:', err);
+      downloadBtn.style.display = 'inline-block';
+    });
+});
 
 }
 
