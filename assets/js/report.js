@@ -85,81 +85,66 @@ async function renderReport(inv) {
 
   const totalWords = `Ringgit Malaysia: ${numberToBahasaWords(Math.floor(inv.total))} Sahaja`;
 
+  // Reduce margins and padding in your template
   container.innerHTML = `
   <div class="a4-page">
     <div class="header">
       <img src="assets/letterhead.png" alt="Letterhead" class="letterhead">
     </div>
-
-    <!-- Top Title Section -->
+  
     <div class="doc-top-title">
       <h2>${docTitle}</h2>
-      ${
-        groupInfo
-          ? `<p class="group-info"><strong>${groupInfo.name}</strong> — ${groupInfo.description || ''}</p>`
-          : ''
-      }
+      ${groupInfo ? `<p class="group-info"><strong>${groupInfo.name}</strong> — ${groupInfo.description || ''}</p>` : ''}
     </div>
-
-    <!-- Customer + Doc Info -->
+  
     <div class="doc-info-row">
-      <div class="doc-left">
-        <div class="kepada">
-          <strong>Kepada:</strong><br>
-          ${cust.name || '-'}<br>
-          ${cust.address || ''}<br>
-          ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
-          ${cust.email ? 'Emel: ' + cust.email : ''}
-        </div>
+      <div class="kepada">
+        <strong>Kepada:</strong><br>
+        ${cust.name || '-'}<br>
+        ${cust.address || ''}<br>
+        ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
+        ${cust.email ? 'Emel: ' + cust.email : ''}
       </div>
-
       <div class="doc-right">
         <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
         <p><strong>Tarikh:</strong> ${dateStr}</p>
       </div>
     </div>
-
-    <!-- Items Table -->
+  
     <table class="item-table">
       <thead>
         <tr>
-          <th>#</th>
+          <th>Bil</th>
           <th>Butir-butir Perkhidmatan</th>
-          <th>Qty</th>
+          <th>Kuantiti</th>
           <th>Harga Seunit (RM)</th>
           <th>Jumlah (RM)</th>
         </tr>
       </thead>
       <tbody>
-        ${items
-          .map(
-            (item, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${item.description}</td>
-                <td>${item.qty}</td>
-                <td>${item.unit_price.toFixed(2)}</td>
-                <td>${item.line_total.toFixed(2)}</td>
-              </tr>`
-          )
-          .join('')}
+        ${items.map((item, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${item.description}</td>
+            <td>${item.qty}</td>
+            <td>${item.unit_price.toFixed(2)}</td>
+            <td>${item.line_total.toFixed(2)}</td>
+          </tr>`).join('')}
       </tbody>
     </table>
-
-    <!-- Totals -->
+  
     <div class="total-section">
       <p><strong>Jumlah Keseluruhan (RM):</strong> ${inv.total.toFixed(2)}</p>
       <p><em>${totalWords}</em></p>
       <p class="note">* Harga termasuk cukai (SST telah disertakan)</p>
     </div>
-
-    <!-- Nota -->
+  
     <div class="nota">
       <p><strong>Nota **</strong></p>
       <ol>
         <li>Pembayaran perlu dibuat sebelum sesi bermula.</li>
         <li>Semua sesi adalah berdasarkan tempahan sahaja.</li>
-        <li>Sebarang pembayaran dan sesi yang telah dijalankan tidak akan dikembalikan dan tertakluk kepada terma dan syarat yang telah ditetapkan.</li>
+        <li>Sebarang pembayaran dan sesi yang telah dijalankan tidak akan dikembalikan.</li>
         <li>Pembayaran bolehlah dibuat kepada:</li>
       </ol>
       <div class="bank">
@@ -167,12 +152,11 @@ async function renderReport(inv) {
         PUBLIC BANK<br>
         323-727-9005
       </div>
-      <p style="margin-top:10px;">Sekian, terima kasih.<br>
-      <strong>Api-Api Driving Centre Sdn. Bhd.</strong><br>
-      <em>Drive Safe With Us!</em></p>
-      <p class="footer-note"><em>Janaan komputer — tandatangan tidak diperlukan / No signature or authorization required</em></p>
+      <p style="margin-top:5px;">Sekian, terima kasih.<br>
+      <strong>Api-Api Driving Centre Sdn. Bhd.</strong></p>
+      <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
     </div>
-
+  
     <div class="action-bar">
       <button id="download-btn">⬇️ Muat Turun PDF</button>
     </div>
