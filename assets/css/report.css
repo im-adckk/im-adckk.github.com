@@ -10,13 +10,13 @@ html, body {
 
 /* A4 layout */
 .a4-page {
-  width: 210mm;             /* fixed A4 width */
-  min-height: 297mm;        /* fixed A4 height */
+  width: 210mm;              /* exact A4 width */
+  min-height: 297mm;
   background: #fff;
-  margin: 20px auto;         /* centers perfectly */
-  padding: 10mm 12mm;        /* safe inner spacing */
+  margin: 10px auto;
+  padding: 10mm;             /* ✅ tighter inner padding */
   box-sizing: border-box;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
   overflow: hidden;
 }
 
@@ -31,11 +31,14 @@ html, body {
     background: none;
   }
   .a4-page {
-    margin: 0;
-    box-shadow: none;
-    width: 210mm;
+    width: 210mm;              /* exact A4 width */
     min-height: 297mm;
-    padding: 10mm 12mm;
+    background: #fff;
+    margin: 10px auto;
+    padding: 10mm;             /* ✅ tighter inner padding */
+    box-sizing: border-box;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
   }
 }
 
@@ -187,16 +190,6 @@ html, body {
     padding: 30px 0;
   }
 
-  .a4-page {
-    transform: none;  
-    width: 210mm;
-    min-height: 297mm;
-    background: white;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    padding: 15mm;
-    transform-origin: top center;
-    margin-bottom: 40px; /* spacing between pages if multi-page */
-  }
 }
 
 
