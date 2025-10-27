@@ -163,17 +163,17 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ FIXED PDF Export - Single page guarantee
+// ✅ PERFECT MARGIN PDF Export
 document.getElementById('download-btn').addEventListener('click', () => {
   const element = document.querySelector('.a4-page');
   const downloadBtn = document.getElementById('download-btn');
   
-  // Hide button
   downloadBtn.style.display = 'none';
-  
-  // Critical: Force single page with exact dimensions
+  element.classList.add('pdf-export');
+
+  // Perfect margin settings for A4
   const opt = {
-    margin: [0, 20, 0, 10], // [top, left, bottom, right] in mm
+    margin: [5, 5, 5, 5], // [top, left, bottom, right] in mm - Equal small margins
     filename: `${inv.invoice_no}.pdf`,
     image: { 
       type: 'jpeg', 
@@ -184,11 +184,12 @@ document.getElementById('download-btn').addEventListener('click', () => {
       useCORS: true,
       scrollX: 0,
       scrollY: 0,
-      width: 210 * 3.78, // 210mm in pixels
-      height: 297 * 3.78, // 297mm in pixels
-      windowWidth: 210 * 3.78,
-      windowHeight: 297 * 3.78,
-      backgroundColor: '#FFFFFF'
+      width: 190 * 3.78, // Match your CSS width
+      height: 277 * 3.78, // Match your CSS height
+      windowWidth: 190 * 3.78,
+      windowHeight: 277 * 3.78,
+      backgroundColor: '#FFFFFF',
+      logging: false
     },
     jsPDF: {
       unit: 'mm',
@@ -205,14 +206,15 @@ document.getElementById('download-btn').addEventListener('click', () => {
     .from(element)
     .save()
     .then(() => {
+      element.classList.remove('pdf-export');
       downloadBtn.style.display = 'inline-block';
     })
     .catch((err) => {
       console.error('PDF generation failed:', err);
+      element.classList.remove('pdf-export');
       downloadBtn.style.display = 'inline-block';
     });
 });
-
 }
 
 loadReport();
