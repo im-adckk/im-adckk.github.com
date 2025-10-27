@@ -194,12 +194,7 @@ html, body {
     padding: 0 !important;
   }
   
-  .a4-page {
-    width: 210mm !important;
-    min-height: 297mm !important;
-    margin: 0 !important;
-    box-shadow: none !important;
-  }
+
   
   .action-bar {
     display: none !important;
