@@ -511,12 +511,18 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     return;
   }
 
-  // 🔹 Step 5: Success popup
+  // 🔹 Step 5: Success popup with multiple sharing options
   const reportLink = `${window.location.origin}/report.html?id=${inv.id}`;
+  const docType = invoice.type.toUpperCase();
   const message = encodeURIComponent(
-    `Hi, here is your ${invoice.type.toUpperCase()} (${docNumber}) from Universal Heavy Industries:\n${reportLink}`
+    `Hi, here is your ${docType} (${docNumber}) from Api-Api Driving Centre:\n${reportLink}`
   );
-
+  
+  const emailSubject = encodeURIComponent(`${docType} - ${docNumber} - Api-Api Driving Centre`);
+  const emailBody = encodeURIComponent(
+    `Dear Customer,\n\nPlease find your ${docType} (${docNumber}) attached.\n\nYou can view it here: ${reportLink}\n\nThank you,\nApi-Api Driving Centre`
+  );
+  
   const popup = document.createElement('div');
   popup.style.position = 'fixed';
   popup.style.top = '0';
@@ -528,39 +534,83 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   popup.style.alignItems = 'center';
   popup.style.justifyContent = 'center';
   popup.style.zIndex = '9999';
-
+  
   popup.innerHTML = `
     <div style="
       background:#fff;
-      padding:20px;
+      padding:25px;
       border-radius:12px;
       text-align:center;
-      max-width:320px;
+      max-width:350px;
       width:90%;
       box-shadow:0 4px 10px rgba(0,0,0,0.2);
     ">
-      <h3 style="margin-top:0;">✅ ${docNumber} Saved!</h3>
-      <p>Your ${invoice.type} has been saved successfully.</p>
-      <button id="view-report" style="background:#007bff;color:#fff;border:none;padding:10px 15px;border-radius:8px;margin:5px;width:100%;">📄 View Report</button>
-      <button id="share-whatsapp" style="background:#25D366;color:#fff;border:none;padding:10px 15px;border-radius:8px;margin:5px;width:100%;">💬 Share via WhatsApp</button>
-      <button id="close-popup" style="background:#ccc;color:#000;border:none;padding:8px 15px;border-radius:8px;margin-top:10px;width:100%;">Close</button>
+      <h3 style="margin-top:0;color:#28a745;">✅ ${docNumber} Saved!</h3>
+      <p style="margin-bottom:20px;">Your ${invoice.type} has been saved successfully.</p>
+      
+      <button id="view-report" style="background:#007bff;color:#fff;border:none;padding:12px 15px;border-radius:8px;margin:8px 0;width:100%;font-size:14px;cursor:pointer;">
+        📄 View Report
+      </button>
+      
+      <button id="share-whatsapp" style="background:#25D366;color:#fff;border:none;padding:12px 15px;border-radius:8px;margin:8px 0;width:100%;font-size:14px;cursor:pointer;">
+        💬 Share via WhatsApp
+      </button>
+      
+      <button id="share-email" style="background:#ea4335;color:#fff;border:none;padding:12px 15px;border-radius:8px;margin:8px 0;width:100%;font-size:14px;cursor:pointer;">
+        📧 Share via Email
+      </button>
+      
+      <button id="copy-link" style="background:#6c757d;color:#fff;border:none;padding:12px 15px;border-radius:8px;margin:8px 0;width:100%;font-size:14px;cursor:pointer;">
+        🔗 Copy Link
+      </button>
+      
+      <button id="close-popup" style="background:#ccc;color:#000;border:none;padding:10px 15px;border-radius:8px;margin-top:15px;width:100%;font-size:14px;cursor:pointer;">
+        Close
+      </button>
     </div>
   `;
-
+  
   document.body.appendChild(popup);
-
+  
+  // Event listeners for all buttons
   document.getElementById('view-report').addEventListener('click', () => {
     window.open(reportLink, '_blank');
   });
-
+  
   document.getElementById('share-whatsapp').addEventListener('click', () => {
     window.open(`https://wa.me/?text=${message}`, '_blank');
   });
-
+  
+  document.getElementById('share-email').addEventListener('click', () => {
+    const customerEmail = document.getElementById('cust-email').value.trim();
+    let mailtoLink = `mailto:${customerEmail || ''}?subject=${emailSubject}&body=${emailBody}`;
+    window.location.href = mailtoLink;
+  });
+  
+  document.getElementById('copy-link').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(reportLink);
+      
+      // Show copied feedback
+      const copyBtn = document.getElementById('copy-link');
+      const originalText = copyBtn.innerHTML;
+      copyBtn.innerHTML = '✅ Copied!';
+      copyBtn.style.background = '#28a745';
+      
+      setTimeout(() => {
+        copyBtn.innerHTML = originalText;
+        copyBtn.style.background = '#6c757d';
+      }, 2000);
+      
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      alert('Failed to copy link to clipboard');
+    }
+  });
+  
   document.getElementById('close-popup').addEventListener('click', () => {
     popup.remove();
   });
-});
 
 
 // ------------------------------------------------------------
