@@ -139,7 +139,7 @@ body {
 /* Totals */
 .total-section {
   text-align: right;
-  margin: 10px 0; /* Increased from 8px */
+  margin: 16px 0; /* Increased from 8px */
   font-size: 14px; /* Increased from 12px */
 }
 
