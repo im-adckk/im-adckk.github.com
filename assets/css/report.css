@@ -186,16 +186,34 @@ body {
 .action-bar {
   text-align: center;
   margin: 10px 0; /* Increased from 8px */
+  position: fixed; /* Make it float */
+  bottom: 20px; /* Distance from bottom */
+  left: 50%; /* Center horizontally */
+  transform: translateX(-50%); /* Perfect center alignment */
+  z-index: 1000; /* Ensure it stays on top */
+  background: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow */
 }
 
 #download-btn {
   background: #007bff;
   color: white;
   border: none;
-  padding: 8px 16px; /* Increased from 6px 12px */
-  border-radius: 3px;
+  padding: 10px 20px; /* Slightly larger */
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 13px; /* Increased from 11px */
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+#download-btn:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Print Styles */
