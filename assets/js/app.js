@@ -611,7 +611,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   document.getElementById('close-popup').addEventListener('click', () => {
     popup.remove();
   });
-
+});
 
 // ------------------------------------------------------------
 // 8️⃣ On load
