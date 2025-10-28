@@ -145,7 +145,7 @@ async function renderReport(inv) {
     <div class="nota">
       <p><strong>Nota **</strong></p>
       <ol>
-        <li>Harga tidak termasuk <i>LDL RM35</i>, <i>Lesen Vokasional RM40</i> dan <i>Kad ujian RM10 jika berkenaan</i>.</li>
+        <li>Harga tidak termasuk <i>LDL RM35</i>, <i>Lesen Vokasional RM40</i> dan <i>Kad ujian RM10</i> jika berkenaan.</li>
         <li>Pembayaran perlu dibuat sebelum sesi bermula.</li>
         <li>Semua sesi adalah berdasarkan tempahan sahaja.</li>
         <li>Sebarang pembayaran dan sesi yang telah dijalankan tidak akan dikembalikan.</li>
