@@ -50,48 +50,20 @@ header h1 {
   letter-spacing: 0.5px;
 }
 
-header div {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-
 .header-content {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  width: 100%;
+  gap: 15px;
 }
 
-.header-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-@media (min-width: 769px) {
-  .header-content {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-}
-
-
-/* Document selector - Centered */
+/* Left section - Toggle and History button */
 .document-type-selector {
-  margin: 15px 0;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 15px;
   margin: 0;
-}
-
-.document-type-selector h3 {
-  margin-bottom: 8px;
-  color: #333;
-  font-size: 14px;
-  width: 100%;
 }
 
 .segmented-control {
@@ -101,9 +73,8 @@ header div {
   padding: 3px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e9ecef;
-  width: auto; /* Change from 100% to auto */
+  width: auto;
   max-width: 280px;
-  margin: 0 auto; /* Center the control itself */
 }
 
 .segmented-control input[type="radio"] {
@@ -141,58 +112,11 @@ header div {
   font-size: 14px;
 }
 
-/* Mobile-specific styles */
-@media (max-width: 768px) {
-  .document-type-selector {
-    margin: 10px 0;
-  }
-  
-  .document-type-selector h3 {
-    font-size: 13px;
-    margin-bottom: 6px;
-  }
-  
-  .segmented-control {
-    max-width: 250px;
-    padding: 2px;
-  }
-  
-  .segment {
-    padding: 6px 10px;
-    font-size: 13px;
-    min-height: 36px;
-    gap: 4px;
-  }
-  
-  .segment .icon {
-    font-size: 12px;
-  }
-  
-  /* Hide Export PDF button on mobile */
-  #export-pdf {
-    display: none;
-  }
-}
-
-/* Extra small mobile devices */
-@media (max-width: 480px) {
-  .document-type-selector h3 {
-    font-size: 12px;
-  }
-  
-  .segmented-control {
-    max-width: 220px;
-  }
-  
-  .segment {
-    padding: 5px 8px;
-    font-size: 12px;
-    min-height: 34px;
-  }
-  
-  .segment .icon {
-    font-size: 11px;
-  }
+/* Right section - Save and Export buttons */
+.header-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 /* Buttons */
@@ -214,6 +138,109 @@ button:hover {
 
 button:active {
   transform: scale(0.98);
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .header-content {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .document-type-selector {
+    gap: 10px;
+    order: 1;
+    flex: 1;
+    justify-content: flex-start;
+  }
+  
+  .header-buttons {
+    order: 2;
+    justify-content: flex-end;
+    flex: 1;
+  }
+  
+  .segmented-control {
+    max-width: 220px;
+    padding: 2px;
+  }
+  
+  .segment {
+    padding: 6px 10px;
+    font-size: 13px;
+    min-height: 36px;
+    gap: 4px;
+  }
+  
+  .segment .icon {
+    font-size: 12px;
+  }
+  
+  /* Hide Export PDF button on mobile */
+  #export-pdf {
+    display: none;
+  }
+  
+  /* Adjust button sizes for mobile */
+  .header-buttons button,
+  .document-type-selector button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  header {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .header-content {
+    gap: 8px;
+  }
+  
+  .document-type-selector {
+    gap: 8px;
+  }
+  
+  .segmented-control {
+    max-width: 200px;
+  }
+  
+  .segment {
+    padding: 5px 8px;
+    font-size: 12px;
+    min-height: 34px;
+  }
+  
+  .segment .icon {
+    font-size: 11px;
+  }
+  
+  .header-buttons button,
+  .document-type-selector button {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Very small screens - stack vertically */
+@media (max-width: 360px) {
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .document-type-selector {
+    justify-content: center;
+    order: 1;
+  }
+  
+  .header-buttons {
+    justify-content: center;
+    order: 2;
+  }
 }
 
 .group-btn {
