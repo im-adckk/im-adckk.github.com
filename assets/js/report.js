@@ -119,7 +119,7 @@ async function renderReport(inv) {
         <tr>
           <th>Bil</th>
           <th>Butir-butir Perkhidmatan</th>
-          <th>Kuantiti</th>
+          <th>Qty</th>
           <th>Harga Seunit (RM)</th>
           <th>Jumlah (RM)</th>
         </tr>
@@ -145,6 +145,7 @@ async function renderReport(inv) {
     <div class="nota">
       <p><strong>Nota **</strong></p>
       <ol>
+        <li>Harga tidak termasuk LDL RM35, Lesen Vokasinal RM40 dan Kad ujian RM10 jika berkenaan.</li>
         <li>Pembayaran perlu dibuat sebelum sesi bermula.</li>
         <li>Semua sesi adalah berdasarkan tempahan sahaja.</li>
         <li>Sebarang pembayaran dan sesi yang telah dijalankan tidak akan dikembalikan.</li>
