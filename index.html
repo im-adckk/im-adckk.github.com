@@ -8,27 +8,28 @@
 </head>
 <body>
   <header>
-    <div>
-      <label>
-        <div class="document-type-selector">
-          <h3>Document Type</h3>
-          <div class="segmented-control">
-            <input type="radio" id="quotation-option" name="doc-type" value="quotation" checked>
-            <label for="quotation-option" class="segment">
-              <span class="icon">📋</span>
-              Quotation
-            </label>
-            
-            <input type="radio" id="invoice-option" name="doc-type" value="invoice">
-            <label for="invoice-option" class="segment">
-              <span class="icon">🧾</span>
-              Invoice
-            </label>
-          </div>
+    <div class="header-content">
+      <div class="document-type-selector">
+        <h3>Document Type</h3>
+        <div class="segmented-control">
+          <input type="radio" id="quotation-option" name="doc-type" value="quotation" checked>
+          <label for="quotation-option" class="segment">
+            <span class="icon">📋</span>
+            <span class="text">Quotation</span>
+          </label>
+          
+          <input type="radio" id="invoice-option" name="doc-type" value="invoice">
+          <label for="invoice-option" class="segment">
+            <span class="icon">🧾</span>
+            <span class="text">Invoice</span>
+          </label>
         </div>
-      </label>
-      <button id="save-btn">Save</button>
-      <button id="export-pdf">Export PDF</button>
+      </div>
+      
+      <div class="header-buttons">
+        <button id="save-btn">Save</button>
+        <button id="export-pdf">Export PDF</button>
+      </div>
     </div>
   </header>
 
