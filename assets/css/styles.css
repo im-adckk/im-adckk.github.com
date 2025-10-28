@@ -56,6 +56,76 @@ header div {
   gap: 0.5rem;
 }
 
+.segmented-control {
+  display: inline-flex;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e9ecef;
+}
+
+.segmented-control input[type="radio"] {
+  display: none;
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  color: #6c757d;
+  min-width: 120px;
+  justify-content: center;
+}
+
+/*document toggle selection*/
+.segmented-control {
+  display: inline-flex;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e9ecef;
+}
+
+.segmented-control input[type="radio"] {
+  display: none;
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  color: #6c757d;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.segment:hover {
+  background: rgba(0, 123, 255, 0.1);
+  color: #007bff;
+}
+
+.segmented-control input[type="radio"]:checked + .segment {
+  background: #007bff;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.segment .icon {
+  font-size: 16px;
+}
+
 /* Buttons */
 button {
   background: var(--primary);
