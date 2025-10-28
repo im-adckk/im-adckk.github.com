@@ -386,7 +386,7 @@ document
   });
 
 // ------------------------------------------------------------
-// 6️⃣ Generate next number via Supabase RPC
+// 6️⃣ Generate next number via Supabase RPC (Updated format)
 // ------------------------------------------------------------
 async function getNextNumber(type) {
   const { data, error } = await client.rpc('get_next_doc_number', {
@@ -394,10 +394,20 @@ async function getNextNumber(type) {
   });
   if (error) {
     console.error('Numbering error:', error);
-    alert('Failed to generate document number');
-    return null;
+    
+    // Fallback: Generate number locally if RPC fails
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const prefix = type === 'invoice' ? 'INV' : 'QUO';
+    
+    // Simple fallback - you might want to improve this
+    const fallbackNumber = `${day}/${month}/${prefix}-001/VV`;
+    
+    console.warn('Using fallback number:', fallbackNumber);
+    return fallbackNumber;
   }
-  return data; // e.g., "INV-001" or "QUO-002"
+  return data; // e.g., "24/11/QUO-001/VV" or "24/11/INV-001/VV"
 }
 
 // ------------------------------------------------------------
