@@ -100,7 +100,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   margin: 8px 0; /* Increased from 5px */
-  font-size: 12px; /* Increased from 10px */
+  font-size: 14px; /* Increased from 10px */
   table-layout: fixed;
 }
 
@@ -168,7 +168,7 @@ body {
 .bank {
   margin: 5px 0 5px 15px; /* Increased from 3px */
   padding: 5px; /* Increased from 4px */
-  border: 1px solid #ccc;
+  border: 0.5px solid #ccc;
   background: #f9f9f9;
   font-size: 12px; /* Increased from 10px */
 }
