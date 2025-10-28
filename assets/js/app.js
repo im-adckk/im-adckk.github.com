@@ -627,7 +627,10 @@ document.getElementById('save-btn').addEventListener('click', async () => {
 // ------------------------------------------------------------
 // 8️⃣ On load
 // ------------------------------------------------------------
-window.addEventListener('DOMContentLoaded', loadCatalog);
+window.addEventListener('DOMContentLoaded', () => {
+  loadCatalog();
+  initializeDocumentTypeToggle(); // Initialize the new toggle
+});
 // ------------------------------------------------------------
 // 9️⃣ Export to PDF
 // ------------------------------------------------------------
