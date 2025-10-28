@@ -110,7 +110,10 @@ async function renderReport(inv) {
         <p><strong>Tarikh:</strong> ${dateStr}</p>
       </div>
     </div>
-  
+    <div class="quotation-intro">
+      <p><strong>U/P: Tuan/Puan</strong></p>
+      <p>Berikut merupakan sebut harga untuk jenis lesen yang dipohon:</p>
+    </div>
     <table class="item-table">
       <thead>
         <tr>
