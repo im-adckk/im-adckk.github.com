@@ -84,6 +84,16 @@ header div {
 }
 
 /*document toggle selection*/
+.document-type-selector {
+  margin: 15px 0;
+}
+
+.document-type-selector h3 {
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 16px;
+}
+
 .segmented-control {
   display: inline-flex;
   background: #f8f9fa;
