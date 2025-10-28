@@ -11,18 +11,21 @@
     <h1>Invoice / Quotation</h1>
     <div>
       <label>
-        <div class="segmented-control">
-          <input type="radio" id="quotation-option" name="doc-type" value="quotation" checked>
-          <label for="quotation-option" class="segment">
-            <span class="icon">📋</span>
-            Quotation
-          </label>
-          
-          <input type="radio" id="invoice-option" name="doc-type" value="invoice">
-          <label for="invoice-option" class="segment">
-            <span class="icon">🧾</span>
-            Invoice
-          </label>
+        <div class="document-type-selector">
+          <h3>Document Type</h3>
+          <div class="segmented-control">
+            <input type="radio" id="quotation-option" name="doc-type" value="quotation" checked>
+            <label for="quotation-option" class="segment">
+              <span class="icon">📋</span>
+              Quotation
+            </label>
+            
+            <input type="radio" id="invoice-option" name="doc-type" value="invoice">
+            <label for="invoice-option" class="segment">
+              <span class="icon">🧾</span>
+              Invoice
+            </label>
+          </div>
         </div>
       </label>
       <button id="save-btn">Save</button>
