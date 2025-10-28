@@ -100,7 +100,7 @@ async function renderReport(inv) {
     <div class="doc-info-row">
       <div class="kepada">
         <strong>Kepada:</strong><br>
-        ${cust.name || '-'}<br>
+        <strong>${cust.name || '-'}</strong><br>
         ${cust.address || ''}<br>
         ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
         ${cust.email ? 'Emel: ' + cust.email : ''}
