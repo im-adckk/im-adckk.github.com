@@ -1,5 +1,5 @@
 // ------------------------------------------------------------
-// Past Documents Viewer (with pagination + type filter)
+// Past Documents Viewer (with pagination + mobile cards)
 // ------------------------------------------------------------
 
 const SUPABASE_URL = 'https://hpmnizmmkepemezfntfh.supabase.co';
@@ -11,7 +11,6 @@ const searchName = document.getElementById('search-name');
 const searchDate = document.getElementById('search-date');
 const filterType = document.getElementById('filter-type');
 const searchBtn = document.getElementById('search-btn');
-
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const pageInfo = document.getElementById('page-info');
@@ -20,7 +19,6 @@ let currentPage = 1;
 const pageSize = 20;
 let totalRecords = 0;
 
-// Load docs with optional filters
 async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFilter = '') {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -38,23 +36,16 @@ async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFil
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  if (nameFilter) {
-    query = query.ilike('customers.name', `%${nameFilter}%`);
-  }
-
+  if (nameFilter) query = query.ilike('customers.name', `%${nameFilter}%`);
   if (dateFilter) {
     const start = new Date(dateFilter);
     const end = new Date(dateFilter);
     end.setDate(end.getDate() + 1);
     query = query.gte('created_at', start.toISOString()).lt('created_at', end.toISOString());
   }
-
-  if (typeFilter) {
-    query = query.eq('type', typeFilter);
-  }
+  if (typeFilter) query = query.eq('type', typeFilter);
 
   const { data, error, count } = await query;
-
   if (error) {
     console.error('Fetch error:', error);
     tableBody.innerHTML = `<tr><td colspan="6" style="color:red;">Failed to load documents</td></tr>`;
@@ -76,14 +67,18 @@ function renderDocuments(docs) {
     const date = new Date(doc.created_at).toLocaleDateString();
     const name = doc.customers?.name || '—';
     const type = doc.type.charAt(0).toUpperCase() + doc.type.slice(1);
+    const total = Number(doc.total || 0).toFixed(2);
+
     return `
       <tr>
-        <td>${date}</td>
-        <td>${doc.invoice_no}</td>
-        <td>${type}</td>
-        <td>${name}</td>
-        <td>${Number(doc.total || 0).toFixed(2)}</td>
-        <td><a href="report.html?id=${doc.id}" target="_blank" class="view-link">View</a></td>
+        <td data-label="Date">${date}</td>
+        <td data-label="Document No">${doc.invoice_no}</td>
+        <td data-label="Type">${type}</td>
+        <td data-label="Customer">${name}</td>
+        <td data-label="Total (RM)">${total}</td>
+        <td data-label="Action">
+          <a href="report.html?id=${doc.id}" target="_blank" class="view-link">View</a>
+        </td>
       </tr>
     `;
   }).join('');
@@ -92,24 +87,20 @@ function renderDocuments(docs) {
 function updatePagination(page) {
   const totalPages = Math.ceil(totalRecords / pageSize);
   pageInfo.textContent = `Page ${page} of ${totalPages || 1}`;
-
   prevBtn.disabled = page <= 1;
   nextBtn.disabled = page >= totalPages;
 }
 
-// Event Listeners
 searchBtn.addEventListener('click', () => {
   currentPage = 1;
   loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
 });
-
 prevBtn.addEventListener('click', () => {
   if (currentPage > 1) {
     currentPage--;
     loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
   }
 });
-
 nextBtn.addEventListener('click', () => {
   const totalPages = Math.ceil(totalRecords / pageSize);
   if (currentPage < totalPages) {
@@ -118,5 +109,4 @@ nextBtn.addEventListener('click', () => {
   }
 });
 
-// Initial Load
 loadDocuments();
