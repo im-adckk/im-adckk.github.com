@@ -6,8 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="assets/css/styles.css">
   <style>
-    body { padding: 20px; font-family: sans-serif; background:#f9fafb; }
-    h1 { color: #007bff; text-align:center; margin-bottom:25px; }
+    body {
+      padding: 20px;
+      font-family: sans-serif;
+      background: #f9fafb;
+    }
+    h1 {
+      color: #007bff;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    /* 🔍 Search Bar */
     #search-bar {
       display: flex;
       flex-wrap: wrap;
@@ -15,42 +25,100 @@
       margin-bottom: 15px;
       justify-content: center;
     }
-    #search-bar input, #search-bar select {
+    #search-bar input,
+    #search-bar select {
       padding: 8px 10px;
       border: 1px solid #ccc;
       border-radius: 6px;
       font-size: 14px;
     }
     #search-btn {
-      background:#007bff; color:#fff; border:none; border-radius:6px;
-      padding:8px 14px; cursor:pointer;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
     }
-    #search-btn:hover { background:#0056b3; }
+    #search-btn:hover {
+      background: #0056b3;
+    }
 
+    /* 💻 Table layout (desktop) */
     table {
       width: 100%;
       border-collapse: collapse;
-      background:#fff;
-      border-radius:8px;
-      overflow:hidden;
-      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
-    th, td { padding:10px 12px; text-align:left; }
-    th { background:#f3f3f3; font-weight:600; }
-    tr:nth-child(even) { background:#fafafa; }
-    a.view-link { color:#007bff; text-decoration:none; font-weight:500; }
-    a.view-link:hover { text-decoration:underline; }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th {
+      background: #f3f3f3;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+    a.view-link {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a.view-link:hover {
+      text-decoration: underline;
+    }
 
+    /* 📱 Mobile: convert table to cards */
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead { display: none; }
+
+      tbody tr {
+        margin-bottom: 12px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        padding: 12px;
+      }
+      tbody tr td {
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+      }
+      tbody tr td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #444;
+      }
+    }
+
+    /* 📄 Pagination */
     #pagination {
-      display:flex; justify-content:center; align-items:center;
-      margin-top:20px; gap:10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+      gap: 10px;
     }
     #pagination button {
-      border:none; padding:6px 12px; border-radius:6px; cursor:pointer;
-      background:#007bff; color:white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
     }
     #pagination button:disabled {
-      opacity:0.5; cursor:not-allowed;
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   </style>
 </head>
@@ -87,8 +155,7 @@
     <span id="page-info"></span>
     <button id="next-btn">Next</button>
   </div>
-  <button onclick="window.location.href='index.html'">BACK</button>
-
+  <button onclick="window.location.href='index.html'">Back</button>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/history.js"></script>
 </body>
