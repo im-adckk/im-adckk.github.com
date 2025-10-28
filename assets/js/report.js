@@ -137,7 +137,7 @@ async function renderReport(inv) {
     </table>
   
     <div class="total-section">
-      <p><strong>Jumlah Keseluruhan (RM):</strong> ${inv.total.toFixed(2)}</p>
+      <p><strong>Jumlah Keseluruhan (RM): ${inv.total.toFixed(2)}</p></strong>
       <p><em>${totalWords}</em></p>
       <p class="note">* Harga termasuk cukai (SST telah disertakan)</p>
     </div>
