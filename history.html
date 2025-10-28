@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Past Documents | ADC App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    body { padding: 20px; font-family: sans-serif; background:#f9fafb; }
+    h1 { color: #007bff; text-align:center; margin-bottom:25px; }
+    #search-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+      justify-content: center;
+    }
+    #search-bar input, #search-bar select {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    #search-btn {
+      background:#007bff; color:#fff; border:none; border-radius:6px;
+      padding:8px 14px; cursor:pointer;
+    }
+    #search-btn:hover { background:#0056b3; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background:#fff;
+      border-radius:8px;
+      overflow:hidden;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    }
+    th, td { padding:10px 12px; text-align:left; }
+    th { background:#f3f3f3; font-weight:600; }
+    tr:nth-child(even) { background:#fafafa; }
+    a.view-link { color:#007bff; text-decoration:none; font-weight:500; }
+    a.view-link:hover { text-decoration:underline; }
+
+    #pagination {
+      display:flex; justify-content:center; align-items:center;
+      margin-top:20px; gap:10px;
+    }
+    #pagination button {
+      border:none; padding:6px 12px; border-radius:6px; cursor:pointer;
+      background:#007bff; color:white;
+    }
+    #pagination button:disabled {
+      opacity:0.5; cursor:not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>Past Documents</h1>
+  
+  <div id="search-bar">
+    <input type="text" id="search-name" placeholder="Search by customer name..." />
+    <input type="date" id="search-date" />
+    <select id="filter-type">
+      <option value="">All Types</option>
+      <option value="invoice">Invoice</option>
+      <option value="quotation">Quotation</option>
+    </select>
+    <button id="search-btn">Search</button>
+  </div>
+
+  <table id="docs-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Document No</th>
+        <th>Type</th>
+        <th>Customer</th>
+        <th>Total (RM)</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="pagination">
+    <button id="prev-btn">Previous</button>
+    <span id="page-info"></span>
+    <button id="next-btn">Next</button>
+  </div>
+  <button onclick="window.location.href='index.html'">BACK</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/history.js"></script>
+</body>
+</html>
