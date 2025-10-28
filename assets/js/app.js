@@ -375,15 +375,26 @@ function recalc() {
 
 
 // ------------------------------------------------------------
-// 5️⃣ Document type toggle (Quotation / Invoice)
+// 5️⃣ Document type toggle (Modern Segmented Control)
 // ------------------------------------------------------------
-document
-  .getElementById('toggle-type')
-  .addEventListener('change', (e) => {
-    invoice.type = e.target.checked ? 'invoice' : 'quotation';
-    document.getElementById('doc-title').textContent =
-      invoice.type === 'invoice' ? 'Invoice' : 'Quotation';
+function initializeDocumentTypeToggle() {
+  const radioButtons = document.querySelectorAll('input[name="doc-type"]');
+  
+  radioButtons.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      invoice.type = e.target.value;
+      document.getElementById('doc-title').textContent =
+        invoice.type === 'invoice' ? 'Invoice' : 'Quotation';
+      
+      // Optional: Log the change for debugging
+      console.log('Document type changed to:', invoice.type);
+    });
   });
+  
+  // Set initial state
+  document.getElementById('doc-title').textContent = 'Quotation';
+}
+
 
 // ------------------------------------------------------------
 // 6️⃣ Generate next number via Supabase RPC (Updated format)
