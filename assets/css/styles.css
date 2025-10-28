@@ -78,17 +78,20 @@ header div {
 }
 
 
-/* Document selector - Responsive */
+/* Document selector - Centered */
 .document-type-selector {
   margin: 15px 0;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* This centers the toggle */
+  text-align: center;
 }
 
 .document-type-selector h3 {
   margin-bottom: 8px;
   color: #333;
   font-size: 14px;
-  text-align: center;
+  width: 100%;
 }
 
 .segmented-control {
@@ -98,9 +101,9 @@ header div {
   padding: 3px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e9ecef;
-  width: 100%;
+  width: auto; /* Change from 100% to auto */
   max-width: 280px;
-  margin: 0 auto;
+  margin: 0 auto; /* Center the control itself */
 }
 
 .segmented-control input[type="radio"] {
@@ -142,18 +145,11 @@ header div {
 @media (max-width: 768px) {
   .document-type-selector {
     margin: 10px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-   #export-pdf {
-    display: none !important;
   }
   
   .document-type-selector h3 {
     font-size: 13px;
     margin-bottom: 6px;
-    order: -1; /* This moves the title above the toggle */
   }
   
   .segmented-control {
@@ -170,6 +166,11 @@ header div {
   
   .segment .icon {
     font-size: 12px;
+  }
+  
+  /* Hide Export PDF button on mobile */
+  #export-pdf {
+    display: none;
   }
 }
 
@@ -193,6 +194,7 @@ header div {
     font-size: 11px;
   }
 }
+
 /* Buttons */
 button {
   background: var(--primary);
