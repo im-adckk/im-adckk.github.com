@@ -413,7 +413,7 @@ async function getNextNumber(type) {
     const prefix = type === 'invoice' ? 'INV' : 'QUO';
     
     // Simple fallback - you might want to improve this
-    const fallbackNumber = `${day}/${month}/${prefix}-001/VV`;
+    const fallbackNumber = `${day}/${month}/${prefix}-001`;
     
     console.warn('Using fallback number:', fallbackNumber);
     return fallbackNumber;
