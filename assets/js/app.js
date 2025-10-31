@@ -400,25 +400,50 @@ function initializeDocumentTypeToggle() {
 // 6️⃣ Generate next number via Supabase RPC (Updated format)
 // ------------------------------------------------------------
 async function getNextNumber(type) {
-  const { data, error } = await client.rpc('get_next_doc_number', {
-    p_type: type,
-  });
-  if (error) {
+  try {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const datePrefix = `${day}/${month}`;
+    const prefix = type === 'invoice' ? 'INV' : 'QUO';
+    const pattern = `${datePrefix}/${prefix}-%`; // Removed /VV from pattern
+
+    // Get the highest existing number for today
+    const { data: existingInvoices, error } = await client
+      .from('invoices')
+      .select('invoice_no')
+      .like('invoice_no', pattern)
+      .order('invoice_no', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+
+    let nextNum = 1;
+    
+    if (existingInvoices && existingInvoices.length > 0) {
+      const lastInvoiceNo = existingInvoices[0].invoice_no;
+      // Extract the number part using regex (without /VV)
+      const match = lastInvoiceNo.match(new RegExp(`${datePrefix}/${prefix}-(\\d+)`));
+      if (match && match[1]) {
+        nextNum = parseInt(match[1]) + 1;
+      }
+    }
+
+    // Format the new number (without /VV)
+    const newNumber = `${datePrefix}/${prefix}-${String(nextNum).padStart(3, '0')}`;
+    return newNumber;
+
+  } catch (error) {
     console.error('Numbering error:', error);
     
-    // Fallback: Generate number locally if RPC fails
+    // Ultimate fallback (without /VV)
     const today = new Date();
     const day = String(today.getDate()).padStart(2, '0');
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const prefix = type === 'invoice' ? 'INV' : 'QUO';
     
-    // Simple fallback - you might want to improve this
-    const fallbackNumber = `${day}/${month}/${prefix}-001`;
-    
-    console.warn('Using fallback number:', fallbackNumber);
-    return fallbackNumber;
+    return `${day}/${month}/${prefix}-001`;
   }
-  return data; // e.g., "24/11/QUO-001/VV" or "24/11/INV-001/VV"
 }
 
 // ------------------------------------------------------------
