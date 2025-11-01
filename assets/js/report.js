@@ -144,11 +144,11 @@ async function renderReport(inv) {
         ${inv.notes ? `
         <div class="reference-box">
           <div class="reference-header">
-            <strong>Rujukan:</strong>
+            <strong>Calon:</strong>
           </div>
           <div class="reference-content">
             <div class="notes-section">
-              <div class="wrapped-notes">${wrapNotes(inv.notes)}</div>
+              <div class="wrapped-notes">${inv.notes ? wrapNotes(inv.notes) : 'N/A'}</div>
             </div>
           </div>
         </div>
