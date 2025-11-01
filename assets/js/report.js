@@ -100,38 +100,39 @@ async function renderReport(inv) {
   const wrapNotes = (text, maxLength = 80) => {
     if (!text) return 'N/A';
     
-    // More aggressive approach - split by common patterns
-    let lines = [];
+    // Clean the text first
+    let cleanText = text.trim().replace(/\s+/g, ' ');
     
-    // Try splitting by common separators first
-    const separators = /[,;|]|\s+(?=[a-zA-Z]+\s+\d)/;
-    const parts = text.split(separators);
+    // Pattern to detect: one or more words (names) followed by a 12-digit number (IC)
+    const nameIcPattern = /([a-zA-Z]+(?:\s+[a-zA-Z]+)*)\s+(\d{11,13})/g; // Allow 11-13 digits for flexibility
     
-    parts.forEach(part => {
-      part = part.trim();
-      if (part) {
-        // Clean up each part and add line break
-        lines.push(part.replace(/\s+/g, ' '));
-      }
-    });
+    const lines = [];
+    let lastIndex = 0;
+    let match;
     
-    // If no separators found but text contains names and IC patterns
-    if (lines.length === 1) {
-      // Look for pattern: name followed by 12-digit IC number
-      const nameIcPattern = /([a-zA-Z]+(?:\s+[a-zA-Z]+)*)\s+(\d{12})/g;
-      let match;
-      const newLines = [];
-      
-      while ((match = nameIcPattern.exec(text)) !== null) {
-        newLines.push(`${match[1]} ${match[2]}`);
-      }
-      
-      if (newLines.length > 0) {
-        lines = newLines;
-      }
+    // Find all name + IC number patterns
+    while ((match = nameIcPattern.exec(cleanText)) !== null) {
+      const fullMatch = `${match[1].trim()} ${match[2].trim()}`;
+      lines.push(fullMatch);
+      lastIndex = nameIcPattern.lastIndex;
     }
     
-    return lines.join('<br>');
+    // If we found matches, return them with line breaks
+    if (lines.length > 0) {
+      return lines.join('<br>');
+    }
+    
+    // Alternative: split by common separators
+    const separators = /[,;|]|\s+(?=\d{11,13})/;
+    const parts = cleanText.split(separators);
+    const filteredParts = parts.filter(part => part.trim().length > 0);
+    
+    if (filteredParts.length > 1) {
+      return filteredParts.map(part => part.trim()).join('<br>');
+    }
+    
+    // Final fallback: return original text
+    return cleanText;
   };
 
   // Reduce margins and padding in your template
