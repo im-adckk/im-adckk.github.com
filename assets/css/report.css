@@ -17,7 +17,7 @@ body {
   height: 277mm; /* Reduced to account for PDF margins */
   background: white;
   margin: 0 auto;
-  padding: 0mm; /* Reduced padding */
+  padding: 5mm; /* Reduced padding */
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   position: relative;
   overflow: hidden;
@@ -26,7 +26,7 @@ body {
 /* For PDF export - remove any extra spacing */
 .a4-page.pdf-export {
   margin: 0;
-  padding: 0mm; /* Even smaller padding for PDF */
+  padding: 5mm; /* Even smaller padding for PDF */
   box-shadow: none;
 }
 
@@ -45,7 +45,9 @@ body {
 /* Document Title */
 .doc-top-title {
   text-align: center;
-  margin: 0px 0;
+  margin: -10px 0 0 0; /* Negative top margin to overlap */
+  position: relative; /* Ensure it stays in flow */
+  z-index: 1; /* Ensure it appears above if needed */
 }
 
 .doc-top-title h2 {
@@ -258,7 +260,7 @@ body {
   .a4-page {
     box-shadow: none;
     margin: 0;
-    padding: 0mm;
+    padding: 5mm;
     width: 190mm;
     height: 277mm;
   }
