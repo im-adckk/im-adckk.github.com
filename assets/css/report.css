@@ -182,6 +182,62 @@ body {
   text-align: center;
 }
 
+/* Reference Box Styles */
+.reference-box {
+  border: 1px solid #333;
+  padding: 10px;
+  margin: 15px 0;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.reference-header {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.reference-content {
+  font-size: 13px;
+}
+
+.notes-section {
+  margin-top: 5px;
+}
+
+.wrapped-notes {
+  line-height: 1.4;
+  margin-top: 5px;
+  font-style: italic;
+}
+
+/* Inquiry Contact Styles */
+.inquiry-contact {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f0f8ff;
+  border-left: 4px solid #007bff;
+  font-size: 13px;
+}
+
+/* Staff Selection in Form */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+
 /* Button */
 .action-bar {
   text-align: center;
