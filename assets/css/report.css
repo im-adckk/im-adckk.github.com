@@ -33,7 +33,7 @@ body {
 /* Header */
 .header {
   text-align: center;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 }
 
 .letterhead {
@@ -44,7 +44,7 @@ body {
 /* Document Title */
 .doc-top-title {
   text-align: center;
-  margin: 5px 0;
+  margin: 2px 0;
 }
 
 .doc-top-title h2 {
