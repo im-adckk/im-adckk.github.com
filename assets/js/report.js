@@ -98,21 +98,39 @@ async function renderReport(inv) {
 
   // Word wrap function for notes
   const wrapNotes = (text, maxLength = 80) => {
-    if (!text) return '';
-    const words = text.split(' ');
-    let lines = [];
-    let currentLine = '';
+    if (!text) return 'N/A';
     
-    words.forEach(word => {
-      if ((currentLine + word).length <= maxLength) {
-        currentLine += (currentLine ? ' ' : '') + word;
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
+    // More aggressive approach - split by common patterns
+    let lines = [];
+    
+    // Try splitting by common separators first
+    const separators = /[,;|]|\s+(?=[a-zA-Z]+\s+\d)/;
+    const parts = text.split(separators);
+    
+    parts.forEach(part => {
+      part = part.trim();
+      if (part) {
+        // Clean up each part and add line break
+        lines.push(part.replace(/\s+/g, ' '));
       }
     });
     
-    if (currentLine) lines.push(currentLine);
+    // If no separators found but text contains names and IC patterns
+    if (lines.length === 1) {
+      // Look for pattern: name followed by 12-digit IC number
+      const nameIcPattern = /([a-zA-Z]+(?:\s+[a-zA-Z]+)*)\s+(\d{12})/g;
+      let match;
+      const newLines = [];
+      
+      while ((match = nameIcPattern.exec(text)) !== null) {
+        newLines.push(`${match[1]} ${match[2]}`);
+      }
+      
+      if (newLines.length > 0) {
+        lines = newLines;
+      }
+    }
+    
     return lines.join('<br>');
   };
 
