@@ -139,19 +139,22 @@ async function renderReport(inv) {
       <div class="doc-right">
         <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
         <p><strong>Tarikh:</strong> ${dateStr}</p>
-      </div>
-      
-      <!-- Reference Box -->
-      <div class="reference-box">
-        <div class="reference-header">
-          <strong>Rujukan:</strong>
+        
+        <!-- Reference Box positioned below tarikh -->
+        ${inv.notes ? `
+        <div class="reference-box">
+          <div class="reference-header">
+            <strong>Rujukan:</strong>
+          </div>
+          <div class="reference-content">
+            <div class="notes-section">
+              <div class="wrapped-notes">${wrapNotes(inv.notes)}</div>
+            </div>
+          </div>
         </div>
-        <div class="reference-content">
-          ${inv.notes ? `<div class="notes-section">
-            <div class="wrapped-notes">${wrapNotes(inv.notes)}</div>
-          </div>` : ''}
-        </div>
+        ` : ''}
       </div>
+    </div>
     
     </div>
     <div class="quotation-intro">
