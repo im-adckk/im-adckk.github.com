@@ -51,7 +51,7 @@ body {
 .doc-top-title h2 {
   font-size: 20px; /* Increased from 18px */
   text-decoration: underline;
-  margin-bottom: 3px;
+  margin-bottom: 0px;
 }
 
 .group-info {
