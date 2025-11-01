@@ -227,7 +227,7 @@ async function renderReport(inv) {
       </div>
       ` : ''}
       
-      <p style="margin-top:8px;">Sekian, terima kasih.<br>
+      <p style="margin-top:10px;">Sekian, terima kasih.<br>
       <strong>Api-Api Driving Centre Sdn. Bhd.</strong></p>
       <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
     </div>
