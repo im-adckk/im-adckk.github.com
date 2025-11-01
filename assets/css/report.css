@@ -39,6 +39,7 @@ body {
 .letterhead {
   max-width: 170mm; /* Reduced to fit within margins */
   height: auto;
+  margin-bottom: 0;
 }
 
 /* Document Title */
