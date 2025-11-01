@@ -26,7 +26,7 @@ body {
 /* For PDF export - remove any extra spacing */
 .a4-page.pdf-export {
   margin: 0;
-  padding: 5mm; /* Even smaller padding for PDF */
+  padding: 0mm; /* Even smaller padding for PDF */
   box-shadow: none;
 }
 
