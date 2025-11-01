@@ -206,7 +206,7 @@ async function renderReport(inv) {
       <!-- Additional Inquiries Contact -->
       ${staffContact ? `
       <div class="inquiry-contact">
-        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong><strong>${staffContact.name}</strong>${staffContact.contact_no}</p>
+        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong> ${staffContact.name} - ${staffContact.contact_no}</p>
       </div>
       ` : ''}
       
