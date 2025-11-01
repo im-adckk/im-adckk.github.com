@@ -83,7 +83,38 @@ async function renderReport(inv) {
     if (!gErr) groupInfo = g;
   }
 
+  // 🔹 Fetch staff contact if available
+  let staffContact = null;
+  if (inv.staff_id) {
+    const { data: s, error: sErr } = await client
+      .from('staff')
+      .select('*')
+      .eq('id', inv.staff_id)
+      .single();
+    if (!sErr) staffContact = s;
+  }
+
   const totalWords = `Ringgit Malaysia: ${numberToBahasaWords(Math.floor(inv.total))} Sahaja`;
+
+  // Word wrap function for notes
+  const wrapNotes = (text, maxLength = 80) => {
+    if (!text) return '';
+    const words = text.split(' ');
+    let lines = [];
+    let currentLine = '';
+    
+    words.forEach(word => {
+      if ((currentLine + word).length <= maxLength) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      }
+    });
+    
+    if (currentLine) lines.push(currentLine);
+    return lines.join('<br>');
+  };
 
   // Reduce margins and padding in your template
   container.innerHTML = `
@@ -109,6 +140,20 @@ async function renderReport(inv) {
         <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
         <p><strong>Tarikh:</strong> ${dateStr}</p>
       </div>
+      
+      <!-- Reference Box -->
+      <div class="reference-box">
+        <div class="reference-header">
+          <strong>Rujukan:</strong>
+        </div>
+        <div class="reference-content">
+          ${inv.notes ? `<div class="notes-section">
+            <strong>Nota:</strong><br>
+            <div class="wrapped-notes">${wrapNotes(inv.notes)}</div>
+          </div>` : ''}
+        </div>
+      </div>
+    
     </div>
     <div class="quotation-intro">
       <p><strong>U/P: Tuan/Puan</strong></p>
@@ -156,6 +201,16 @@ async function renderReport(inv) {
         PUBLIC BANK<br>
         323-727-9005
       </div>
+      
+      <!-- Additional Inquiries Contact -->
+      ${staffContact ? `
+      <div class="inquiry-contact">
+        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong></p>
+        <p><strong>${staffContact.name}</strong><br>
+        ${staffContact.contact_no}</p>
+      </div>
+      ` : ''}
+      
       <p style="margin-top:5px;">Sekian, terima kasih.<br>
       <strong>Api-Api Driving Centre Sdn. Bhd.</strong></p>
       <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
