@@ -17,7 +17,7 @@ body {
   height: 277mm; /* Reduced to account for PDF margins */
   background: white;
   margin: 0 auto;
-  padding: 10mm; /* Reduced padding */
+  padding: 0mm; /* Reduced padding */
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   position: relative;
   overflow: hidden;
@@ -26,7 +26,7 @@ body {
 /* For PDF export - remove any extra spacing */
 .a4-page.pdf-export {
   margin: 0;
-  padding: 5mm; /* Even smaller padding for PDF */
+  padding: 0mm; /* Even smaller padding for PDF */
   box-shadow: none;
 }
 
@@ -258,7 +258,7 @@ body {
   .a4-page {
     box-shadow: none;
     margin: 0;
-    padding: 5mm;
+    padding: 0mm;
     width: 190mm;
     height: 277mm;
   }
