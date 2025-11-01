@@ -447,6 +447,38 @@ async function getNextNumber(type) {
 }
 
 // ------------------------------------------------------------
+// 🧩 Staff Contact Selection
+// ------------------------------------------------------------
+let selectedStaffId = null;
+
+async function loadStaffContacts() {
+  const { data: staff, error } = await client
+    .from('staff')
+    .select('*')
+    .order('name');
+
+  if (error) {
+    console.error('Failed to load staff contacts:', error);
+    return;
+  }
+
+  renderStaffContacts(staff);
+}
+
+function renderStaffContacts(staff) {
+  const select = document.getElementById('staff-contact');
+  select.innerHTML = '<option value="">-- Select Contact Department --</option>' +
+    staff.map(s => `
+      <option value="${s.id}">${s.name} - ${s.contact_no}</option>
+    `).join('');
+
+  select.addEventListener('change', (e) => {
+    selectedStaffId = e.target.value;
+  });
+}
+
+
+// ------------------------------------------------------------
 // 7️⃣ Save invoice + items (with customer info)
 // ------------------------------------------------------------
 document.getElementById('save-btn').addEventListener('click', async () => {
@@ -518,6 +550,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
         notes,
         customer_id,
         group_id: selectedGroupId,
+        staff_id: selectedStaffId,
       },
     ])
     .select()
@@ -654,6 +687,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
 // ------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', () => {
   loadCatalog();
+  loadStaffContacts();
   initializeDocumentTypeToggle(); // Initialize the new toggle
 });
 // ------------------------------------------------------------
