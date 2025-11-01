@@ -148,7 +148,6 @@ async function renderReport(inv) {
         </div>
         <div class="reference-content">
           ${inv.notes ? `<div class="notes-section">
-            <strong>Nota:</strong><br>
             <div class="wrapped-notes">${wrapNotes(inv.notes)}</div>
           </div>` : ''}
         </div>
@@ -205,9 +204,7 @@ async function renderReport(inv) {
       <!-- Additional Inquiries Contact -->
       ${staffContact ? `
       <div class="inquiry-contact">
-        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong></p>
-        <p><strong>${staffContact.name}</strong><br>
-        ${staffContact.contact_no}</p>
+        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong></p><p><strong>${staffContact.name}</strong> ${staffContact.contact_no}</p>
       </div>
       ` : ''}
       
