@@ -206,11 +206,11 @@ async function renderReport(inv) {
       <!-- Additional Inquiries Contact -->
       ${staffContact ? `
       <div class="inquiry-contact">
-        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong></p><p><strong>${staffContact.name}</strong> ${staffContact.contact_no}</p>
+        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong><strong>${staffContact.name}</strong>${staffContact.contact_no}</p>
       </div>
       ` : ''}
       
-      <p style="margin-top:5px;">Sekian, terima kasih.<br>
+      <p style="margin-top:8px;">Sekian, terima kasih.<br>
       <strong>Api-Api Driving Centre Sdn. Bhd.</strong></p>
       <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
     </div>
