@@ -122,12 +122,10 @@ async function renderReport(inv) {
     <div class="header">
       <img src="assets/letterhead.png" alt="Letterhead" class="letterhead">
     </div>
-  
     <div class="doc-top-title">
       <h2>${docTitle}</h2>
       ${groupInfo ? `<p class="group-info"><strong>${groupInfo.name}</strong> — ${groupInfo.description || ''}</p>` : ''}
     </div>
-  
     <div class="doc-info-row">
       <div class="kepada">
         <strong>Kepada:</strong><br>
