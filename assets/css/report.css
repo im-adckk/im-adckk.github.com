@@ -45,7 +45,7 @@ body {
 /* Document Title */
 .doc-top-title {
   text-align: center;
-  margin: -10px 0 0 0; /* Negative top margin to overlap */
+  margin: -20px 0 0 0; /* Negative top margin to overlap */
   position: relative; /* Ensure it stays in flow */
   z-index: 1; /* Ensure it appears above if needed */
 }
