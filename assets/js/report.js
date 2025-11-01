@@ -154,7 +154,6 @@ async function renderReport(inv) {
         </div>
         ` : ''}
       </div>
-    </div>
     
     </div>
     <div class="quotation-intro">
