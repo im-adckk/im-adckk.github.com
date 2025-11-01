@@ -13,8 +13,8 @@ body {
 
 /* A4 Container - Exact dimensions with print margins */
 .a4-page {
-  width: 190mm; /* Reduced to account for PDF margins */
-  height: 277mm; /* Reduced to account for PDF margins */
+  width: 189mm; /* Reduced to account for PDF margins */
+  height: 276mm; /* Reduced to account for PDF margins */
   background: white;
   margin: 0 auto;
   padding: 5mm; /* Reduced padding */
@@ -261,8 +261,8 @@ body {
     box-shadow: none;
     margin: 0;
     padding: 5mm;
-    width: 190mm;
-    height: 277mm;
+    width: 189mm;
+    height: 276mm;
   }
   
   .action-bar {
