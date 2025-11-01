@@ -44,7 +44,7 @@ body {
 /* Document Title */
 .doc-top-title {
   text-align: center;
-  margin: 0px 0;
+  margin: 5px 0;
 }
 
 .doc-top-title h2 {
@@ -73,59 +73,6 @@ body {
   font-size: 14px; /* Increased from 12px */
   line-height: 1.3; /* Increased from 1.2 */
 }
-
-.doc-right {
-  text-align: right;
-  font-size: 14px; /* Increased from 11px */
-  white-space: nowrap;
-  flex: 0 0 45%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.doc-right p {
-  margin: 0 0 8px 0;
-  text-align: right;
-  width: 100%;
-}
-
-/* Reference Box positioned in doc-right */
-.reference-box {
-  border: 1px solid #333;
-  padding: 8px;
-  margin-top: 5px;
-  border-radius: 4px;
-  background-color: #f9f9f9;
-  text-align: left;
-  width: 100%;
-}
-
-.reference-header {
-  margin-bottom: 5px;
-  font-size: 13px;
-  font-weight: bold;
-  text-align: left;
-}
-
-.reference-content {
-  font-size: 12px;
-  text-align: left;
-}
-
-.notes-section {
-  margin-top: 3px;
-}
-
-.wrapped-notes {
-  line-height: 1.4;
-  margin-top: 3px;
-  font-style: italic;
-  text-align: justify;
-  word-wrap: break-word;
-  text-justify: inter-word;
-}
-
 /* Quotation Introduction Section */
 .quotation-intro {
   margin: 15px 0 10px 0;
@@ -140,6 +87,12 @@ body {
 
 .quotation-intro p:last-child {
   margin-bottom: 0;
+}
+
+.doc-right {
+  text-align: right;
+  font-size: 14px; /* Increased from 11px */
+  white-space: nowrap;
 }
 
 /* Table - Larger size */
@@ -221,29 +174,45 @@ body {
   width: 280px;
 }
 
-/* Inquiry Contact Styles */
-.inquiry-contact {
-  margin: 10px 0;
-  padding: 8px;
-  background-color: #f0f8ff;
-  border-left: 4px solid #007bff;
-  font-size: 12px;
-}
-
-.inquiry-contact p {
-  margin-bottom: 5px;
-}
-
-.inquiry-contact p:last-child {
-  margin-bottom: 0;
-}
-
 .footer-note {
   font-size: 11px; /* Increased from 10px */
   margin-top: 8px; /* Increased from 5px */
   color: #555;
   font-style: italic;
   text-align: center;
+}
+
+/* Reference Box Styles */
+.reference-box {
+  border: 1px solid #333;
+  padding: 10px;
+  margin: 15px 0;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.reference-header {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.reference-content {
+  font-size: 13px;
+}
+
+.notes-section {
+  margin-top: 5px;
+}
+
+.wrapped-notes {
+  line-height: 1.4;
+  margin-top: 5px;
+  font-style: italic;
+}
+
+/* Inquiry Contact Styles */
+.inquiry-contact {
+  font-size: 13px;
 }
 
 /* Button */
@@ -255,6 +224,7 @@ body {
   left: 50%; /* Center horizontally */
   transform: translateX(-50%); /* Perfect center alignment */
   z-index: 1000; /* Ensure it stays on top */
+
 }
 
 #download-btn {
@@ -302,9 +272,4 @@ body {
   body {
     padding: 15px 0;
   }
-}
-
-/* Ensure proper spacing for empty reference boxes */
-.reference-box:empty {
-  display: none;
 }
