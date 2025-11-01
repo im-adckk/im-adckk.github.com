@@ -212,31 +212,8 @@ body {
 
 /* Inquiry Contact Styles */
 .inquiry-contact {
-  margin: 15px 0;
-  padding: 10px;
-  background-color: #f0f8ff;
-  border-left: 4px solid #007bff;
   font-size: 13px;
 }
-
-/* Staff Selection in Form */
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.form-control {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
 
 /* Button */
 .action-bar {
