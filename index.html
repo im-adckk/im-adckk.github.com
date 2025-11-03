@@ -10,21 +10,7 @@
   <header>
     
     <div class="header-content">
-      <div class="document-type-selector">
-        <div class="segmented-control">
-          <input type="radio" id="quotation-option" name="doc-type" value="quotation" checked>
-          <label for="quotation-option" class="segment">
-            <span class="icon">📋</span>
-            <span class="text">Quotation</span>
-          </label>
-          
-          <input type="radio" id="invoice-option" name="doc-type" value="invoice">
-          <label for="invoice-option" class="segment">
-            <span class="icon">🧾</span>
-            <span class="text">Invoice</span>
-          </label>
-        </div>
-      </div>
+      
       <!-- Login Modal -->
       <div id="loginModal" class="modal-overlay" style="display: none;">
         <div class="modal" style="max-width: 400px;">
@@ -51,6 +37,23 @@
     </div>
       
       <div class="header-buttons">
+        
+        <div class="document-type-selector">
+          <div class="segmented-control">
+            <input type="radio" id="quotation-option" name="doc-type" value="quotation" checked>
+            <label for="quotation-option" class="segment">
+              <span class="icon">📋</span>
+              <span class="text">Quotation</span>
+            </label>
+            
+            <input type="radio" id="invoice-option" name="doc-type" value="invoice">
+            <label for="invoice-option" class="segment">
+              <span class="icon">🧾</span>
+              <span class="text">Invoice</span>
+            </label>
+          </div>
+        </div>
+        
         <button onclick="window.location.href='history.html'">History</button>
         <button id="save-btn">Save</button>
         <button id="export-pdf">Export PDF</button>
