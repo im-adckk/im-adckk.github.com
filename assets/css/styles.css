@@ -245,85 +245,9 @@ button:active {
   }
 }
 
-/* Small mobile devices */
-@media (max-width: 600px) {
-  header {
-    padding: 0.6rem 0.8rem;
-    min-height: 55px;
-  }
-  
-  .header-content {
-    gap: 6px;
-  }
-  
-  .document-type-selector {
-    gap: 6px;
-  }
-  
-  .segmented-control {
-    max-width: 200px;
-  }
-  
-  .segment {
-    padding: 5px 8px;
-    font-size: 12px;
-    min-height: 34px;
-  }
-  
-  .segment .icon {
-    font-size: 11px;
-  }
-  
-  .header-buttons button,
-  .document-type-selector button {
-    padding: 0.45rem 0.7rem;
-    font-size: 0.8rem;
-  }
-  
-  header h1 {
-    font-size: 0.9rem;
-    max-width: 100px;
-  }
-}
 
-/* Extra small mobile devices */
-@media (max-width: 480px) {
-  header {
-    padding: 0.5rem 0.75rem;
-  }
-  
-  .header-content {
-    gap: 5px;
-  }
-  
-  .document-type-selector {
-    gap: 5px;
-  }
-  
-  .segmented-control {
-    max-width: 180px;
-  }
-  
-  .segment {
-    padding: 4px 6px;
-    font-size: 11px;
-    min-height: 32px;
-  }
-  
-  .segment .icon {
-    font-size: 10px;
-  }
-  
-  .header-buttons button,
-  .document-type-selector button {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.75rem;
-  }
-  
-  header h1 {
-    font-size: 0.85rem;
-    max-width: 90px;
-  }
+
+
 }
 
 /* Very small screens - improved vertical stacking */
