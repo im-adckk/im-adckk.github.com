@@ -15,42 +15,80 @@ const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Check if user is logged in
 function checkAuth() {
+    console.log('Checking authentication...');
     const userData = sessionStorage.getItem('currentUser');
+    console.log('User data from sessionStorage:', userData);
+    
     if (userData) {
-        const user = JSON.parse(userData);
-        showUserInfo(user);
-        hideLoginModal();
-        return user;
+        try {
+            const user = JSON.parse(userData);
+            console.log('User found:', user);
+            showUserInfo(user);
+            hideLoginModal();
+            return user;
+        } catch (e) {
+            console.error('Error parsing user data:', e);
+            sessionStorage.removeItem('currentUser');
+        }
     }
+    
+    console.log('No user found, showing login modal');
     showLoginModal();
     return null;
 }
 
 // Show login modal
 function showLoginModal() {
-    document.getElementById('loginModal').style.display = 'flex';
-    document.querySelector('main').style.display = 'none';
-    document.querySelector('header').style.display = 'none';
+    console.log('Showing login modal');
+    const loginModal = document.getElementById('loginModal');
+    const main = document.querySelector('main');
+    const header = document.querySelector('header');
+    
+    if (loginModal) loginModal.style.display = 'flex';
+    if (main) main.style.display = 'none';
+    if (header) header.style.display = 'none';
+    
+    console.log('Login modal displayed:', loginModal?.style.display);
+    console.log('Main display:', main?.style.display);
+    console.log('Header display:', header?.style.display);
 }
 
 // Hide login modal
 function hideLoginModal() {
-    document.getElementById('loginModal').style.display = 'none';
-    document.querySelector('main').style.display = 'block';
-    document.querySelector('header').style.display = 'block';
+    console.log('Hiding login modal');
+    const loginModal = document.getElementById('loginModal');
+    const main = document.querySelector('main');
+    const header = document.querySelector('header');
+    
+    if (loginModal) loginModal.style.display = 'none';
+    if (main) main.style.display = 'block';
+    if (header) header.style.display = 'block';
+    
+    console.log('Login modal hidden:', loginModal?.style.display);
+    console.log('Main display:', main?.style.display);
+    console.log('Header display:', header?.style.display);
 }
 
 // Show user info
 function showUserInfo(user) {
-    document.getElementById('user-info').style.display = 'block';
-    document.getElementById('user-name').textContent = user.name;
+    const userInfo = document.getElementById('user-info');
+    const userName = document.getElementById('user-name');
+    
+    if (userInfo && userName) {
+        userInfo.style.display = 'block';
+        userName.textContent = user.name;
+        console.log('User info displayed for:', user.name);
+    }
 }
 
 // Login function
 async function login() {
+    console.log('Login attempt started');
     const name = document.getElementById('login-name').value.trim();
     const password = document.getElementById('login-password').value.trim();
     const errorDiv = document.getElementById('login-error');
+
+    console.log('Login credentials:', { name, password });
 
     if (!name || !password) {
         errorDiv.textContent = 'Please enter both name and password';
@@ -60,6 +98,7 @@ async function login() {
 
     try {
         // Check user in database
+        console.log('Checking user in database...');
         const { data: user, error } = await client
             .from('users')
             .select('*')
@@ -67,6 +106,8 @@ async function login() {
             .eq('password', password)
             .eq('is_active', true)
             .single();
+
+        console.log('Database response:', { user, error });
 
         if (error || !user) {
             errorDiv.textContent = 'Invalid name or password';
@@ -82,10 +123,14 @@ async function login() {
             loginTime: new Date().getTime()
         };
         sessionStorage.setItem('currentUser', JSON.stringify(userData));
+        console.log('User saved to sessionStorage');
 
         // Update UI
         showUserInfo(userData);
         hideLoginModal();
+
+        // Load the app content
+        await initializeApp();
 
     } catch (err) {
         console.error('Login error:', err);
@@ -94,8 +139,22 @@ async function login() {
     }
 }
 
+// Initialize the main app
+async function initializeApp() {
+    console.log('Initializing app...');
+    try {
+        await loadCatalog();
+        await loadStaffContacts();
+        initializeDocumentTypeToggle();
+        console.log('App initialized successfully');
+    } catch (error) {
+        console.error('Error initializing app:', error);
+    }
+}
+
 // Logout function
 function logout() {
+    console.log('Logging out...');
     sessionStorage.removeItem('currentUser');
     document.getElementById('login-name').value = '';
     document.getElementById('login-password').value = '';
@@ -104,14 +163,24 @@ function logout() {
 
 // Initialize login modal events
 function initializeLogin() {
-    document.getElementById('login-btn').addEventListener('click', login);
+    console.log('Initializing login events...');
+    const loginBtn = document.getElementById('login-btn');
+    const passwordField = document.getElementById('login-password');
     
-    // Allow Enter key to login
-    document.getElementById('login-password').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            login();
-        }
-    });
+    if (loginBtn) {
+        loginBtn.addEventListener('click', login);
+        console.log('Login button event attached');
+    } else {
+        console.error('Login button not found!');
+    }
+    
+    if (passwordField) {
+        passwordField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    }
 }
 
 // 🧩 2. Invoice data object
@@ -797,20 +866,20 @@ document.getElementById('save-btn').addEventListener('click', async () => {
 // 8️⃣ On load
 // ------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', async () => {
-    // Initialize Supabase first
-    window.client = client;
+    console.log('DOM fully loaded');
     
-    // Initialize login system
+    // Initialize login system first
     initializeLogin();
     
     // Check authentication
     const user = checkAuth();
     
     if (user) {
-        // Only load the app if user is authenticated
-        await loadCatalog();
-        await loadStaffContacts();
-        initializeDocumentTypeToggle();
+        console.log('User authenticated, loading app...');
+        // Load the app if user is authenticated
+        await initializeApp();
+    } else {
+        console.log('User not authenticated, waiting for login...');
     }
 });
 // ------------------------------------------------------------
