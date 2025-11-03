@@ -245,7 +245,7 @@ async function renderReport(inv) {
       <button id="download-btn">⬇️ Muat Turun PDF</button>
     </div>
     ${preparedByUser ? `
-      <p class="footer-note" style="margin-top:8px; font-size: 8px;"><strong>Disediakan oleh:</strong> ${preparedByUser.name}</p>
+      <p class="footer-note"><strong>Disediakan oleh:</strong> ${preparedByUser.name}</p>
       ` : ''}
       <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
     </div>
