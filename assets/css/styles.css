@@ -241,7 +241,7 @@ button:active {
     font-size: 1rem; /* Slightly smaller on mobile */
     max-width: 120px; /* Limit title width */
     overflow: hidden;
-    text-overflow: ellipsis;
+    
   }
 }
 
@@ -292,16 +292,14 @@ button:active {
   border: 1px solid #dee2e6;
   font-size: 14px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
+  
 }
 
 @media (max-width: 480px) {
   #user-info {
     font-size: 12px;
     padding: 5px 10px;
-    max-width: 120px;
+    
   }
 }
 
