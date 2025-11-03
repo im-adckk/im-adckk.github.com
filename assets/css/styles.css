@@ -76,6 +76,7 @@ header {
   position: sticky;
   top: 0;
   z-index: 100;
+  min-height: 60px; /* Ensure consistent height */
 }
 
 header h1 {
@@ -84,6 +85,7 @@ header h1 {
   color: var(--primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .header-content {
@@ -91,15 +93,18 @@ header h1 {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  gap: 15px;
+  gap: 10px;
+  flex-wrap: nowrap; /* Prevent wrapping by default */
 }
 
 /* Left section - Toggle and History button */
 .document-type-selector {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
   margin: 0;
+  flex-shrink: 1; /* Allow shrinking but not too much */
+  min-width: 0; /* Allow content to shrink properly */
 }
 
 .segmented-control {
@@ -111,6 +116,7 @@ header h1 {
   border: 1px solid #e9ecef;
   width: auto;
   max-width: 280px;
+  flex-shrink: 1; /* Allow control to shrink */
 }
 
 .segmented-control input[type="radio"] {
@@ -131,6 +137,7 @@ header h1 {
   justify-content: center;
   font-size: 14px;
   min-height: 40px;
+  white-space: nowrap; /* Prevent text wrapping in segments */
 }
 
 .segment:hover {
@@ -151,8 +158,10 @@ header h1 {
 /* Right section - Save and Export buttons */
 .header-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+  white-space: nowrap;
 }
 
 /* Buttons */
@@ -166,6 +175,7 @@ button {
   cursor: pointer;
   font-weight: 500;
   transition: var(--transition);
+  white-space: nowrap; /* Prevent button text wrapping */
 }
 
 button:hover {
@@ -180,25 +190,28 @@ button:active {
 @media (max-width: 768px) {
   .header-content {
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
+    justify-content: space-between;
   }
   
   .document-type-selector {
-    gap: 10px;
+    gap: 8px;
     order: 1;
-    flex: 1;
+    flex: 1 1 100%; /* Take full width on first row */
     justify-content: flex-start;
+    margin-bottom: 5px;
   }
   
   .header-buttons {
     order: 2;
     justify-content: flex-end;
-    flex: 1;
+    flex: 1 1 auto; /* Allow to grow but not force full width */
   }
   
   .segmented-control {
     max-width: 220px;
     padding: 2px;
+    flex-shrink: 1;
   }
   
   .segment {
@@ -223,20 +236,28 @@ button:active {
     padding: 0.5rem 0.8rem;
     font-size: 0.85rem;
   }
+  
+  header h1 {
+    font-size: 1rem; /* Slightly smaller on mobile */
+    max-width: 120px; /* Limit title width */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
-/* Extra small mobile devices */
-@media (max-width: 480px) {
+/* Small mobile devices */
+@media (max-width: 600px) {
   header {
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.8rem;
+    min-height: 55px;
   }
   
   .header-content {
-    gap: 8px;
+    gap: 6px;
   }
   
   .document-type-selector {
-    gap: 8px;
+    gap: 6px;
   }
   
   .segmented-control {
@@ -255,12 +276,57 @@ button:active {
   
   .header-buttons button,
   .document-type-selector button {
-    padding: 0.4rem 0.7rem;
+    padding: 0.45rem 0.7rem;
     font-size: 0.8rem;
+  }
+  
+  header h1 {
+    font-size: 0.9rem;
+    max-width: 100px;
   }
 }
 
-/* Very small screens - stack vertically */
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  header {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .header-content {
+    gap: 5px;
+  }
+  
+  .document-type-selector {
+    gap: 5px;
+  }
+  
+  .segmented-control {
+    max-width: 180px;
+  }
+  
+  .segment {
+    padding: 4px 6px;
+    font-size: 11px;
+    min-height: 32px;
+  }
+  
+  .segment .icon {
+    font-size: 10px;
+  }
+  
+  .header-buttons button,
+  .document-type-selector button {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+  }
+  
+  header h1 {
+    font-size: 0.85rem;
+    max-width: 90px;
+  }
+}
+
+/* Very small screens - improved vertical stacking */
 @media (max-width: 360px) {
   .header-content {
     flex-direction: column;
@@ -271,11 +337,47 @@ button:active {
   .document-type-selector {
     justify-content: center;
     order: 1;
+    flex: none;
+    margin-bottom: 0;
   }
   
   .header-buttons {
     justify-content: center;
     order: 2;
+    flex: none;
+  }
+  
+  header h1 {
+    text-align: center;
+    max-width: none;
+    margin-bottom: 5px;
+    order: 0; /* Title on top in vertical layout */
+    width: 100%;
+  }
+  
+  .segmented-control {
+    max-width: 250px; /* More width in vertical layout */
+  }
+}
+
+/* Ensure user info doesn't break layout */
+#user-info {
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+@media (max-width: 480px) {
+  #user-info {
+    font-size: 12px;
+    padding: 5px 10px;
+    max-width: 120px;
   }
 }
 
