@@ -72,6 +72,16 @@ async function renderReport(inv) {
   const cust = inv.customers || {};
   const items = inv.invoice_items || [];
 
+  let preparedByUser = null;
+  if (inv.created_by) {
+      const { data: user, error: userErr } = await client
+          .from('users')
+          .select('name')
+          .eq('id', inv.created_by)
+          .single();
+      if (!userErr) preparedByUser = user;
+  }
+
   // 🔹 Fetch group info if available
   let groupInfo = null;
   if (inv.group_id) {
@@ -229,6 +239,9 @@ async function renderReport(inv) {
       
       <p style="margin-top:20px; font-size: 14px;">Sekian, terima kasih.<br>
       <strong style="font-size: 16px;">Api-Api Driving Centre Sdn. Bhd.</strong></p>
+      ${preparedByUser ? `
+      <p style="margin-top:10px; font-size: 12px;"><strong>Disediakan oleh:</strong> ${preparedByUser.name}</p>
+      ` : ''}
       <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
     </div>
   
