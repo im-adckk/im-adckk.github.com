@@ -576,13 +576,12 @@ function initializeDocumentTypeToggle() {
 async function getNextNumber(type) {
   try {
     const today = new Date();
-    const day = String(today.getDate()).padStart(2, '0');
     const month = String(today.getMonth() + 1).padStart(2, '0');
-    const datePrefix = `${day}/${month}`;
+    const year = today.getFullYear().toString().slice(-2); // Last 2 digits of year
     const prefix = type === 'invoice' ? 'INV' : 'QUO';
-    const pattern = `${datePrefix}/${prefix}-%`; // Removed /VV from pattern
+    const pattern = `%/${month}/${year}/${prefix}-%`; // Look for same month/year
 
-    // Get the highest existing number for today
+    // Get the highest existing number for this month
     const { data: existingInvoices, error } = await client
       .from('invoices')
       .select('invoice_no')
@@ -596,27 +595,29 @@ async function getNextNumber(type) {
     
     if (existingInvoices && existingInvoices.length > 0) {
       const lastInvoiceNo = existingInvoices[0].invoice_no;
-      // Extract the number part using regex (without /VV)
-      const match = lastInvoiceNo.match(new RegExp(`${datePrefix}/${prefix}-(\\d+)`));
+      // Match pattern: DD/MM/YY/PREFIX-XXX
+      const match = lastInvoiceNo.match(new RegExp(`\\d{2}\\/${month}\\/${year}\\/${prefix}-(\\d+)`));
       if (match && match[1]) {
         nextNum = parseInt(match[1]) + 1;
       }
     }
 
-    // Format the new number (without /VV)
-    const newNumber = `${datePrefix}/${prefix}-${String(nextNum).padStart(3, '0')}`;
+    // Format: DD/MM/YY/PREFIX-XXX
+    const day = String(today.getDate()).padStart(2, '0');
+    const newNumber = `${day}/${month}/${year}/${prefix}-${String(nextNum).padStart(3, '0')}`;
     return newNumber;
 
   } catch (error) {
     console.error('Numbering error:', error);
     
-    // Ultimate fallback (without /VV)
+    // Fallback
     const today = new Date();
     const day = String(today.getDate()).padStart(2, '0');
     const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear().toString().slice(-2);
     const prefix = type === 'invoice' ? 'INV' : 'QUO';
     
-    return `${day}/${month}/${prefix}-001`;
+    return `${day}/${month}/${year}/${prefix}-001`;
   }
 }
 
