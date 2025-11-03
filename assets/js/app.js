@@ -651,6 +651,22 @@ function renderStaffContacts(staff) {
   });
 }
 
+//function to verify users exist in public.users
+async function verifyUserInPublicUsers(userId) {
+    try {
+        const { data: user, error } = await client
+            .from('users')
+            .select('id, name, is_active')
+            .eq('id', userId)
+            .eq('is_active', true)
+            .single();
+
+        return { user, error };
+    } catch (err) {
+        return { user: null, error: err };
+    }
+}
+
 
 // ------------------------------------------------------------
 // 7️⃣ Save invoice + items (with customer info)
@@ -664,15 +680,23 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   const custEmail = document.getElementById('cust-email').value.trim();
   const custAddress = document.getElementById('cust-address').value.trim();
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    
     if (!currentUser) {
         alert('Please login to save documents');
         return;
     }
 
-  if (!custName) {
-    alert('Please enter a customer name.');
-    return;
-  }
+    // Verify user exists in public.users table
+    const { user: verifiedUser, error: verifyError } = await verifyUserInPublicUsers(currentUser.id);
+    
+    if (verifyError || !verifiedUser) {
+        console.error('User verification failed:', verifyError);
+        alert('Your user account is not valid or has been deactivated. Please contact administrator.');
+        logout();
+        return;
+    }
+
+    console.log('User verified:', verifiedUser);
 
   // 🔹 Step 1: Insert or fetch customer
   let customer_id = null;
