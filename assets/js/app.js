@@ -9,6 +9,111 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // ✅ Use the global Supabase object safely
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ------------------------------------------------------------
+// 🔐 Authentication System
+// ------------------------------------------------------------
+
+// Check if user is logged in
+function checkAuth() {
+    const userData = sessionStorage.getItem('currentUser');
+    if (userData) {
+        const user = JSON.parse(userData);
+        showUserInfo(user);
+        hideLoginModal();
+        return user;
+    }
+    showLoginModal();
+    return null;
+}
+
+// Show login modal
+function showLoginModal() {
+    document.getElementById('loginModal').style.display = 'flex';
+    document.querySelector('main').style.display = 'none';
+    document.querySelector('header').style.display = 'none';
+}
+
+// Hide login modal
+function hideLoginModal() {
+    document.getElementById('loginModal').style.display = 'none';
+    document.querySelector('main').style.display = 'block';
+    document.querySelector('header').style.display = 'block';
+}
+
+// Show user info
+function showUserInfo(user) {
+    document.getElementById('user-info').style.display = 'block';
+    document.getElementById('user-name').textContent = user.name;
+}
+
+// Login function
+async function login() {
+    const name = document.getElementById('login-name').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    const errorDiv = document.getElementById('login-error');
+
+    if (!name || !password) {
+        errorDiv.textContent = 'Please enter both name and password';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    try {
+        // Check user in database
+        const { data: user, error } = await client
+            .from('users')
+            .select('*')
+            .eq('name', name)
+            .eq('password', password)
+            .eq('is_active', true)
+            .single();
+
+        if (error || !user) {
+            errorDiv.textContent = 'Invalid name or password';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        // Save user session in sessionStorage (cleared when browser closes)
+        const userData = {
+            id: user.id,
+            name: user.name,
+            loggedIn: true,
+            loginTime: new Date().getTime()
+        };
+        sessionStorage.setItem('currentUser', JSON.stringify(userData));
+
+        // Update UI
+        showUserInfo(userData);
+        hideLoginModal();
+
+    } catch (err) {
+        console.error('Login error:', err);
+        errorDiv.textContent = 'Login failed. Please try again.';
+        errorDiv.style.display = 'block';
+    }
+}
+
+// Logout function
+function logout() {
+    sessionStorage.removeItem('currentUser');
+    document.getElementById('login-name').value = '';
+    document.getElementById('login-password').value = '';
+    showLoginModal();
+}
+
+// Initialize login modal events
+function initializeLogin() {
+    document.getElementById('login-btn').addEventListener('click', login);
+    
+    // Allow Enter key to login
+    document.getElementById('login-password').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            login();
+        }
+    });
+}
+
 // 🧩 2. Invoice data object
 let invoice = {
   type: 'quotation',
@@ -489,6 +594,11 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   const custContact = document.getElementById('cust-phone').value.trim();
   const custEmail = document.getElementById('cust-email').value.trim();
   const custAddress = document.getElementById('cust-address').value.trim();
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!currentUser) {
+        alert('Please login to save documents');
+        return;
+    }
 
   if (!custName) {
     alert('Please enter a customer name.');
@@ -551,6 +661,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
         customer_id,
         group_id: selectedGroupId,
         staff_id: selectedStaffId,
+        created_by: currentUser.id,
       },
     ])
     .select()
@@ -685,10 +796,22 @@ document.getElementById('save-btn').addEventListener('click', async () => {
 // ------------------------------------------------------------
 // 8️⃣ On load
 // ------------------------------------------------------------
-window.addEventListener('DOMContentLoaded', () => {
-  loadCatalog();
-  loadStaffContacts();
-  initializeDocumentTypeToggle(); // Initialize the new toggle
+window.addEventListener('DOMContentLoaded', async () => {
+    // Initialize Supabase first
+    window.client = client;
+    
+    // Initialize login system
+    initializeLogin();
+    
+    // Check authentication
+    const user = checkAuth();
+    
+    if (user) {
+        // Only load the app if user is authenticated
+        await loadCatalog();
+        await loadStaffContacts();
+        initializeDocumentTypeToggle();
+    }
 });
 // ------------------------------------------------------------
 // 9️⃣ Export to PDF
