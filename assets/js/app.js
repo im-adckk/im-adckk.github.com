@@ -46,7 +46,7 @@ function showLoginModal() {
     
     if (loginModal) loginModal.style.display = 'flex';
     if (main) main.style.display = 'none';
-    if (header) header.style.display = 'none';
+    if (header) header.style.display = 'block';
     
     console.log('Login modal displayed:', loginModal?.style.display);
     console.log('Main display:', main?.style.display);
