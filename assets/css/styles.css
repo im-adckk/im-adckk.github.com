@@ -188,11 +188,29 @@ button:active {
 
 /* Mobile-specific styles */
 @media (max-width: 768px) {
-  .header-content {
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: space-between;
-  }
+   /* HEADER */
+   header {
+     background: var(--card-bg);
+     box-shadow: var(--shadow);
+     padding: 0.75rem 1rem;
+     position: sticky;
+     top: 0;
+     z-index: 100;
+     min-height: 60px;
+     display: flex;
+     flex-direction: column; /* Stack children vertically */
+     gap: 10px;
+   }
+
+
+   .header-content {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     width: 100%;
+     gap: 10px;
+     flex-wrap: nowrap;
+   }
   
   .document-type-selector {
     gap: 8px;
@@ -284,15 +302,34 @@ button:active {
   }
 }
 
-/* Ensure user info doesn't break layout */
+/* User Info Styles */
 #user-info {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 14px;
   background: #f8f9fa;
-  padding: 6px 12px;
+  padding: 8px 12px;
   border-radius: 4px;
   border: 1px solid #dee2e6;
-  font-size: 14px;
-  white-space: nowrap;
-  
+  margin-bottom: 5px;
+}
+
+#user-info button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#user-info button:hover {
+  background: #c82333;
 }
 
 @media (max-width: 480px) {
