@@ -239,14 +239,15 @@ async function renderReport(inv) {
       
       <p style="margin-top:20px; font-size: 14px;">Sekian, terima kasih.<br>
       <strong style="font-size: 16px;">Api-Api Driving Centre Sdn. Bhd.</strong></p>
-      ${preparedByUser ? `
-      <p style="margin-top:10px; font-size: 12px;"><strong>Disediakan oleh:</strong> ${preparedByUser.name}</p>
-      ` : ''}
-      <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
-    </div>
+      
   
     <div class="action-bar">
       <button id="download-btn">⬇️ Muat Turun PDF</button>
+    </div>
+    ${preparedByUser ? `
+      <p style="margin-top:8px; font-size: 8px;"><strong>Disediakan oleh:</strong> ${preparedByUser.name}</p>
+      ` : ''}
+      <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
     </div>
   </div>
   `;
