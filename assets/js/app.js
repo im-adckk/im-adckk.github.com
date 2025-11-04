@@ -192,6 +192,11 @@ let invoice = {
   lines: []
 };
 
+// 🧩 Global variables for group selection
+let selectedGroupId = null;
+let selectedGroupName = null;
+let selectedGroupDescription = null;
+
 // Utility: format to 2 decimal places
 const fmt = (n) => Number(n || 0).toFixed(2);
 
