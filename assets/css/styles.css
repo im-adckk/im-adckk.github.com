@@ -188,7 +188,7 @@ button:active {
 
 /* Mobile-specific styles */
 /* Floating Save Button for Mobile */
-@media (max-width: 700px) {
+@media (max-width: 750px) {
   #save-btn {
     position: fixed;
     bottom: 1rem;
@@ -261,12 +261,6 @@ button:active {
   }
 }
 
-
-
-/* Show user info when user is logged in */
-#user-info[style*="display: block"] {
-  display: flex !important;
-}
   
   .segmented-control {
     max-width: 250px; /* More width in vertical layout */
