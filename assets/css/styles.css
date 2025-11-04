@@ -57,12 +57,40 @@ html, body {
 }
 
 /* User Info Styles */
+/* User Info Styles */
 #user-info {
-    background: #f8f9fa;
-    padding: 8px 15px;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-    font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Space out the content */
+  gap: 15px; /* Add space between username and logout button */
+  padding: 8px 15px;
+  font-size: 14px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  margin-bottom: 5px;
+}
+
+/* Logout button styles */
+.logout-btn {
+  background: #dc3545 !important; /* Danger/red color */
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important; /* Smaller padding */
+  font-size: 12px !important; /* Smaller font */
+  cursor: pointer !important;
+  transition: background 0.2s !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+}
+
+.logout-btn:hover {
+  background: #c82333 !important; /* Darker red on hover */
+}
+
+.logout-btn:active {
+  transform: scale(0.98) !important;
 }
 
 /* HEADER */
@@ -237,12 +265,19 @@ button:active {
     width: 100%;
     margin-top: 5px;
     display: none;
-    justify-content: center;
-    padding: 6px 10px;
+    justify-content: space-between; /* Keep items spaced out */
+    align-items: center;
+    padding: 6px 12px;
     font-size: 12px;
     background: #f8f9fa;
     border-radius: 4px;
     border: 1px solid #dee2e6;
+    gap: 10px; /* Slightly smaller gap on mobile */
+  }
+
+  .logout-btn {
+    padding: 3px 10px !important; /* Even smaller on mobile */
+    font-size: 11px !important;
   }
 
   /* Header layout adjustments */
