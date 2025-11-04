@@ -709,6 +709,13 @@ label {
   }
 }
 
+main.grid {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  gap: 1rem;
+}
+
 /* DESKTOP LAYOUT */
 @media (min-width: 768px) {
   /* MAIN GRID */
