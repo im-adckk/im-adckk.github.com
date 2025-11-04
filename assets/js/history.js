@@ -109,4 +109,4 @@ nextBtn.addEventListener('click', () => {
   }
 });
 
-loadDocuments();
+
