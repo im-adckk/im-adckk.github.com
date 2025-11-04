@@ -692,8 +692,7 @@ label {
   font-family: inherit;
 }
 
-/* DESKTOP LAYOUT */
-@media (min-width: 768px) {
+
   /* MAIN GRID */
 main.grid {
   flex-direction: row;     /* ⬅️ Side by side */
@@ -719,7 +718,7 @@ main.grid {
   #header-save-btn {
     display: inline-block;
   }
-}
+
 
 /* FLOATING SAVE BUTTON FOR MOBILE */
 @media (max-width: 600px) {
@@ -736,14 +735,15 @@ main.grid {
   header div button:nth-child(3) {
     display: none; /* hide Export PDF button in mobile header */
   }
-}
-
-main.grid {
+ main.grid {
   display: flex;
   flex-direction: column;
   padding: 0.75rem;
   gap: 1rem;
 }
+}
+
+
 
 
 
