@@ -731,10 +731,14 @@ main.grid {
     max-width: 420px;
   }
 
-  #save-btn {
-    position: static;
-    border-radius: var(--radius);
-    box-shadow: none;
+  /* Hide floating save button on desktop */
+  #floating-save-btn {
+    display: none;
+  }
+
+  /* Show header save button on desktop */
+  #header-save-btn {
+    display: inline-block;
   }
 }
 
