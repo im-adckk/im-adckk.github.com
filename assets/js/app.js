@@ -697,7 +697,31 @@ function updateSaveButtonVisibility() {
 // ------------------------------------------------------------
 // 7️⃣ Save invoice + items (with customer info)
 // ------------------------------------------------------------
-document.getElementById('save-btn').addEventListener('click', async () => {
+
+function initializeSaveButtons() {
+  const headerSaveBtn = document.getElementById('header-save-btn');
+  const floatingSaveBtn = document.getElementById('floating-save-btn');
+  
+  // Remove any existing event listeners
+  headerSaveBtn.replaceWith(headerSaveBtn.cloneNode(true));
+  floatingSaveBtn.replaceWith(floatingSaveBtn.cloneNode(true));
+  
+  // Get fresh references
+  const freshHeaderSaveBtn = document.getElementById('header-save-btn');
+  const freshFloatingSaveBtn = document.getElementById('floating-save-btn');
+  
+  // Add event listeners to both buttons
+  if (freshHeaderSaveBtn) {
+    freshHeaderSaveBtn.addEventListener('click', handleSave);
+  }
+  
+  if (freshFloatingSaveBtn) {
+    freshFloatingSaveBtn.addEventListener('click', handleSave);
+  }
+}
+
+// Extract the save logic into a separate function
+async function handleSave() {
   const type = invoice.type;
   const notes = document.getElementById('notes').value || null;
 
@@ -707,22 +731,22 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   const custAddress = document.getElementById('cust-address').value.trim();
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     
-    if (!currentUser) {
-        alert('Please login to save documents');
-        return;
-    }
+  if (!currentUser) {
+    alert('Please login to save documents');
+    return;
+  }
 
-    // Verify user exists in public.users table
-    const { user: verifiedUser, error: verifyError } = await verifyUserInPublicUsers(currentUser.id);
-    
-    if (verifyError || !verifiedUser) {
-        console.error('User verification failed:', verifyError);
-        alert('Your user account is not valid or has been deactivated. Please contact administrator.');
-        logout();
-        return;
-    }
+  // Verify user exists in public.users table
+  const { user: verifiedUser, error: verifyError } = await verifyUserInPublicUsers(currentUser.id);
+  
+  if (verifyError || !verifiedUser) {
+    console.error('User verification failed:', verifyError);
+    alert('Your user account is not valid or has been deactivated. Please contact administrator.');
+    logout();
+    return;
+  }
 
-    console.log('User verified:', verifiedUser);
+  console.log('User verified:', verifiedUser);
 
   // 🔹 Step 1: Insert or fetch customer
   let customer_id = null;
@@ -910,7 +934,34 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   document.getElementById('close-popup').addEventListener('click', () => {
     popup.remove();
   });
+}
+
+// Update the DOMContentLoaded event listener
+window.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM fully loaded');
+    
+    // Initialize login system first
+    initializeLogin();
+    
+    // Initialize save buttons (both regular and floating)
+    initializeSaveButtons();
+    
+    // Set up save button visibility
+    updateSaveButtonVisibility();
+    window.addEventListener('resize', updateSaveButtonVisibility);
+    
+    // Check authentication
+    const user = checkAuth();
+    
+    if (user) {
+        console.log('User authenticated, loading app...');
+        // Load the app if user is authenticated
+        await initializeApp();
+    } else {
+        console.log('User not authenticated, waiting for login...');
+    }
 });
+
 
 // ------------------------------------------------------------
 // 8️⃣ On load
