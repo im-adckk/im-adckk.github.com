@@ -677,21 +677,21 @@ async function verifyUserInPublicUsers(userId) {
 }
 
 function updateSaveButtonVisibility() {
-  const saveBtn = document.getElementById('save-btn');
-  const headerSaveBtn = document.querySelector('.header-buttons #save-btn');
+  const floatingSaveBtn = document.getElementById('floating-save-btn');
+  const headerSaveBtn = document.getElementById('header-save-btn');
   
-  if (window.innerWidth <= 750) {
+  if (window.innerWidth <= 768) {
     // Mobile: show floating button, hide header button
-    if (saveBtn) {
-      saveBtn.style.display = 'flex';
+    if (floatingSaveBtn) {
+      floatingSaveBtn.style.display = 'flex';
     }
     if (headerSaveBtn) {
       headerSaveBtn.style.display = 'none';
     }
   } else {
     // Desktop: show header button, hide floating button
-    if (saveBtn) {
-      saveBtn.style.display = 'none';
+    if (floatingSaveBtn) {
+      floatingSaveBtn.style.display = 'none';
     }
     if (headerSaveBtn) {
       headerSaveBtn.style.display = 'inline-block';
