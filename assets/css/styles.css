@@ -330,37 +330,7 @@ button:active {
   }
 }
 
-/* Very small screens - improved vertical stacking */
-@media (max-width: 360px) {
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
 
-  .document-type-selector {
-    justify-content: center;
-    order: 1;
-  }
-
-  .header-buttons {
-    justify-content: center;
-    order: 2;
-  }
-
-  #user-info {
-    order: 3;
-    justify-content: center;
-  }
-
-  header h1 {
-    text-align: center;
-    order: 0;
-    width: 100%;
-    margin-bottom: 0;
-    display: block; /* Show title on very small screens */
-  }
-}
 
 /* Show user info when user is logged in */
 #user-info[style*="display: flex"] {
