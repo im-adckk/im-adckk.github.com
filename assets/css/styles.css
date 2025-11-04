@@ -412,10 +412,9 @@ label {
 
 /* MAIN GRID */
 main.grid {
-  display: flex;
-  flex-direction: row;
-  padding: 0.75rem;
-  gap: 1rem;
+  flex-direction: row;     /* ⬅️ Side by side */
+  align-items: flex-start; /* ⬅️ Align to top */
+  gap: 1.5rem;            /* ⬅️ Larger gap */
 }
 
 /* CATALOG SECTION */
