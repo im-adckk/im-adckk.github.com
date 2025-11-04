@@ -584,13 +584,15 @@ function initializeDocumentTypeToggle() {
 async function getNextNumber(type) {
   try {
     const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
     const month = String(today.getMonth() + 1).padStart(2, '0');
-    const year = today.getFullYear().toString().slice(-2); // Last 2 digits of year
     const prefix = type === 'invoice' ? 'INV' : 'QUO';
-    const pattern = `%/${month}/${year}/${prefix}-%`; // Look for same month/year
 
-    // Get the highest existing number for this month
-    const { data: existingInvoices, error } = await client
+    // Pattern now only checks for this month & prefix (no year)
+    const pattern = `%/${month}/${prefix}-%`;
+
+    // Get the latest document for this month/prefix
+    const { data: existingDocs, error } = await client
       .from('invoices')
       .select('invoice_no')
       .like('invoice_no', pattern)
@@ -600,34 +602,32 @@ async function getNextNumber(type) {
     if (error) throw error;
 
     let nextNum = 1;
-    
-    if (existingInvoices && existingInvoices.length > 0) {
-      const lastInvoiceNo = existingInvoices[0].invoice_no;
-      // Match pattern: DD/MM/YY/PREFIX-XXX
-      const match = lastInvoiceNo.match(new RegExp(`\\d{2}\\/${month}\\/${year}\\/${prefix}-(\\d+)`));
+
+    // If found existing number for this month, increment it
+    if (existingDocs && existingDocs.length > 0) {
+      const lastNumber = existingDocs[0].invoice_no;
+      const match = lastNumber.match(new RegExp(`\\d{2}\\/${month}\\/${prefix}-(\\d+)`));
       if (match && match[1]) {
         nextNum = parseInt(match[1]) + 1;
       }
     }
 
-    // Format: DD/MM/YY/PREFIX-XXX
-    const day = String(today.getDate()).padStart(2, '0');
-    const newNumber = `${day}/${month}/${year}/${prefix}-${String(nextNum).padStart(3, '0')}`;
+    // Format example: 04/11/QUO-001
+    const newNumber = `${day}/${month}/${prefix}-${String(nextNum).padStart(3, '0')}`;
     return newNumber;
 
   } catch (error) {
     console.error('Numbering error:', error);
-    
-    // Fallback
+
+    // Fallback if anything goes wrong
     const today = new Date();
     const day = String(today.getDate()).padStart(2, '0');
     const month = String(today.getMonth() + 1).padStart(2, '0');
-    const year = today.getFullYear().toString().slice(-2);
     const prefix = type === 'invoice' ? 'INV' : 'QUO';
-    
-    return `${day}/${month}/${year}/${prefix}-001`;
+    return `${day}/${month}/${prefix}-001`;
   }
 }
+
 
 // ------------------------------------------------------------
 // 🧩 Staff Contact Selection
