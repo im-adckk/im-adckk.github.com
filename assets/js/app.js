@@ -61,7 +61,7 @@ function hideLoginModal() {
     const header = document.querySelector('header');
     
     if (loginModal) loginModal.style.display = 'none';
-    if (main) main.style.display = 'block';
+    if (main) main.style.display = 'flex';
     if (header) header.style.display = 'block';
     
     console.log('Login modal hidden:', loginModal?.style.display);
