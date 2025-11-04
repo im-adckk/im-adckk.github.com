@@ -692,14 +692,20 @@ label {
   font-family: inherit;
 }
 
-
-  /* MAIN GRID */
 main.grid {
-  flex-direction: row;     /* ⬅️ Side by side */
-  align-items: flex-start; /* ⬅️ Align to top */
+  display: flex;
+  flex-direction: column;
   padding: 0.75rem;
-  gap: 1.5rem;            /* ⬅️ Larger gap */
+  gap: 1rem;
 }
+/* DESKTOP LAYOUT - ADD MEDIA QUERY WRAPPER */
+@media (min-width: 768px) {
+  main.grid {
+    flex-direction: row;     /* ⬅️ Side by side */
+    align-items: flex-start; /* ⬅️ Align to top */
+    padding: 0.75rem;
+    gap: 1.5rem;            /* ⬅️ Larger gap */
+  }
 
   #catalog, #invoice {
     flex: 1;
@@ -718,7 +724,7 @@ main.grid {
   #header-save-btn {
     display: inline-block;
   }
-
+}
 
 /* FLOATING SAVE BUTTON FOR MOBILE */
 @media (max-width: 600px) {
@@ -735,12 +741,13 @@ main.grid {
   header div button:nth-child(3) {
     display: none; /* hide Export PDF button in mobile header */
   }
- main.grid {
-  display: flex;
-  flex-direction: column;
-  padding: 0.75rem;
-  gap: 1rem;
-}
+  
+  main.grid {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    gap: 1rem;
+  }
 }
 
 
