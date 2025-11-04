@@ -675,7 +675,7 @@ function updateSaveButtonVisibility() {
   const saveBtn = document.getElementById('save-btn');
   const headerSaveBtn = document.querySelector('.header-buttons #save-btn');
   
-  if (window.innerWidth <= 600) {
+  if (window.innerWidth <= 750) {
     // Mobile: show floating button, hide header button
     if (saveBtn) {
       saveBtn.style.display = 'flex';
