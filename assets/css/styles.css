@@ -410,12 +410,7 @@ label {
   transform: scale(1.2);
 }
 
-/* MAIN GRID */
-main.grid {
-  flex-direction: row;     /* ⬅️ Side by side */
-  align-items: flex-start; /* ⬅️ Align to top */
-  gap: 1.5rem;            /* ⬅️ Larger gap */
-}
+
 
 /* CATALOG SECTION */
 #catalog {
@@ -716,11 +711,12 @@ main.grid {
 
 /* DESKTOP LAYOUT */
 @media (min-width: 768px) {
-  main.grid {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 1.5rem;
-  }
+  /* MAIN GRID */
+main.grid {
+  flex-direction: row;     /* ⬅️ Side by side */
+  align-items: flex-start; /* ⬅️ Align to top */
+  gap: 1.5rem;            /* ⬅️ Larger gap */
+}
 
   #catalog, #invoice {
     flex: 1;
