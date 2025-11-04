@@ -75,9 +75,12 @@ function showUserInfo(user) {
     const userName = document.getElementById('user-name');
     
     if (userInfo && userName) {
-        userInfo.style.display = 'block';
+        userInfo.style.display = 'flex';
         userName.textContent = user.name;
         console.log('User info displayed for:', user.name);
+        
+        // Ensure proper layout after showing user info
+        setTimeout(updateSaveButtonVisibility, 100);
     }
 }
 
@@ -668,6 +671,28 @@ async function verifyUserInPublicUsers(userId) {
     }
 }
 
+function updateSaveButtonVisibility() {
+  const saveBtn = document.getElementById('save-btn');
+  const headerSaveBtn = document.querySelector('.header-buttons #save-btn');
+  
+  if (window.innerWidth <= 600) {
+    // Mobile: show floating button, hide header button
+    if (saveBtn) {
+      saveBtn.style.display = 'flex';
+    }
+    if (headerSaveBtn) {
+      headerSaveBtn.style.display = 'none';
+    }
+  } else {
+    // Desktop: show header button, hide floating button
+    if (saveBtn) {
+      saveBtn.style.display = 'none';
+    }
+    if (headerSaveBtn) {
+      headerSaveBtn.style.display = 'inline-block';
+    }
+  }
+}
 
 // ------------------------------------------------------------
 // 7️⃣ Save invoice + items (with customer info)
@@ -895,6 +920,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     
     // Initialize login system first
     initializeLogin();
+    
+    // Set up save button visibility
+    updateSaveButtonVisibility();
+    window.addEventListener('resize', updateSaveButtonVisibility);
     
     // Check authentication
     const user = checkAuth();
