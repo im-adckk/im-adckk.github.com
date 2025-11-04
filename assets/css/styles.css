@@ -694,7 +694,7 @@ label {
 
 main.grid {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   padding: 0.75rem;
   gap: 1rem;
 }
@@ -743,10 +743,8 @@ main.grid {
   }
   
   main.grid {
-    display: flex;
     flex-direction: column;
-    padding: 0.75rem;
-    gap: 1rem;
+    
   }
 }
 
