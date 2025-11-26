@@ -108,42 +108,44 @@ async function renderReport(inv) {
 
   // Word wrap function for notes
   const wrapNotes = (text, maxLength = 80) => {
-    if (!text) return 'N/A';
-    
-    // Clean the text first
-    let cleanText = text.trim().replace(/\s+/g, ' ');
-    
-    // Pattern to detect: one or more words (names) followed by a 12-digit number (IC)
-    const nameIcPattern = /([a-zA-Z]+(?:\s+[a-zA-Z]+)*)\s+(\d{11,13})/g; // Allow 11-13 digits for flexibility
-    
-    const lines = [];
-    let lastIndex = 0;
-    let match;
-    
-    // Find all name + IC number patterns
-    while ((match = nameIcPattern.exec(cleanText)) !== null) {
-      const fullMatch = `${match[1].trim()} ${match[2].trim()}`;
-      lines.push(fullMatch);
-      lastIndex = nameIcPattern.lastIndex;
-    }
-    
-    // If we found matches, return them with line breaks
-    if (lines.length > 0) {
-      return lines.join('<br>');
-    }
-    
-    // Alternative: split by common separators
-    const separators = /[,;|]|\s+(?=\d{11,13})/;
-    const parts = cleanText.split(separators);
-    const filteredParts = parts.filter(part => part.trim().length > 0);
-    
-    if (filteredParts.length > 1) {
-      return filteredParts.map(part => part.trim()).join('<br>');
-    }
-    
-    // Final fallback: return original text
-    return cleanText;
-  };
+  if (!text) return 'N/A';
+  
+  // Clean the text first
+  let cleanText = text.trim().replace(/\s+/g, ' ');
+  
+  // Pattern to detect:
+  // Option 1: one or more words (names) followed by a 12-digit number (IC)
+  // Option 2: one or more words (names) followed by a passport number (letter + 7-8 digits + 3 letters)
+  const nameIdPattern = /([a-zA-Z]+(?:\s+[a-zA-Z]+)*)\s+((?:\d{11,13})|(?:[A-Za-z]\d{7,8}[A-Za-z]{3}))/g;
+  
+  const lines = [];
+  let lastIndex = 0;
+  let match;
+  
+  // Find all name + ID number patterns (IC or passport)
+  while ((match = nameIdPattern.exec(cleanText)) !== null) {
+    const fullMatch = `${match[1].trim()} ${match[2].trim()}`;
+    lines.push(fullMatch);
+    lastIndex = nameIdPattern.lastIndex;
+  }
+  
+  // If we found matches, return them with line breaks
+  if (lines.length > 0) {
+    return lines.join('<br>');
+  }
+  
+  // Alternative: split by common separators
+  const separators = /[,;|]|\s+(?=(?:\d{11,13}|[A-Za-z]\d{7,8}[A-Za-z]{3}))/;
+  const parts = cleanText.split(separators);
+  const filteredParts = parts.filter(part => part.trim().length > 0);
+  
+  if (filteredParts.length > 1) {
+    return filteredParts.map(part => part.trim()).join('<br>');
+  }
+  
+  // Final fallback: return original text
+  return cleanText;
+};
 
   // Reduce margins and padding in your template
   container.innerHTML = `
