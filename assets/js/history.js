@@ -1,3 +1,4 @@
+
 // ------------------------------------------------------------
 // Past Documents Viewer (with pagination + mobile cards + Edit/Re-send)
 // ------------------------------------------------------------
@@ -22,11 +23,13 @@ const editForm = document.getElementById('edit-form');
 const editLineItems = document.getElementById('edit-line-items');
 const addLineBtn = document.getElementById('add-line-btn');
 const cancelEditBtn = document.getElementById('cancel-edit');
+const editStaffContact = document.getElementById('edit-staff-contact');
 
 let currentPage = 1;
 const pageSize = 20;
 let totalRecords = 0;
 let currentEditingDoc = null;
+let staffContacts = [];
 
 async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFilter = '') {
   const from = (page - 1) * pageSize;
@@ -113,15 +116,42 @@ function updatePagination(page) {
   nextBtn.disabled = page >= totalPages;
 }
 
+// Load staff contacts for dropdown
+async function loadStaffContacts() {
+  try {
+    const { data: staff, error } = await client
+      .from('staff')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+
+    staffContacts = staff || [];
+    renderStaffContacts();
+  } catch (error) {
+    console.error('Failed to load staff contacts:', error);
+  }
+}
+
+function renderStaffContacts() {
+  if (!editStaffContact) return;
+  
+  editStaffContact.innerHTML = '<option value="">-- Select Contact Department --</option>' +
+    staffContacts.map(s => `
+      <option value="${s.id}">${s.name} - ${s.contact_no}</option>
+    `).join('');
+}
+
 // Edit Modal Functions
 async function openEditModal(docId) {
   try {
-    // Fetch complete document data with customer and line items
+    // Fetch complete document data with customer, staff, and line items
     const { data: doc, error } = await client
       .from('invoices')
       .select(`
         *,
         customers(*),
+        staff(*),
         invoice_items(*)
       `)
       .eq('id', docId)
@@ -140,6 +170,11 @@ async function openEditModal(docId) {
     document.getElementById('edit-customer-email').value = doc.customers?.email || '';
     document.getElementById('edit-customer-address').value = doc.customers?.address || '';
     document.getElementById('edit-notes').value = doc.notes || '';
+
+    // Set staff contact if exists
+    if (doc.staff_id && editStaffContact) {
+      editStaffContact.value = doc.staff_id;
+    }
 
     // Render line items
     renderEditLineItems(doc.invoice_items);
@@ -244,11 +279,15 @@ editForm.addEventListener('submit', async (e) => {
 
     if (customerError) throw customerError;
 
-    // Update invoice notes
+    // Get selected staff contact
+    const selectedStaffId = editStaffContact.value || null;
+
+    // Update invoice notes and staff contact
     const { error: invoiceError } = await client
       .from('invoices')
       .update({
-        notes: document.getElementById('edit-notes').value
+        notes: document.getElementById('edit-notes').value,
+        staff_id: selectedStaffId
       })
       .eq('id', currentEditingDoc.id);
 
@@ -291,9 +330,9 @@ editForm.addEventListener('submit', async (e) => {
     }
 
     // Update invoice total
-    const newTotal = currentEditingDoc.invoice_items.reduce((sum, item) => {
-      const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${item.id ? currentEditingDoc.invoice_items.findIndex(i => i.id === item.id) : i}"]`).value) || 0;
-      const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${item.id ? currentEditingDoc.invoice_items.findIndex(i => i.id === item.id) : i}"]`).value) || 0;
+    const newTotal = currentEditingDoc.invoice_items.reduce((sum, item, index) => {
+      const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${index}"]`).value) || 0;
+      const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${index}"]`).value) || 0;
       return sum + (qty * unit_price);
     }, 0);
 
@@ -448,5 +487,6 @@ nextBtn.addEventListener('click', () => {
   }
 });
 
+// Initial load
 
-
+loadStaffContacts();
