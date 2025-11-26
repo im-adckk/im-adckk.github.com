@@ -448,6 +448,5 @@ nextBtn.addEventListener('click', () => {
   }
 });
 
-// Initial load
-loadDocuments();
+
 
