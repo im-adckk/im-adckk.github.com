@@ -1,5 +1,3 @@
-[file name]: history.js
-[file content begin]
 // ------------------------------------------------------------
 // Past Documents Viewer (with pagination + mobile cards + Edit/Re-send)
 // ------------------------------------------------------------
