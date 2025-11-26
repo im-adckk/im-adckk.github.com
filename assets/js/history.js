@@ -1,4 +1,3 @@
-
 // ------------------------------------------------------------
 // Past Documents Viewer (with pagination + mobile cards + Edit/Re-send)
 // ------------------------------------------------------------
@@ -43,7 +42,8 @@ async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFil
       type,
       total,
       created_at,
-      customers(name)
+      customers(name),
+      staff(id, name, contact_no)
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -145,20 +145,26 @@ function renderStaffContacts() {
 // Edit Modal Functions
 async function openEditModal(docId) {
   try {
+    console.log('Opening edit modal for document:', docId);
+    
     // Fetch complete document data with customer, staff, and line items
     const { data: doc, error } = await client
       .from('invoices')
       .select(`
         *,
         customers(*),
-        staff(*),
+        staff(id, name, contact_no),
         invoice_items(*)
       `)
       .eq('id', docId)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching document:', error);
+      throw error;
+    }
 
+    console.log('Document data loaded:', doc);
     currentEditingDoc = doc;
 
     // Populate modal fields
@@ -173,7 +179,11 @@ async function openEditModal(docId) {
 
     // Set staff contact if exists
     if (doc.staff_id && editStaffContact) {
+      console.log('Setting staff contact to:', doc.staff_id);
       editStaffContact.value = doc.staff_id;
+    } else {
+      console.log('No staff_id found or staff_id is null');
+      editStaffContact.value = '';
     }
 
     // Render line items
@@ -181,6 +191,7 @@ async function openEditModal(docId) {
 
     // Show modal
     editModal.style.display = 'flex';
+    
   } catch (error) {
     console.error('Error loading document for edit:', error);
     alert('Failed to load document for editing');
@@ -266,39 +277,60 @@ editForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   
   try {
+    console.log('Starting document update...');
+    
     // Update customer information
+    const customerUpdate = {
+      name: document.getElementById('edit-customer-name').value,
+      contact: document.getElementById('edit-customer-contact').value,
+      email: document.getElementById('edit-customer-email').value,
+      address: document.getElementById('edit-customer-address').value
+    };
+    
+    console.log('Updating customer:', customerUpdate);
+    
     const { error: customerError } = await client
       .from('customers')
-      .update({
-        name: document.getElementById('edit-customer-name').value,
-        contact: document.getElementById('edit-customer-contact').value,
-        email: document.getElementById('edit-customer-email').value,
-        address: document.getElementById('edit-customer-address').value
-      })
+      .update(customerUpdate)
       .eq('id', currentEditingDoc.customer_id);
 
-    if (customerError) throw customerError;
+    if (customerError) {
+      console.error('Customer update error:', customerError);
+      throw customerError;
+    }
 
     // Get selected staff contact
     const selectedStaffId = editStaffContact.value || null;
+    console.log('Selected staff ID:', selectedStaffId);
 
     // Update invoice notes and staff contact
+    const invoiceUpdate = {
+      notes: document.getElementById('edit-notes').value,
+      staff_id: selectedStaffId
+    };
+    
+    console.log('Updating invoice:', invoiceUpdate);
+    
     const { error: invoiceError } = await client
       .from('invoices')
-      .update({
-        notes: document.getElementById('edit-notes').value,
-        staff_id: selectedStaffId
-      })
+      .update(invoiceUpdate)
       .eq('id', currentEditingDoc.id);
 
-    if (invoiceError) throw invoiceError;
+    if (invoiceError) {
+      console.error('Invoice update error:', invoiceError);
+      throw invoiceError;
+    }
 
     // Update line items
+    console.log('Updating line items...');
     for (let i = 0; i < currentEditingDoc.invoice_items.length; i++) {
       const item = currentEditingDoc.invoice_items[i];
       const description = editLineItems.querySelector(`.line-description[data-index="${i}"]`).value;
       const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${i}"]`).value) || 0;
       const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${i}"]`).value) || 0;
+      const line_total = qty * unit_price;
+      
+      console.log(`Line item ${i}:`, { description, qty, unit_price, line_total });
       
       if (item.id) {
         // Update existing line item
@@ -308,11 +340,14 @@ editForm.addEventListener('submit', async (e) => {
             description,
             qty,
             unit_price,
-            line_total: qty * unit_price
+            line_total
           })
           .eq('id', item.id);
 
-        if (lineError) throw lineError;
+        if (lineError) {
+          console.error('Line item update error:', lineError);
+          throw lineError;
+        }
       } else {
         // Insert new line item
         const { error: lineError } = await client
@@ -322,10 +357,13 @@ editForm.addEventListener('submit', async (e) => {
             description,
             qty,
             unit_price,
-            line_total: qty * unit_price
+            line_total
           });
 
-        if (lineError) throw lineError;
+        if (lineError) {
+          console.error('Line item insert error:', lineError);
+          throw lineError;
+        }
       }
     }
 
@@ -336,18 +374,26 @@ editForm.addEventListener('submit', async (e) => {
       return sum + (qty * unit_price);
     }, 0);
 
-    await client
+    console.log('Updating total to:', newTotal);
+    
+    const { error: totalError } = await client
       .from('invoices')
       .update({ total: newTotal })
       .eq('id', currentEditingDoc.id);
 
+    if (totalError) {
+      console.error('Total update error:', totalError);
+      throw totalError;
+    }
+
+    console.log('Document updated successfully!');
     alert('Document updated successfully!');
     closeEditModal();
     loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
     
   } catch (error) {
     console.error('Error updating document:', error);
-    alert('Failed to update document');
+    alert('Failed to update document: ' + error.message);
   }
 });
 
