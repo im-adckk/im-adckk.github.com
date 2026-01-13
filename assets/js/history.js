@@ -468,14 +468,29 @@ function setupResendListeners(doc, reportLink, docType) {
   });
 
   freshEmailBtn.addEventListener('click', () => {
-    const emailSubject = encodeURIComponent(`${docType} - ${doc.invoice_no} - Api-Api Driving Centre`);
-    const emailBody = encodeURIComponent(
-      `Dear Customer,\n\nPlease find your ${docType} (${doc.invoice_no}) attached.\n\nYou can view it here: ${reportLink}\n\nThank you,\nApi-Api Driving Centre`
-    );
-    const customerEmail = doc.customers?.email || '';
-    let mailtoLink = `mailto:${customerEmail}?subject=${emailSubject}&body=${emailBody}`;
-    window.location.href = mailtoLink;
-  });
+  const emailSubject = `${docType} - ${doc.invoice_no} - Api-Api Driving Centre`;
+  const emailBody = `Dear Customer,\n\nPlease find your ${docType} (${doc.invoice_no}) attached.\n\nYou can view it here: ${reportLink}\n\nThank you,\nApi-Api Driving Centre`;
+  const customerEmail = doc.customers?.email || '';
+  
+  // Check if customer has email
+  if (!customerEmail.trim()) {
+    alert('Customer does not have an email address saved. Please update customer details.');
+    
+    // Optionally open the edit modal for this customer
+    // openEditModalForCustomer(doc.customer_id);
+    return;
+  }
+  
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(customerEmail)) {
+    alert('Customer email address is not valid. Please update customer details.');
+    return;
+  }
+  
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(customerEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+  window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+});
 
   freshCopyBtn.addEventListener('click', async () => {
     try {
