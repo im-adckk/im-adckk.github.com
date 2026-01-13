@@ -910,10 +910,32 @@ async function handleSave() {
   });
   
   document.getElementById('share-email').addEventListener('click', () => {
-    const customerEmail = document.getElementById('cust-email').value.trim();
-    let mailtoLink = `mailto:${customerEmail || ''}?subject=${emailSubject}&body=${emailBody}`;
-    window.location.href = mailtoLink;
-  });
+      const customerEmail = document.getElementById('cust-email').value.trim();
+      const invoiceNo = document.getElementById('invoice-no').textContent || 'Invoice';
+      const docType = 'Invoice'; // Adjust based on your document type
+      
+      const emailSubject = encodeURIComponent(`${docType} - ${invoiceNo} - Api-Api Driving Centre`);
+      const emailBody = encodeURIComponent(
+        `Dear Customer,\n\nPlease find your ${docType} (${invoiceNo}) attached.\n\nThank you,\nApi-Api Driving Centre`
+      );
+      
+      // Check if customer has email
+      if (!customerEmail) {
+        alert('Customer does not have an email address. Please update customer details.');
+        return;
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customerEmail)) {
+        alert('Customer email address is not valid. Please update customer details.');
+        return;
+      }
+      
+      // Open Gmail compose window
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(customerEmail)}&su=${emailSubject}&body=${emailBody}`;
+      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+    });
   
   document.getElementById('copy-link').addEventListener('click', async () => {
     try {
