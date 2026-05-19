@@ -319,7 +319,7 @@ async function renderReport(inv) {
 
     // Perfect margin settings for A4
     const opt = {
-      margin: [10, 10, 10, 5],  // [top, left, bottom, right] in mm
+      margin: [0.5, 0.5, 0.5, 0.5],  // [top, left, bottom, right] in mm
       filename: `${inv.invoice_no}.pdf`,
       image: { 
         type: 'jpeg', 
