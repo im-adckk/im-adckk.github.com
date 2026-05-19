@@ -211,9 +211,11 @@ async function renderReport(inv) {
       <div class="kepada">
         <strong>Kepada:</strong><br>
         <strong>${cust.name || '-'}</strong><br>
-        ${cust.address || ''}<br>
-        ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
-        ${cust.email ? 'Emel: ' + cust.email : ''}
+        ${[
+          cust.address || '',
+          cust.contact ? 'Tel: ' + cust.contact : '',
+          cust.email   ? 'Emel: ' + cust.email   : ''
+        ].filter(Boolean).join('<br>')}
       </div>
       <div class="doc-right">
         <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
@@ -303,7 +305,7 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export — fixed left-clip and width issues
+  // ✅ PDF Export — zero jsPDF margins, CSS padding handles spacing
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
@@ -311,35 +313,36 @@ async function renderReport(inv) {
     const originalWidth    = element.style.width;
     const originalOverflow = element.style.overflow;
     const originalMargin   = element.style.margin;
+    const originalPosition = element.style.position;
+    const originalLeft     = element.style.left;
 
     downloadBtn.style.display = 'none';
     element.classList.add('pdf-export');
 
-    // Pin element to top-left so html2canvas captures from x=0
+    // Move element to exact top-left so html2canvas origin is (0,0)
+    element.style.position = 'absolute';
+    element.style.left     = '0';
+    element.style.margin   = '0';
     element.style.overflow = 'visible';
-    element.style.width    = '794px';  // exact A4 px — matches windowWidth below
-    element.style.margin   = '0';     // remove "0 auto" centering during capture
+    element.style.width    = '794px';
 
-    // Scroll to top-left so offsets don't clip the left edge
     window.scrollTo(0, 0);
 
     const opt = {
-      margin:   [10, 10, 10, 10],      // mm — uniform margin inside PDF page
+      margin:   0,                        // ← ZERO margins: CSS padding is the margin
       filename: `${inv.invoice_no}.pdf`,
       image:    { type: 'jpeg', quality: 1 },
       html2canvas: {
-        scale:           2,            // 2x for sharp text
+        scale:           2,
         useCORS:         true,
-        scrollX:         0,            // must be 0 — negative clips the left
+        scrollX:         0,
         scrollY:         0,
-        x:               0,            // capture from left edge of element
-        y:               0,
         backgroundColor: '#FFFFFF',
         logging:         false,
-        windowWidth:     794,          // matches element width exactly
+        windowWidth:     794,             // exact element width — no scaling distortion
         windowHeight:    element.scrollHeight,
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'px', format: [794, element.scrollHeight], orientation: 'portrait' },
       pagebreak: {
         mode:   ['css', 'legacy'],
         before: '.page-break',
@@ -353,10 +356,11 @@ async function renderReport(inv) {
       element.style.width    = originalWidth;
       element.style.overflow = originalOverflow;
       element.style.margin   = originalMargin;
+      element.style.position = originalPosition;
+      element.style.left     = originalLeft;
       downloadBtn.style.display = 'inline-block';
     };
 
-    // Delay lets the DOM settle after style changes before capture
     setTimeout(() => {
       html2pdf()
         .set(opt)
@@ -364,7 +368,7 @@ async function renderReport(inv) {
         .save()
         .then(restore)
         .catch((err) => { console.error('PDF generation failed:', err); restore(); });
-    }, 150);
+    }, 200);
   });
 }
 
