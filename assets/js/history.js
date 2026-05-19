@@ -1,553 +1,371 @@
-// ------------------------------------------------------------
-// Past Documents Viewer (with pagination + mobile cards + Edit/Re-send)
-// ------------------------------------------------------------
-
 const SUPABASE_URL = 'https://hpmnizmmkepemezfntfh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwbW5pem1ta2VwZW1lemZudGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNzA3MTEsImV4cCI6MjA3Njg0NjcxMX0.GeAgM3Xy1hrFqnA1XSiGYkhVTKd63VfRN_kFVH8WAws';
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const tableBody = document.querySelector('#docs-table tbody');
-const searchName = document.getElementById('search-name');
-const searchDate = document.getElementById('search-date');
-const filterType = document.getElementById('filter-type');
-const searchBtn = document.getElementById('search-btn');
-const prevBtn = document.getElementById('prev-btn');
-const nextBtn = document.getElementById('next-btn');
-const pageInfo = document.getElementById('page-info');
+const params = new URLSearchParams(window.location.search);
+const invoiceId = params.get('id');
 
-// Modal elements
-const editModal = document.getElementById('editModal');
-const resendModal = document.getElementById('resendModal');
-const editForm = document.getElementById('edit-form');
-const editLineItems = document.getElementById('edit-line-items');
-const addLineBtn = document.getElementById('add-line-btn');
-const cancelEditBtn = document.getElementById('cancel-edit');
-const editStaffContact = document.getElementById('edit-staff-contact');
+// ------------------------------------------------------------
+// Utility: Convert number to Malay words
+// ------------------------------------------------------------
+function numberToBahasaWords(num) {
+  const ones = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Lapan", "Sembilan", "Sepuluh", "Sebelas"];
+  if (num < 12) return ones[num];
+  if (num < 20) return numberToBahasaWords(num - 10) + " Belas";
+  if (num < 100)
+    return numberToBahasaWords(Math.floor(num / 10)) + " Puluh " + numberToBahasaWords(num % 10);
+  if (num < 200)
+    return "Seratus " + numberToBahasaWords(num - 100);
+  if (num < 1000)
+    return numberToBahasaWords(Math.floor(num / 100)) + " Ratus " + numberToBahasaWords(num % 100);
+  if (num < 2000)
+    return "Seribu " + numberToBahasaWords(num - 1000);
+  if (num < 1000000)
+    return numberToBahasaWords(Math.floor(num / 1000)) + " Ribu " + numberToBahasaWords(num % 1000);
+  if (num < 1000000000)
+    return numberToBahasaWords(Math.floor(num / 1000000)) + " Juta " + numberToBahasaWords(num % 1000000000);
+  return "Nombor Terlalu Besar";
+}
 
-let currentPage = 1;
-const pageSize = 20;
-let totalRecords = 0;
-let currentEditingDoc = null;
-let staffContacts = [];
+function formatMalayDate(dateString) {
+  const date = new Date(dateString);
+  const bulan = [
+    "Januari", "Februari", "Mac", "April", "Mei", "Jun",
+    "Julai", "Ogos", "September", "Oktober", "November", "Disember"
+  ];
+  return `${date.getDate()} ${bulan[date.getMonth()]} ${date.getFullYear()}`;
+}
 
-async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFilter = '') {
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+// ------------------------------------------------------------
+// Fetch + Render
+// ------------------------------------------------------------
+async function loadReport() {
+  if (!invoiceId) {
+    document.body.innerHTML = '<p>No invoice ID provided.</p>';
+    return;
+  }
 
-  let query = client
+  const { data: invoice, error } = await client
     .from('invoices')
-    .select(`
-      id,
-      invoice_no,
-      type,
-      total,
-      created_at,
-      customers(name),
-      staff(id, name, contact_no)
-    `, { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(from, to);
+    .select('*, invoice_items(*), customers(*)')
+    .eq('id', invoiceId)
+    .single();
 
-  if (nameFilter) query = query.ilike('customers.name', `%${nameFilter}%`);
-  if (dateFilter) {
-    const start = new Date(dateFilter);
-    const end = new Date(dateFilter);
-    end.setDate(end.getDate() + 1);
-    query = query.gte('created_at', start.toISOString()).lt('created_at', end.toISOString());
-  }
-  if (typeFilter) query = query.eq('type', typeFilter);
-
-  const { data, error, count } = await query;
-  if (error) {
-    console.error('Fetch error:', error);
-    tableBody.innerHTML = `<tr><td colspan="6" style="color:red;">Failed to load documents</td></tr>`;
+  if (error || !invoice) {
+    console.error(error);
+    document.body.innerHTML = '<p>Failed to load report data.</p>';
     return;
   }
 
-  totalRecords = count || 0;
-  renderDocuments(data);
-  updatePagination(page);
+  renderReport(invoice);
 }
 
-function renderDocuments(docs) {
-  if (!docs || docs.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="6">No documents found.</td></tr>`;
-    return;
-  }
-
-  tableBody.innerHTML = docs.map(doc => {
-    const date = new Date(doc.created_at).toLocaleDateString();
-    const name = doc.customers?.name || '—';
-    const type = doc.type.charAt(0).toUpperCase() + doc.type.slice(1);
-    const total = Number(doc.total || 0).toFixed(2);
-
-    return `
-      <tr>
-        <td data-label="Date">${date}</td>
-        <td data-label="Document No">${doc.invoice_no}</td>
-        <td data-label="Type">${type}</td>
-        <td data-label="Customer">${name}</td>
-        <td data-label="Total (RM)">${total}</td>
-        <td data-label="Actions">
-          <div class="action-buttons">
-            <a href="report.html?id=${doc.id}" target="_blank" class="view-link">View</a>
-            <button class="edit-btn" data-id="${doc.id}">Edit</button>
-            <button class="resend-btn" data-id="${doc.id}">Re-send</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  // Attach event listeners to edit and resend buttons
-  document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => openEditModal(btn.dataset.id));
-  });
-
-  document.querySelectorAll('.resend-btn').forEach(btn => {
-    btn.addEventListener('click', () => openResendModal(btn.dataset.id));
-  });
-}
-
-function updatePagination(page) {
-  const totalPages = Math.ceil(totalRecords / pageSize);
-  pageInfo.textContent = `Page ${page} of ${totalPages || 1}`;
-  prevBtn.disabled = page <= 1;
-  nextBtn.disabled = page >= totalPages;
-}
-
-// Load staff contacts for dropdown
-async function loadStaffContacts() {
-  try {
-    const { data: staff, error } = await client
-      .from('staff')
-      .select('*')
-      .order('name');
-
-    if (error) throw error;
-
-    staffContacts = staff || [];
-    renderStaffContacts();
-  } catch (error) {
-    console.error('Failed to load staff contacts:', error);
-  }
-}
-
-function renderStaffContacts() {
-  if (!editStaffContact) return;
+// Add this function to check content height and handle page breaks
+function checkContentHeight() {
+  const element = document.querySelector('.a4-page');
+  if (!element) return;
   
-  editStaffContact.innerHTML = '<option value="">-- Select Contact Department --</option>' +
-    staffContacts.map(s => `
-      <option value="${s.id}">${s.name} - ${s.contact_no}</option>
-    `).join('');
-}
-
-// Edit Modal Functions
-async function openEditModal(docId) {
-  try {
-    console.log('Opening edit modal for document:', docId);
-    
-    // Fetch complete document data with customer, staff, and line items
-    const { data: doc, error } = await client
-      .from('invoices')
-      .select(`
-        *,
-        customers(*),
-        staff(id, name, contact_no),
-        invoice_items(*)
-      `)
-      .eq('id', docId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching document:', error);
-      throw error;
-    }
-
-    console.log('Document data loaded:', doc);
-    currentEditingDoc = doc;
-
-    // Populate modal fields
-    document.getElementById('edit-doc-no').value = doc.invoice_no;
-    document.getElementById('edit-date').value = new Date(doc.created_at).toLocaleDateString();
-    document.getElementById('edit-type').value = doc.type.charAt(0).toUpperCase() + doc.type.slice(1);
-    document.getElementById('edit-customer-name').value = doc.customers?.name || '';
-    document.getElementById('edit-customer-contact').value = doc.customers?.contact || '';
-    document.getElementById('edit-customer-email').value = doc.customers?.email || '';
-    document.getElementById('edit-customer-address').value = doc.customers?.address || '';
-    document.getElementById('edit-notes').value = doc.notes || '';
-
-    // Set staff contact if exists
-    if (doc.staff_id && editStaffContact) {
-      console.log('Setting staff contact to:', doc.staff_id);
-      editStaffContact.value = doc.staff_id;
-    } else {
-      console.log('No staff_id found or staff_id is null');
-      editStaffContact.value = '';
-    }
-
-    // Render line items
-    renderEditLineItems(doc.invoice_items);
-
-    // Show modal
-    editModal.style.display = 'flex';
-    
-  } catch (error) {
-    console.error('Error loading document for edit:', error);
-    alert('Failed to load document for editing');
-  }
-}
-
-function renderEditLineItems(lineItems) {
-  editLineItems.innerHTML = '';
-
-  if (!lineItems || lineItems.length === 0) {
-    editLineItems.innerHTML = '<p>No line items</p>';
-    return;
-  }
-
-  lineItems.forEach((item, index) => {
-    const lineDiv = document.createElement('div');
-    lineDiv.className = 'line-item';
-    lineDiv.innerHTML = `
-      <input type="text" class="line-description" value="${item.description}" placeholder="Description" data-index="${index}">
-      <input type="number" class="line-qty" value="${item.qty}" min="1" placeholder="Qty" data-index="${index}" step="1">
-      <input type="number" class="line-price" value="${item.unit_price}" min="0" placeholder="Price" data-index="${index}" step="0.01">
-      <span class="line-total">RM ${(item.qty * item.unit_price).toFixed(2)}</span>
-      <button type="button" class="remove-line" data-index="${index}">×</button>
-    `;
-    editLineItems.appendChild(lineDiv);
-  });
-
-  // Attach event listeners for line item changes
-  attachLineItemListeners();
-}
-
-function attachLineItemListeners() {
-  // Quantity and price change listeners
-  editLineItems.querySelectorAll('.line-qty, .line-price').forEach(input => {
-    input.addEventListener('input', (e) => {
-      const index = e.target.dataset.index;
-      updateLineTotal(index);
-    });
-  });
-
-  // Remove line listeners
-  editLineItems.querySelectorAll('.remove-line').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const index = e.target.dataset.index;
-      removeLineItem(index);
-    });
-  });
-}
-
-function updateLineTotal(index) {
-  const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${index}"]`).value) || 0;
-  const price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${index}"]`).value) || 0;
-  const total = qty * price;
+  // A4 height in mm (297mm) minus margins
+  const maxHeight = 277; // 297mm - 20mm (10mm top + 10mm bottom)
   
-  editLineItems.querySelector(`.line-total[data-index="${index}"]`).textContent = `RM ${total.toFixed(2)}`;
-}
-
-function removeLineItem(index) {
-  if (currentEditingDoc.invoice_items.length <= 1) {
-    alert('Document must have at least one line item');
-    return;
-  }
-  
-  currentEditingDoc.invoice_items.splice(index, 1);
-  renderEditLineItems(currentEditingDoc.invoice_items);
-}
-
-// Add new line item
-addLineBtn.addEventListener('click', () => {
-  const newLine = {
-    description: '',
-    qty: 1,
-    unit_price: 0,
-    line_total: 0
+  // Get all major sections
+  const sections = {
+    header: element.querySelector('.header'),
+    title: element.querySelector('.doc-top-title'),
+    info: element.querySelector('.doc-info-row'),
+    intro: element.querySelector('.quotation-intro'),
+    table: element.querySelector('.item-table'),
+    total: element.querySelector('.total-section'),
+    nota: element.querySelector('.nota'),
+    footer: element.querySelector('.footer-note')
   };
   
-  currentEditingDoc.invoice_items.push(newLine);
-  renderEditLineItems(currentEditingDoc.invoice_items);
-});
-
-// Save edited document
-editForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  try {
-    console.log('Starting document update...');
-    
-    // Update customer information
-    const customerUpdate = {
-      name: document.getElementById('edit-customer-name').value,
-      contact: document.getElementById('edit-customer-contact').value,
-      email: document.getElementById('edit-customer-email').value,
-      address: document.getElementById('edit-customer-address').value
-    };
-    
-    console.log('Updating customer:', customerUpdate);
-    
-    const { error: customerError } = await client
-      .from('customers')
-      .update(customerUpdate)
-      .eq('id', currentEditingDoc.customer_id);
-
-    if (customerError) {
-      console.error('Customer update error:', customerError);
-      throw customerError;
-    }
-
-    // Get selected staff contact
-    const selectedStaffId = editStaffContact.value || null;
-    console.log('Selected staff ID:', selectedStaffId);
-
-    // Update invoice notes and staff contact
-    const invoiceUpdate = {
-      notes: document.getElementById('edit-notes').value,
-      staff_id: selectedStaffId
-    };
-    
-    console.log('Updating invoice:', invoiceUpdate);
-    
-    const { error: invoiceError } = await client
-      .from('invoices')
-      .update(invoiceUpdate)
-      .eq('id', currentEditingDoc.id);
-
-    if (invoiceError) {
-      console.error('Invoice update error:', invoiceError);
-      throw invoiceError;
-    }
-
-    // Update line items
-    console.log('Updating line items...');
-    for (let i = 0; i < currentEditingDoc.invoice_items.length; i++) {
-      const item = currentEditingDoc.invoice_items[i];
-      const description = editLineItems.querySelector(`.line-description[data-index="${i}"]`).value;
-      const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${i}"]`).value) || 0;
-      const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${i}"]`).value) || 0;
-      const line_total = qty * unit_price;
+  // Calculate if we need page breaks
+  let totalHeight = 0;
+  for (const [name, section] of Object.entries(sections)) {
+    if (section) {
+      const height = section.offsetHeight;
+      totalHeight += height;
       
-      console.log(`Line item ${i}:`, { description, qty, unit_price, line_total });
-      
-      if (item.id) {
-        // Update existing line item
-        const { error: lineError } = await client
-          .from('invoice_items')
-          .update({
-            description,
-            qty,
-            unit_price,
-            line_total
-          })
-          .eq('id', item.id);
-
-        if (lineError) {
-          console.error('Line item update error:', lineError);
-          throw lineError;
-        }
+      // If adding this section would exceed max height, add page break before
+      if (totalHeight > maxHeight && (name === 'nota' || name === 'footer')) {
+        section.style.pageBreakBefore = 'always';
+        section.style.marginTop = '20px';
       } else {
-        // Insert new line item
-        const { error: lineError } = await client
-          .from('invoice_items')
-          .insert({
-            invoice_id: currentEditingDoc.id,
-            description,
-            qty,
-            unit_price,
-            line_total
-          });
-
-        if (lineError) {
-          console.error('Line item insert error:', lineError);
-          throw lineError;
-        }
+        section.style.pageBreakBefore = 'auto';
       }
     }
-
-    // Update invoice total
-    const newTotal = currentEditingDoc.invoice_items.reduce((sum, item, index) => {
-      const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${index}"]`).value) || 0;
-      const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${index}"]`).value) || 0;
-      return sum + (qty * unit_price);
-    }, 0);
-
-    console.log('Updating total to:', newTotal);
-    
-    const { error: totalError } = await client
-      .from('invoices')
-      .update({ total: newTotal })
-      .eq('id', currentEditingDoc.id);
-
-    if (totalError) {
-      console.error('Total update error:', totalError);
-      throw totalError;
-    }
-
-    console.log('Document updated successfully!');
-    alert('Document updated successfully!');
-    closeEditModal();
-    loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
-    
-  } catch (error) {
-    console.error('Error updating document:', error);
-    alert('Failed to update document: ' + error.message);
   }
-});
-
-function closeEditModal() {
-  editModal.style.display = 'none';
-  currentEditingDoc = null;
 }
 
-cancelEditBtn.addEventListener('click', closeEditModal);
+// Replace your renderReport function's PDF export part with this improved version
+async function renderReport(inv) {
+  const container = document.getElementById('report-container');
+  const isInvoice = inv.type === 'invoice';
+  const docTitle = isInvoice ? 'INVOIS' : 'SEBUT HARGA';
+  const dateStr = formatMalayDate(inv.created_at);
 
-// Re-send Modal Functions
-async function openResendModal(docId) {
-  try {
-    const { data: doc, error } = await client
-      .from('invoices')
-      .select(`
-        *,
-        customers(*)
-      `)
-      .eq('id', docId)
+  const cust = inv.customers || {};
+  const items = inv.invoice_items || [];
+
+  let preparedByUser = null;
+  if (inv.created_by) {
+      const { data: user, error: userErr } = await client
+          .from('users')
+          .select('name')
+          .eq('id', inv.created_by)
+          .single();
+      if (!userErr) preparedByUser = user;
+  }
+
+  // 🔹 Fetch group info if available
+  let groupInfo = null;
+  if (inv.group_id) {
+    const { data: g, error: gErr } = await client
+      .from('item_groups')
+      .select('*')
+      .eq('id', inv.group_id)
       .single();
-
-    if (error) throw error;
-
-    const reportLink = `${window.location.origin}/report.html?id=${doc.id}`;
-    const docType = doc.type.toUpperCase();
-    
-    document.getElementById('resend-doc-info').textContent = `${docType} - ${doc.invoice_no}`;
-
-    // Set up event listeners for sharing options
-    setupResendListeners(doc, reportLink, docType);
-    
-    resendModal.style.display = 'flex';
-  } catch (error) {
-    console.error('Error loading document for resend:', error);
-    alert('Failed to load document for sharing');
+    if (!gErr) groupInfo = g;
   }
-}
 
-function setupResendListeners(doc, reportLink, docType) {
-  // Remove existing listeners
-  const viewReport = document.getElementById('resend-view-report');
-  const whatsappBtn = document.getElementById('resend-whatsapp');
-  const emailBtn = document.getElementById('resend-email');
-  const copyBtn = document.getElementById('resend-copy-link');
-  const closeBtn = document.getElementById('close-resend');
+  // 🔹 Fetch staff contact if available
+  let staffContact = null;
+  if (inv.staff_id) {
+    const { data: s, error: sErr } = await client
+      .from('staff')
+      .select('*')
+      .eq('id', inv.staff_id)
+      .single();
+    if (!sErr) staffContact = s;
+  }
 
-  // Clone and replace to remove old listeners
-  viewReport.replaceWith(viewReport.cloneNode(true));
-  whatsappBtn.replaceWith(whatsappBtn.cloneNode(true));
-  emailBtn.replaceWith(emailBtn.cloneNode(true));
-  copyBtn.replaceWith(copyBtn.cloneNode(true));
-  closeBtn.replaceWith(closeBtn.cloneNode(true));
+  const totalWords = `Ringgit Malaysia: ${numberToBahasaWords(Math.floor(inv.total))} Sahaja`;
 
-  // Get fresh references
-  const freshViewReport = document.getElementById('resend-view-report');
-  const freshWhatsappBtn = document.getElementById('resend-whatsapp');
-  const freshEmailBtn = document.getElementById('resend-email');
-  const freshCopyBtn = document.getElementById('resend-copy-link');
-  const freshCloseBtn = document.getElementById('close-resend');
-
-  // Add new listeners
-  freshViewReport.addEventListener('click', () => {
-    window.open(reportLink, '_blank');
-  });
-
-  freshWhatsappBtn.addEventListener('click', () => {
-    const message = encodeURIComponent(
-      `Hi, here is your ${docType} (${doc.invoice_no}) from Api-Api Driving Centre:\n${reportLink}`
-    );
-    window.open(`https://wa.me/?text=${message}`, '_blank');
-  });
-
-  freshEmailBtn.addEventListener('click', () => {
-  const emailSubject = `${docType} - ${doc.invoice_no} - Api-Api Driving Centre`;
-  const emailBody = `Dear Customer,\n\nPlease find your ${docType} (${doc.invoice_no}) attached.\n\nYou can view it here: ${reportLink}\n\nThank you,\nApi-Api Driving Centre`;
-  const customerEmail = doc.customers?.email || '';
-  
-  // Check if customer has email
-  if (!customerEmail.trim()) {
-    alert('Customer does not have an email address saved. Please update customer details.');
+  // Word wrap function for notes
+  const wrapNotes = (text, maxLength = 80) => {
+    if (!text) return 'N/A';
     
-    // Optionally open the edit modal for this customer
-    // openEditModalForCustomer(doc.customer_id);
-    return;
-  }
-  
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(customerEmail)) {
-    alert('Customer email address is not valid. Please update customer details.');
-    return;
-  }
-  
-  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(customerEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-  window.open(gmailUrl, '_blank', 'noopener,noreferrer');
-});
-
-  freshCopyBtn.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(reportLink);
-      
-      // Show copied feedback
-      const originalText = freshCopyBtn.innerHTML;
-      freshCopyBtn.innerHTML = '✅ Copied!';
-      freshCopyBtn.style.background = '#28a745';
-      
-      setTimeout(() => {
-        freshCopyBtn.innerHTML = originalText;
-        freshCopyBtn.style.background = '#6c757d';
-      }, 2000);
-      
-    } catch (err) {
-      console.error('Failed to copy: ', err);
-      alert('Failed to copy link to clipboard');
+    let cleanText = text.trim().replace(/\s+/g, ' ');
+    
+    // Test with your specific data first
+    console.log('Input text:', cleanText);
+    
+    // Multiple patterns for different ID types
+    const patterns = [
+      // Pattern for IC numbers: names followed by 11-13 digits
+      /([a-zA-Z\s]+)\s+(\d{11,13})/g,
+      // Pattern for passport numbers: names followed by letter + 7-8 digits + 2-3 letters
+      /([a-zA-Z\s]+)\s+([A-Za-z]\d{7,8}[A-Za-z]{2,3})/gi
+    ];
+    
+    const lines = [];
+    
+    // Try each pattern
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(cleanText)) !== null) {
+        const name = match[1].trim();
+        const id = match[2].trim().toUpperCase();
+        lines.push(`${name} ${id}`);
+      }
     }
-  });
+    
+    // Remove duplicates while preserving order
+    const uniqueLines = [...new Set(lines)];
+    
+    if (uniqueLines.length > 0) {
+      console.log('Found matches:', uniqueLines);
+      return uniqueLines.join('<br>');
+    }
+    
+    // If no patterns matched, try simple comma/semicolon splitting
+    const simpleSplit = cleanText.split(/[,;|]/);
+    if (simpleSplit.length > 1) {
+      const trimmed = simpleSplit.map(part => part.trim()).filter(part => part.length > 0);
+      console.log('Simple split result:', trimmed);
+      return trimmed.join('<br>');
+    }
+    
+    console.log('No patterns matched, returning original text');
+    return cleanText;
+  };
 
-  freshCloseBtn.addEventListener('click', () => {
-    resendModal.style.display = 'none';
+  // Reduce table row height when there are many items
+  const getTableClass = () => {
+    if (items.length >= 7) return 'item-table compact';
+    if (items.length >= 5) return 'item-table condensed';
+    return 'item-table';
+  };
+
+  container.innerHTML = `
+  <div class="a4-page">
+    <div class="header">
+      <img src="assets/letterhead.png" alt="Letterhead" class="letterhead">
+    </div>
+    <div class="doc-top-title">
+      <h2>${docTitle}</h2>
+      ${groupInfo ? `<p class="group-info"><strong>${groupInfo.name}</strong> — ${groupInfo.description || ''}</p>` : ''}
+    </div>
+    <div class="doc-info-row">
+      <div class="kepada">
+        <strong>Kepada:</strong><br>
+        <strong>${cust.name || '-'}</strong><br>
+        ${cust.address ? cust.address + '<br>' : ''}
+        ${cust.contact ? 'Tel: ' + cust.contact + '<br>' : ''}
+        ${cust.email ? 'Emel: ' + cust.email : ''}
+      </div>
+      <div class="doc-right">
+        <p><strong>No. Dokumen:</strong> ${inv.invoice_no}</p>
+        <p><strong>Tarikh:</strong> ${dateStr}</p>
+        
+        <!-- Reference Box positioned below tarikh -->
+        ${inv.notes ? `
+        <div class="reference-box">
+          <div class="reference-header">
+            <strong>Calon:</strong>
+          </div>
+          <div class="reference-content">
+            <div class="notes-section">
+              <div class="wrapped-notes">${inv.notes ? wrapNotes(inv.notes) : 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+    
+    </div>
+    <div class="quotation-intro">
+      <p><strong>U/P: Tuan/Puan</strong></p>
+      <p>Berikut merupakan sebut harga untuk jenis lesen yang dipohon:</p>
+    </div>
+    <table class="${getTableClass()}">
+      <thead>
+        <tr>
+          <th>Bil</th>
+          <th>Butir-butir Perkhidmatan</th>
+          <th>Qty</th>
+          <th>Harga Seunit (RM)</th>
+          <th>Jumlah (RM)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((item, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${item.description}</td>
+            <td>${item.qty}</td>
+            <td>${item.unit_price.toFixed(2)}</td>
+            <td>${item.line_total.toFixed(2)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  
+    <div class="total-section">
+      <p><strong>Jumlah Keseluruhan (RM): ${inv.total.toFixed(2)}</strong></p>
+      <p><em>${totalWords}</em></p>
+      <p class="note">* Harga termasuk cukai (SST telah disertakan)</p>
+    </div>
+  
+    <div class="nota">
+      <p><strong>Nota **</strong></p>
+      <ol>
+        <li>Harga tidak termasuk <i>LDL RM35</i>, <i>Lesen Vokasional RM40</i> dan <i>Kad ujian RM10</i> jika berkenaan.</li>
+        <li>Pembayaran perlu dibuat sebelum sesi bermula.</li>
+        <li>Semua sesi adalah berdasarkan tempahan sahaja.</li>
+        <li>Sebarang pembayaran dan sesi yang telah dijalankan tidak akan dikembalikan.</li>
+        <li>Pembayaran bolehlah dibuat kepada:</li>
+      </ol>
+      <div class="bank">
+        <strong>API-API DRIVING CENTRE SDN BHD</strong><br>
+        PUBLIC BANK<br>
+        323-727-9005
+      </div>
+      
+      <!-- Additional Inquiries Contact -->
+      ${staffContact ? `
+      <div class="inquiry-contact">
+        <p><strong>Untuk sebarang pertanyaan lanjut, sila hubungi:</strong> ${staffContact.name} - ${staffContact.contact_no}</p>
+      </div>
+      ` : ''}
+      
+      <p style="margin-top:20px; font-size: 14px;">Sekian, terima kasih.<br>
+      <strong style="font-size: 16px;">Api-Api Driving Centre Sdn. Bhd.</strong></p>
+    </div>
+
+    <div class="action-bar">
+      <button id="download-btn">⬇️ Muat Turun PDF</button>
+    </div>
+    ${preparedByUser ? `
+      <p class="footer-note-user"><strong>Disediakan oleh:</strong> ${preparedByUser.name}</p>
+      ` : ''}
+      <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
+  </div>
+  `;
+
+  // ✅ PDF Export — fixed left-clip and width issues
+  document.getElementById('download-btn').addEventListener('click', () => {
+    const element = document.querySelector('.a4-page');
+    const downloadBtn = document.getElementById('download-btn');
+
+    const originalWidth    = element.style.width;
+    const originalOverflow = element.style.overflow;
+    const originalMargin   = element.style.margin;
+
+    downloadBtn.style.display = 'none';
+    element.classList.add('pdf-export');
+
+    // Pin element to top-left so html2canvas captures from x=0
+    element.style.overflow = 'visible';
+    element.style.width    = '794px';  // exact A4 px — matches windowWidth below
+    element.style.margin   = '0';     // remove "0 auto" centering during capture
+
+    // Scroll to top-left so offsets don't clip the left edge
+    window.scrollTo(0, 0);
+
+    const opt = {
+      margin:   [10, 10, 10, 10],      // mm — uniform margin inside PDF page
+      filename: `${inv.invoice_no}.pdf`,
+      image:    { type: 'jpeg', quality: 1 },
+      html2canvas: {
+        scale:           2,            // 2x for sharp text
+        useCORS:         true,
+        scrollX:         0,            // must be 0 — negative clips the left
+        scrollY:         0,
+        x:               0,            // capture from left edge of element
+        y:               0,
+        backgroundColor: '#FFFFFF',
+        logging:         false,
+        windowWidth:     794,          // matches element width exactly
+        windowHeight:    element.scrollHeight,
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: {
+        mode:   ['css', 'legacy'],
+        before: '.page-break',
+        after:  '.page-break-after',
+        avoid:  ['tr', '.nota', '.total-section'],
+      },
+    };
+
+    const restore = () => {
+      element.classList.remove('pdf-export');
+      element.style.width    = originalWidth;
+      element.style.overflow = originalOverflow;
+      element.style.margin   = originalMargin;
+      downloadBtn.style.display = 'inline-block';
+    };
+
+    // Delay lets the DOM settle after style changes before capture
+    setTimeout(() => {
+      html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .then(restore)
+        .catch((err) => { console.error('PDF generation failed:', err); restore(); });
+    }, 150);
   });
 }
 
-// Close modals when clicking outside
-window.addEventListener('click', (e) => {
-  if (e.target === editModal) {
-    closeEditModal();
-  }
-  if (e.target === resendModal) {
-    resendModal.style.display = 'none';
-  }
-});
-
-// Event listeners for pagination and search
-searchBtn.addEventListener('click', () => {
-  currentPage = 1;
-  loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
-});
-
-prevBtn.addEventListener('click', () => {
-  if (currentPage > 1) {
-    currentPage--;
-    loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
-  }
-});
-
-nextBtn.addEventListener('click', () => {
-  const totalPages = Math.ceil(totalRecords / pageSize);
-  if (currentPage < totalPages) {
-    currentPage++;
-    loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
-  }
-});
-
-// Initial load
-
-loadStaffContacts();
+loadReport();
