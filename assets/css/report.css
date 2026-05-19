@@ -98,6 +98,18 @@ body {
   white-space: nowrap;
 }
 
+.item-table.compact td,
+.item-table.compact th {
+  padding: 6px 8px !important;
+  font-size: 11px !important;
+}
+
+.item-table.condensed td,
+.item-table.condensed th {
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+}
+
 /* Table - Larger size */
 .item-table {
   width: 100%;
@@ -278,6 +290,29 @@ body {
   .action-bar {
     display: none;
   }
+
+  nota, .total-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  .a4-page {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  
+}
+
+/* PDF export specific styles */
+.pdf-export .nota {
+  margin-top: 10px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.pdf-export .total-section {
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 /* Screen preview */
