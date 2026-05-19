@@ -307,9 +307,15 @@ async function renderReport(inv) {
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
+
+    // Store original styles
+    const originalOverflow = element.style.overflow;
+    const originalWidth = element.style.width;
     
     downloadBtn.style.display = 'none';
     element.classList.add('pdf-export');
+    element.style.overflow = 'visible';
+    element.style.width = '100%';
 
     // Perfect margin settings for A4
     const opt = {
