@@ -348,6 +348,13 @@ async function renderReport(inv) {
       }
     };
 
+    const restore = () => {
+    element.classList.remove('pdf-export');
+    element.style.width = originalWidth; // ← Restore original width
+    element.style.overflow = originalOverflow;
+    downloadBtn.style.display = 'inline-block';
+  };
+
     // Force the nota section to stay on same page if possible
     const notaSection = document.querySelector('.nota');
     const totalSection = document.querySelector('.total-section');
