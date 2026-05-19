@@ -305,70 +305,62 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ PDF Export — zero jsPDF margins, CSS padding handles spacing
+  // ✅ PDF Export — capture element in-place; no repositioning to avoid blank canvas
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
 
-    const originalWidth    = element.style.width;
-    const originalOverflow = element.style.overflow;
-    const originalMargin   = element.style.margin;
-    const originalPosition = element.style.position;
-    const originalLeft     = element.style.left;
-
     downloadBtn.style.display = 'none';
     element.classList.add('pdf-export');
 
-    // Move element to exact top-left so html2canvas origin is (0,0)
-    element.style.position = 'absolute';
-    element.style.left     = '0';
-    element.style.margin   = '0';
-    element.style.overflow = 'visible';
-    element.style.width    = '794px';
-
+    // Scroll to top so html2canvas captures from the correct viewport origin
     window.scrollTo(0, 0);
 
-    const opt = {
-      margin:   0,                        // ← ZERO margins: CSS padding is the margin
-      filename: `${inv.invoice_no}.pdf`,
-      image:    { type: 'jpeg', quality: 1 },
-      html2canvas: {
-        scale:           2,
-        useCORS:         true,
-        scrollX:         0,
-        scrollY:         0,
-        backgroundColor: '#FFFFFF',
-        logging:         false,
-        windowWidth:     794,             // exact element width — no scaling distortion
-        windowHeight:    element.scrollHeight,
-      },
-      jsPDF: { unit: 'px', format: [794, element.scrollHeight], orientation: 'portrait' },
-      pagebreak: {
-        mode:   ['css', 'legacy'],
-        before: '.page-break',
-        after:  '.page-break-after',
-        avoid:  ['tr', '.nota', '.total-section'],
-      },
-    };
-
-    const restore = () => {
-      element.classList.remove('pdf-export');
-      element.style.width    = originalWidth;
-      element.style.overflow = originalOverflow;
-      element.style.margin   = originalMargin;
-      element.style.position = originalPosition;
-      element.style.left     = originalLeft;
-      downloadBtn.style.display = 'inline-block';
-    };
-
+    // Small delay to let the browser repaint after hiding the button
     setTimeout(() => {
+      const rect = element.getBoundingClientRect();
+      const pageH = element.scrollHeight;
+
+      const opt = {
+        margin:   0,
+        filename: `${inv.invoice_no}.pdf`,
+        image:    { type: 'jpeg', quality: 1 },
+        html2canvas: {
+          scale:           2,
+          useCORS:         true,
+          allowTaint:      true,
+          scrollX:         0,
+          scrollY:         -window.scrollY,   // compensate for any residual scroll
+          backgroundColor: '#FFFFFF',
+          logging:         false,
+          width:           794,
+          height:          pageH,
+          windowWidth:     794,
+          windowHeight:    pageH,
+          x:               rect.left,         // capture starting at the element's left edge
+          y:               0,
+        },
+        jsPDF: { unit: 'px', format: [794, pageH], orientation: 'portrait' },
+        pagebreak: {
+          mode:   ['css', 'legacy'],
+          before: '.page-break',
+          after:  '.page-break-after',
+          avoid:  ['tr', '.nota', '.total-section'],
+        },
+      };
+
+      const restore = () => {
+        element.classList.remove('pdf-export');
+        downloadBtn.style.display = 'inline-block';
+      };
+
       html2pdf()
         .set(opt)
         .from(element)
         .save()
         .then(restore)
         .catch((err) => { console.error('PDF generation failed:', err); restore(); });
-    }, 200);
+    }, 300);
   });
 }
 
