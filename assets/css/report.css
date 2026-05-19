@@ -297,11 +297,6 @@ body {
     break-inside: avoid;
   }
   
-  .a4-page {
-    page-break-after: avoid;
-    break-after: avoid;
-  }
-  
 }
 
 /* PDF export specific styles */
