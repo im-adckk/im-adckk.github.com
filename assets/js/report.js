@@ -60,9 +60,45 @@ async function loadReport() {
   renderReport(invoice);
 }
 
-// ------------------------------------------------------------
-// Render A4 layout (exact Sebut Harga / Invois style)
-// ------------------------------------------------------------
+// Add this function to check content height and handle page breaks
+function checkContentHeight() {
+  const element = document.querySelector('.a4-page');
+  if (!element) return;
+  
+  // A4 height in mm (297mm) minus margins
+  const maxHeight = 277; // 297mm - 20mm (10mm top + 10mm bottom)
+  
+  // Get all major sections
+  const sections = {
+    header: element.querySelector('.header'),
+    title: element.querySelector('.doc-top-title'),
+    info: element.querySelector('.doc-info-row'),
+    intro: element.querySelector('.quotation-intro'),
+    table: element.querySelector('.item-table'),
+    total: element.querySelector('.total-section'),
+    nota: element.querySelector('.nota'),
+    footer: element.querySelector('.footer-note')
+  };
+  
+  // Calculate if we need page breaks
+  let totalHeight = 0;
+  for (const [name, section] of Object.entries(sections)) {
+    if (section) {
+      const height = section.offsetHeight;
+      totalHeight += height;
+      
+      // If adding this section would exceed max height, add page break before
+      if (totalHeight > maxHeight && (name === 'nota' || name === 'footer')) {
+        section.style.pageBreakBefore = 'always';
+        section.style.marginTop = '20px';
+      } else {
+        section.style.pageBreakBefore = 'auto';
+      }
+    }
+  }
+}
+
+// Replace your renderReport function's PDF export part with this improved version
 async function renderReport(inv) {
   const container = document.getElementById('report-container');
   const isInvoice = inv.type === 'invoice';
@@ -107,7 +143,6 @@ async function renderReport(inv) {
   const totalWords = `Ringgit Malaysia: ${numberToBahasaWords(Math.floor(inv.total))} Sahaja`;
 
   // Word wrap function for notes
-  // More robust word wrap function for notes
   const wrapNotes = (text, maxLength = 80) => {
     if (!text) return 'N/A';
     
@@ -156,7 +191,13 @@ async function renderReport(inv) {
     return cleanText;
   };
 
-  // Reduce margins and padding in your template
+  // Reduce table row height when there are many items
+  const getTableClass = () => {
+    if (items.length >= 7) return 'item-table compact';
+    if (items.length >= 5) return 'item-table condensed';
+    return 'item-table';
+  };
+
   container.innerHTML = `
   <div class="a4-page">
     <div class="header">
@@ -198,7 +239,7 @@ async function renderReport(inv) {
       <p><strong>U/P: Tuan/Puan</strong></p>
       <p>Berikut merupakan sebut harga untuk jenis lesen yang dipohon:</p>
     </div>
-    <table class="item-table">
+    <table class="${getTableClass()}">
       <thead>
         <tr>
           <th>Bil</th>
@@ -221,7 +262,7 @@ async function renderReport(inv) {
     </table>
   
     <div class="total-section">
-      <p><strong>Jumlah Keseluruhan (RM): ${inv.total.toFixed(2)}</p></strong>
+      <p><strong>Jumlah Keseluruhan (RM): ${inv.total.toFixed(2)}</strong></p>
       <p><em>${totalWords}</em></p>
       <p class="note">* Harga termasuk cukai (SST telah disertakan)</p>
     </div>
@@ -250,8 +291,8 @@ async function renderReport(inv) {
       
       <p style="margin-top:20px; font-size: 14px;">Sekian, terima kasih.<br>
       <strong style="font-size: 16px;">Api-Api Driving Centre Sdn. Bhd.</strong></p>
-      
-  
+    </div>
+
     <div class="action-bar">
       <button id="download-btn">⬇️ Muat Turun PDF</button>
     </div>
@@ -259,59 +300,85 @@ async function renderReport(inv) {
       <p class="footer-note-user"><strong>Disediakan oleh:</strong> ${preparedByUser.name}</p>
       ` : ''}
       <p class="footer-note">Janaan komputer — tandatangan tidak diperlukan</p>
-    </div>
   </div>
   `;
 
-// ✅ PERFECT MARGIN PDF Export
-document.getElementById('download-btn').addEventListener('click', () => {
-  const element = document.querySelector('.a4-page');
-  const downloadBtn = document.getElementById('download-btn');
-  
-  downloadBtn.style.display = 'none';
-  element.classList.add('pdf-export');
+  // ✅ IMPROVED PDF Export with better page break handling
+  document.getElementById('download-btn').addEventListener('click', () => {
+    const element = document.querySelector('.a4-page');
+    const downloadBtn = document.getElementById('download-btn');
+    
+    downloadBtn.style.display = 'none';
+    element.classList.add('pdf-export');
 
-  // Perfect margin settings for A4
-  const opt = {
-    margin: [10, 10, 10, 5],  // [top, left, bottom, right] in mm - Equal small margins
-    filename: `${inv.invoice_no}.pdf`,
-    image: { 
-      type: 'jpeg', 
-      quality: 1 
-    },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      scrollX: 0,
-      scrollY: 0,
-      
-      backgroundColor: '#FFFFFF',
-      logging: false
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait'
-    },
-    pagebreak: { 
-      mode: ['avoid-all', 'css', 'legacy'] 
+    // Perfect margin settings for A4
+    const opt = {
+      margin: [10, 10, 10, 5],  // [top, left, bottom, right] in mm
+      filename: `${inv.invoice_no}.pdf`,
+      image: { 
+        type: 'jpeg', 
+        quality: 1 
+      },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        backgroundColor: '#FFFFFF',
+        logging: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
+      },
+      pagebreak: { 
+        mode: ['css', 'legacy'],
+        before: '.page-break',
+        after: '.page-break-after',
+        avoid: ['tr', '.nota', '.total-section']
+      }
+    };
+
+    // Force the nota section to stay on same page if possible
+    const notaSection = document.querySelector('.nota');
+    const totalSection = document.querySelector('.total-section');
+    
+    if (notaSection && totalSection) {
+      // Calculate if there's enough space
+      setTimeout(() => {
+        html2pdf()
+          .set(opt)
+          .from(element)
+          .save()
+          .then(() => {
+            element.classList.remove('pdf-export');
+            downloadBtn.style.display = 'inline-block';
+          })
+          .catch((err) => {
+            console.error('PDF generation failed:', err);
+            element.classList.remove('pdf-export');
+            downloadBtn.style.display = 'inline-block';
+          });
+      }, 100);
+    } else {
+      html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .then(() => {
+          element.classList.remove('pdf-export');
+          downloadBtn.style.display = 'inline-block';
+        })
+        .catch((err) => {
+          console.error('PDF generation failed:', err);
+          element.classList.remove('pdf-export');
+          downloadBtn.style.display = 'inline-block';
+        });
     }
-  };
-
-  html2pdf()
-    .set(opt)
-    .from(element)
-    .save()
-    .then(() => {
-      element.classList.remove('pdf-export');
-      downloadBtn.style.display = 'inline-block';
-    })
-    .catch((err) => {
-      console.error('PDF generation failed:', err);
-      element.classList.remove('pdf-export');
-      downloadBtn.style.display = 'inline-block';
-    });
-});
+  });
 }
 
 loadReport();
