@@ -73,7 +73,6 @@ body {
   margin: 8px 0;
   gap: 8px;
   width: 100%;
-  overflow: hidden;           /* ensure row never bleeds outside page */
 }
 
 .kepada {
