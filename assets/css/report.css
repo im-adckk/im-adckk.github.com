@@ -40,7 +40,8 @@ body {
 }
 
 .letterhead {
-  max-width: 170mm;
+  width: 100%;              /* stretch to fill the page width */
+  max-width: 640px;         /* cap at ~170mm equivalent in px */
   height: auto;
   margin-bottom: 0;
 }
@@ -99,7 +100,11 @@ body {
 .doc-right {
   text-align: right;
   font-size: 14px;
-  white-space: nowrap;
+  white-space: normal;      /* was nowrap — caused right-side overflow/clip */
+  min-width: 180px;
+  max-width: 48%;           /* mirrors .kepada so both stay within container */
+  flex-shrink: 0;
+  word-break: break-word;
 }
 
 .item-table.compact td,
