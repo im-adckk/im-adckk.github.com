@@ -315,7 +315,7 @@ async function renderReport(inv) {
     downloadBtn.style.display = 'none';
     element.classList.add('pdf-export');
     element.style.overflow = 'visible';
-    element.style.width = '100%';
+    element.style.width = '794px';
 
     // Perfect margin settings for A4
     const opt = {
@@ -332,8 +332,8 @@ async function renderReport(inv) {
         scrollY: 0,
         backgroundColor: '#FFFFFF',
         logging: false,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight
+        windowWidth: 794,   // 210mm at 96dpi = full A4 width
+        windowHeight: element.scrollHeight,
       },
       jsPDF: {
         unit: 'mm',
@@ -361,11 +361,13 @@ async function renderReport(inv) {
           .save()
           .then(() => {
             element.classList.remove('pdf-export');
+            element.style.width = originalWidth; 
             downloadBtn.style.display = 'inline-block';
           })
           .catch((err) => {
             console.error('PDF generation failed:', err);
             element.classList.remove('pdf-export');
+            element.style.width = originalWidth; 
             downloadBtn.style.display = 'inline-block';
           });
       }, 100);
