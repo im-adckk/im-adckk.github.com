@@ -303,96 +303,68 @@ async function renderReport(inv) {
   </div>
   `;
 
-  // ✅ IMPROVED PDF Export with better page break handling
+  // ✅ PDF Export — fixed left-clip and width issues
   document.getElementById('download-btn').addEventListener('click', () => {
     const element = document.querySelector('.a4-page');
     const downloadBtn = document.getElementById('download-btn');
 
-    // Store original styles
+    const originalWidth    = element.style.width;
     const originalOverflow = element.style.overflow;
-    const originalWidth = element.style.width;
-    
+    const originalMargin   = element.style.margin;
+
     downloadBtn.style.display = 'none';
     element.classList.add('pdf-export');
-    element.style.overflow = 'visible';
-    element.style.width = '794px';
 
-    // Perfect margin settings for A4
+    // Pin element to top-left so html2canvas captures from x=0
+    element.style.overflow = 'visible';
+    element.style.width    = '794px';  // exact A4 px — matches windowWidth below
+    element.style.margin   = '0';     // remove "0 auto" centering during capture
+
+    // Scroll to top-left so offsets don't clip the left edge
+    window.scrollTo(0, 0);
+
     const opt = {
-      margin: [0.5, 0.5, 0.5, 0.5],  // [top, left, bottom, right] in mm
+      margin:   [10, 10, 10, 10],      // mm — uniform margin inside PDF page
       filename: `${inv.invoice_no}.pdf`,
-      image: { 
-        type: 'jpeg', 
-        quality: 1 
-      },
+      image:    { type: 'jpeg', quality: 1 },
       html2canvas: {
-        scale: 2,
-        useCORS: true,
-        scrollX: 0,
-        scrollY: 0,
+        scale:           2,            // 2x for sharp text
+        useCORS:         true,
+        scrollX:         0,            // must be 0 — negative clips the left
+        scrollY:         0,
+        x:               0,            // capture from left edge of element
+        y:               0,
         backgroundColor: '#FFFFFF',
-        logging: false,
-        windowWidth: 794,   // 210mm at 96dpi = full A4 width
-        windowHeight: element.scrollHeight,
+        logging:         false,
+        windowWidth:     794,          // matches element width exactly
+        windowHeight:    element.scrollHeight,
       },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait'
-      },
-      pagebreak: { 
-        mode: ['css', 'legacy'],
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: {
+        mode:   ['css', 'legacy'],
         before: '.page-break',
-        after: '.page-break-after',
-        avoid: ['tr', '.nota', '.total-section']
-      }
+        after:  '.page-break-after',
+        avoid:  ['tr', '.nota', '.total-section'],
+      },
     };
 
     const restore = () => {
-    element.classList.remove('pdf-export');
-    element.style.width = originalWidth; // ← Restore original width
-    element.style.overflow = originalOverflow;
-    downloadBtn.style.display = 'inline-block';
-  };
+      element.classList.remove('pdf-export');
+      element.style.width    = originalWidth;
+      element.style.overflow = originalOverflow;
+      element.style.margin   = originalMargin;
+      downloadBtn.style.display = 'inline-block';
+    };
 
-    // Force the nota section to stay on same page if possible
-    const notaSection = document.querySelector('.nota');
-    const totalSection = document.querySelector('.total-section');
-    
-    if (notaSection && totalSection) {
-      // Calculate if there's enough space
-      setTimeout(() => {
-        html2pdf()
-          .set(opt)
-          .from(element)
-          .save()
-          .then(() => {
-            element.classList.remove('pdf-export');
-            element.style.width = originalWidth; 
-            downloadBtn.style.display = 'inline-block';
-          })
-          .catch((err) => {
-            console.error('PDF generation failed:', err);
-            element.classList.remove('pdf-export');
-            element.style.width = originalWidth; 
-            downloadBtn.style.display = 'inline-block';
-          });
-      }, 100);
-    } else {
+    // Delay lets the DOM settle after style changes before capture
+    setTimeout(() => {
       html2pdf()
         .set(opt)
         .from(element)
         .save()
-        .then(() => {
-          element.classList.remove('pdf-export');
-          downloadBtn.style.display = 'inline-block';
-        })
-        .catch((err) => {
-          console.error('PDF generation failed:', err);
-          element.classList.remove('pdf-export');
-          downloadBtn.style.display = 'inline-block';
-        });
-    }
+        .then(restore)
+        .catch((err) => { console.error('PDF generation failed:', err); restore(); });
+    }, 150);
   });
 }
 
