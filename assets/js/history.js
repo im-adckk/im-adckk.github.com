@@ -48,10 +48,6 @@ async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFil
     .order('created_at', { ascending: false })
     .range(from, to);
 
-
-
-
-
   if (nameFilter) query = query.ilike('customers.name', `%${nameFilter}%`);
   if (dateFilter) {
     const start = new Date(dateFilter);
@@ -65,8 +61,6 @@ async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFil
   if (error) {
     console.error('Fetch error:', error);
     tableBody.innerHTML = `<tr><td colspan="6" style="color:red;">Failed to load documents</td></tr>`;
-
-
     return;
   }
 
@@ -74,7 +68,6 @@ async function loadDocuments(page = 1, nameFilter = '', dateFilter = '', typeFil
   renderDocuments(data);
   updatePagination(page);
 }
-
 
 function renderDocuments(docs) {
   if (!docs || docs.length === 0) {
@@ -106,7 +99,6 @@ function renderDocuments(docs) {
     `;
   }).join('');
 
-  // Attach event listeners to edit and resend buttons
   document.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', () => openEditModal(btn.dataset.id));
   });
@@ -123,7 +115,6 @@ function updatePagination(page) {
   nextBtn.disabled = page >= totalPages;
 }
 
-// Load staff contacts for dropdown
 async function loadStaffContacts() {
   try {
     const { data: staff, error } = await client
@@ -132,7 +123,6 @@ async function loadStaffContacts() {
       .order('name');
 
     if (error) throw error;
-
     staffContacts = staff || [];
     renderStaffContacts();
   } catch (error) {
@@ -142,7 +132,6 @@ async function loadStaffContacts() {
 
 function renderStaffContacts() {
   if (!editStaffContact) return;
-
   editStaffContact.innerHTML = '<option value="">-- Select Contact Department --</option>' +
     staffContacts.map(s => `
       <option value="${s.id}">${s.name} - ${s.contact_no}</option>
@@ -154,7 +143,6 @@ async function openEditModal(docId) {
   try {
     console.log('Opening edit modal for document:', docId);
     
-    // Fetch complete document data with customer, staff, and line items
     const { data: doc, error } = await client
       .from('invoices')
       .select(`
@@ -174,7 +162,6 @@ async function openEditModal(docId) {
     console.log('Document data loaded:', doc);
     currentEditingDoc = doc;
 
-    // Populate modal fields
     document.getElementById('edit-doc-no').value = doc.invoice_no;
     document.getElementById('edit-date').value = new Date(doc.created_at).toLocaleDateString();
     document.getElementById('edit-type').value = doc.type.charAt(0).toUpperCase() + doc.type.slice(1);
@@ -184,19 +171,14 @@ async function openEditModal(docId) {
     document.getElementById('edit-customer-address').value = doc.customers?.address || '';
     document.getElementById('edit-notes').value = doc.notes || '';
 
-    // Set staff contact if exists
     if (doc.staff_id && editStaffContact) {
       console.log('Setting staff contact to:', doc.staff_id);
       editStaffContact.value = doc.staff_id;
     } else {
-      console.log('No staff_id found or staff_id is null');
       editStaffContact.value = '';
     }
 
-    // Render line items
     renderEditLineItems(doc.invoice_items);
-
-    // Show modal
     editModal.style.display = 'flex';
     
   } catch (error) {
@@ -211,30 +193,25 @@ function renderEditLineItems(lineItems) {
   if (!lineItems || lineItems.length === 0) {
     editLineItems.innerHTML = '<p>No line items</p>';
     return;
-
-
-
   }
 
   lineItems.forEach((item, index) => {
     const lineDiv = document.createElement('div');
     lineDiv.className = 'line-item';
     lineDiv.innerHTML = `
-      <input type="text" class="line-description" value="${item.description}" placeholder="Description" data-index="${index}">
-      <input type="number" class="line-qty" value="${item.qty}" min="1" placeholder="Qty" data-index="${index}" step="1">
-      <input type="number" class="line-price" value="${item.unit_price}" min="0" placeholder="Price" data-index="${index}" step="0.01">
-      <span class="line-total">RM ${(item.qty * item.unit_price).toFixed(2)}</span>
+      <input type="text" class="line-description" value="${item.description || ''}" placeholder="Description" data-index="${index}">
+      <input type="number" class="line-qty" value="${item.qty || 1}" min="1" placeholder="Qty" data-index="${index}" step="1">
+      <input type="number" class="line-price" value="${item.unit_price || 0}" min="0" placeholder="Price" data-index="${index}" step="0.01">
+      <span class="line-total">RM ${((item.qty || 1) * (item.unit_price || 0)).toFixed(2)}</span>
       <button type="button" class="remove-line" data-index="${index}">×</button>
     `;
     editLineItems.appendChild(lineDiv);
   });
 
-  // Attach event listeners for line item changes
   attachLineItemListeners();
 }
 
 function attachLineItemListeners() {
-  // Quantity and price change listeners
   editLineItems.querySelectorAll('.line-qty, .line-price').forEach(input => {
     input.addEventListener('input', (e) => {
       const index = e.target.dataset.index;
@@ -242,7 +219,6 @@ function attachLineItemListeners() {
     });
   });
 
-  // Remove line listeners
   editLineItems.querySelectorAll('.remove-line').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const index = e.target.dataset.index;
@@ -256,25 +232,22 @@ function updateLineTotal(index) {
   const price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${index}"]`).value) || 0;
   const total = qty * price;
   
-  editLineItems.querySelector(`.line-total[data-index="${index}"]`).textContent = `RM ${total.toFixed(2)}`;
+  const totalSpan = editLineItems.querySelector(`.line-total[data-index="${index}"]`);
+  if (totalSpan) {
+    totalSpan.textContent = `RM ${total.toFixed(2)}`;
+  }
 }
 
 function removeLineItem(index) {
   if (currentEditingDoc.invoice_items.length <= 1) {
     alert('Document must have at least one line item');
     return;
-
-
-
-
-
   }
   
   currentEditingDoc.invoice_items.splice(index, 1);
   renderEditLineItems(currentEditingDoc.invoice_items);
 }
 
-// Add new line item
 addLineBtn.addEventListener('click', () => {
   const newLine = {
     description: '',
@@ -287,23 +260,18 @@ addLineBtn.addEventListener('click', () => {
   renderEditLineItems(currentEditingDoc.invoice_items);
 });
 
-// Save edited document
 editForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   
   try {
     console.log('Starting document update...');
 
-    // Update customer information
     const customerUpdate = {
       name: document.getElementById('edit-customer-name').value,
       contact: document.getElementById('edit-customer-contact').value,
       email: document.getElementById('edit-customer-email').value,
       address: document.getElementById('edit-customer-address').value
     };
-
-    console.log('Updating customer:', customerUpdate);
-
 
     const { error: customerError } = await client
       .from('customers')
@@ -315,17 +283,11 @@ editForm.addEventListener('submit', async (e) => {
       throw customerError;
     }
 
-    // Get selected staff contact
     const selectedStaffId = editStaffContact.value || null;
-    console.log('Selected staff ID:', selectedStaffId);
-
-    // Update invoice notes and staff contact
     const invoiceUpdate = {
       notes: document.getElementById('edit-notes').value,
       staff_id: selectedStaffId
     };
-
-    console.log('Updating invoice:', invoiceUpdate);
 
     const { error: invoiceError } = await client
       .from('invoices')
@@ -337,19 +299,13 @@ editForm.addEventListener('submit', async (e) => {
       throw invoiceError;
     }
 
-    // Update line items
-    console.log('Updating line items...');
     for (let i = 0; i < currentEditingDoc.invoice_items.length; i++) {
-      const item = currentEditingDoc.invoice_items[i];
       const description = editLineItems.querySelector(`.line-description[data-index="${i}"]`).value;
       const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${i}"]`).value) || 0;
       const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${i}"]`).value) || 0;
       const line_total = qty * unit_price;
       
-      console.log(`Line item ${i}:`, { description, qty, unit_price, line_total });
-      
-      if (item.id) {
-        // Update existing line item
+      if (currentEditingDoc.invoice_items[i].id) {
         const { error: lineError } = await client
           .from('invoice_items')
           .update({
@@ -358,14 +314,10 @@ editForm.addEventListener('submit', async (e) => {
             unit_price,
             line_total
           })
-          .eq('id', item.id);
+          .eq('id', currentEditingDoc.invoice_items[i].id);
 
-        if (lineError) {
-          console.error('Line item update error:', lineError);
-          throw lineError;
-        }
+        if (lineError) throw lineError;
       } else {
-        // Insert new line item
         const { error: lineError } = await client
           .from('invoice_items')
           .insert({
@@ -376,33 +328,24 @@ editForm.addEventListener('submit', async (e) => {
             line_total
           });
 
-        if (lineError) {
-          console.error('Line item insert error:', lineError);
-          throw lineError;
-        }
+        if (lineError) throw lineError;
       }
     }
 
-    // Update invoice total
-    const newTotal = currentEditingDoc.invoice_items.reduce((sum, item, index) => {
-      const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${index}"]`).value) || 0;
-      const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${index}"]`).value) || 0;
-      return sum + (qty * unit_price);
-    }, 0);
-
-    console.log('Updating total to:', newTotal);
+    let newTotal = 0;
+    for (let i = 0; i < currentEditingDoc.invoice_items.length; i++) {
+      const qty = parseFloat(editLineItems.querySelector(`.line-qty[data-index="${i}"]`).value) || 0;
+      const unit_price = parseFloat(editLineItems.querySelector(`.line-price[data-index="${i}"]`).value) || 0;
+      newTotal += (qty * unit_price);
+    }
 
     const { error: totalError } = await client
       .from('invoices')
       .update({ total: newTotal })
       .eq('id', currentEditingDoc.id);
 
-    if (totalError) {
-      console.error('Total update error:', totalError);
-      throw totalError;
-    }
+    if (totalError) throw totalError;
 
-    console.log('Document updated successfully!');
     alert('Document updated successfully!');
     closeEditModal();
     loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
@@ -438,13 +381,7 @@ async function openResendModal(docId) {
     const docType = doc.type.toUpperCase();
 
     document.getElementById('resend-doc-info').textContent = `${docType} - ${doc.invoice_no}`;
-
-    // Set up event listeners for sharing options
     setupResendListeners(doc, reportLink, docType);
-
-
-
-
     resendModal.style.display = 'flex';
   } catch (error) {
     console.error('Error loading document for resend:', error);
@@ -453,49 +390,92 @@ async function openResendModal(docId) {
 }
 
 function setupResendListeners(doc, reportLink, docType) {
-  // Remove existing listeners
-  const viewReport = document.getElementById('resend-view-report');
-  const whatsappBtn = document.getElementById('resend-whatsapp');
-  const emailBtn = document.getElementById('resend-email');
-  const copyBtn = document.getElementById('resend-copy-link');
-  const closeBtn = document.getElementById('close-resend');
-
-  // Clone and replace to remove old listeners
-  viewReport.replaceWith(viewReport.cloneNode(true));
-  whatsappBtn.replaceWith(whatsappBtn.cloneNode(true));
-  emailBtn.replaceWith(emailBtn.cloneNode(true));
-  copyBtn.replaceWith(copyBtn.cloneNode(true));
-  closeBtn.replaceWith(closeBtn.cloneNode(true));
-
-  // Get fresh references
   const freshViewReport = document.getElementById('resend-view-report');
   const freshWhatsappBtn = document.getElementById('resend-whatsapp');
   const freshEmailBtn = document.getElementById('resend-email');
   const freshCopyBtn = document.getElementById('resend-copy-link');
   const freshCloseBtn = document.getElementById('close-resend');
 
+  // Remove existing listeners by cloning and replacing
+  const newViewReport = freshViewReport.cloneNode(true);
+  const newWhatsappBtn = freshWhatsappBtn.cloneNode(true);
+  const newEmailBtn = freshEmailBtn.cloneNode(true);
+  const newCopyBtn = freshCopyBtn.cloneNode(true);
+  const newCloseBtn = freshCloseBtn.cloneNode(true);
+
+  freshViewReport.parentNode.replaceChild(newViewReport, freshViewReport);
+  freshWhatsappBtn.parentNode.replaceChild(newWhatsappBtn, freshWhatsappBtn);
+  freshEmailBtn.parentNode.replaceChild(newEmailBtn, freshEmailBtn);
+  freshCopyBtn.parentNode.replaceChild(newCopyBtn, freshCopyBtn);
+  freshCloseBtn.parentNode.replaceChild(newCloseBtn, freshCloseBtn);
+
   // Add new listeners
-  freshViewReport.addEventListener('click', () => {
+  document.getElementById('resend-view-report').addEventListener('click', () => {
     window.open(reportLink, '_blank');
   });
 
-  freshWhatsappBtn.addEventListener('click', () => {
+  document.getElementById('resend-whatsapp').addEventListener('click', () => {
     const message = encodeURIComponent(
       `Hi, here is your ${docType} (${doc.invoice_no}) from Api-Api Driving Centre:\n${reportLink}`
     );
     window.open(`https://wa.me/?text=${message}`, '_blank');
   });
 
-  freshEmailBtn.addEventListener('click', () => {
-  const emailSubject = `${docType} - ${doc.invoice_no} - Api-Api Driving Centre`;
-  const emailBody = `Dear Customer,\n\nPlease find your ${docType} (${doc.invoice_no}) attached.\n\nYou can view it here: ${reportLink}\n\nThank you,\nApi-Api Driving Centre`;
-  const customerEmail = doc.customers?.email || '';
-  
-  // Check if customer has email
-  if (!customerEmail.trim()) {
-    alert('Customer does not have an email address saved. Please update customer details.');
+  document.getElementById('resend-email').addEventListener('click', () => {
+    const emailSubject = `${docType} - ${doc.invoice_no} - Api-Api Driving Centre`;
+    const emailBody = `Dear Customer,\n\nPlease find your ${docType} (${doc.invoice_no}) attached.\n\nYou can view it here: ${reportLink}\n\nThank you,\nApi-Api Driving Centre`;
+    const customerEmail = doc.customers?.email || '';
+    
+    if (!customerEmail.trim()) {
+      alert('Customer does not have an email address saved. Please update customer details.');
+      return;
+    }
+    
+    window.location.href = `mailto:${customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+  });
 
-    // Optionally open the edit modal for this customer
-    // openEditModalForCustomer(doc.customer_id);
-    return;
+  document.getElementById('resend-copy-link').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(reportLink);
+      alert('Link copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy link');
+    }
+  });
+
+  document.getElementById('close-resend').addEventListener('click', () => {
+    resendModal.style.display = 'none';
+  });
+}
+
+// Close modals when clicking outside
+window.addEventListener('click', (e) => {
+  if (e.target === editModal) closeEditModal();
+  if (e.target === resendModal) {
+    resendModal.style.display = 'none';
   }
+});
+
+// Search button functionality
+searchBtn.addEventListener('click', () => {
+  currentPage = 1;
+  loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
+});
+
+// Pagination buttons
+prevBtn.addEventListener('click', () => {
+  if (currentPage > 1) {
+    currentPage--;
+    loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
+  }
+});
+
+nextBtn.addEventListener('click', () => {
+  currentPage++;
+  loadDocuments(currentPage, searchName.value.trim(), searchDate.value, filterType.value);
+});
+
+// Initial load
+loadStaffContacts();
+loadDocuments();
