@@ -117,7 +117,7 @@ async function initializeAdmin() {
     document.getElementById('reportDateTo').value = today;
     
     await loadStats();
-    await loadAllBookings();
+    //await loadAllBookings();
     renderAdminCalendar();
     loadAdminCalendarData();
 }
@@ -870,6 +870,7 @@ function showTab(tab) {
     if (tab === 'bookings') {
         tabBookings.style.background = '#3498db';
         contentBookings.style.display = 'block';
+        // Load bookings only when this tab is clicked
         loadAllBookings();
     } else if (tab === 'calendar') {
         tabCalendar.style.background = '#3498db';
