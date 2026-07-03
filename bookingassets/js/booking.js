@@ -1,7 +1,9 @@
+// Supabase Configuration
 const SUPABASE_URL = 'https://yrrinzreyafiowehhhon.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Use window.supabase instead of declaring a new variable
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // State variables
 let selectedClass = '';
@@ -47,7 +49,7 @@ async function loadAvailableDates() {
         showMessage('Loading available dates...', 'info');
         
         // Get all available dates with sessions
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .rpc('get_available_sessions_for_date', {
                 check_date: null,
                 class_filter: selectedClass
@@ -91,7 +93,7 @@ bookingDateSelect.addEventListener('change', async () => {
     }
     
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .rpc('get_available_sessions_for_date', {
                 check_date: selectedDate,
                 class_filter: selectedClass
@@ -187,7 +189,7 @@ async function createBooking() {
         showMessage('Creating booking...', 'info');
         
         // Check for duplicate booking
-        const { data: duplicate, error: dupError } = await supabase
+        const { data: duplicate, error: dupError } = await supabaseClient
             .rpc('check_duplicate_booking', {
                 p_icno: icno,
                 p_booking_date: bookingDate,
@@ -204,7 +206,7 @@ async function createBooking() {
         }
         
         // Create booking
-        const { data: booking, error: createError } = await supabase
+        const { data: booking, error: createError } = await supabaseClient
             .from('bookings')
             .insert([{
                 icno: icno,
