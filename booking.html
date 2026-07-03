@@ -10,7 +10,7 @@
     
     <!-- Step 1: Class Selection -->
     <div id="step1">
-        <h2>Select Class</h2>
+        <h2>Step 1: Select Class</h2>
         <form id="classForm">
             <div>
                 <input type="radio" id="classB" name="class" value="B" required>
@@ -21,70 +21,97 @@
                 <label for="classB2">Class B2 (Light Motorcycle)</label>
             </div>
             <br>
-            <button type="submit">Next: Select Date &amp; Session</button>
+            <button type="submit">Next: Select Date</button>
         </form>
     </div>
 
-    <!-- Step 2: Booking Form -->
+    <!-- Step 2: Calendar & Session Selection -->
     <div id="step2" style="display:none;">
-        <h2>Book Your Lesson</h2>
-        <form id="bookingForm">
-            <input type="hidden" id="selectedClass" name="selectedClass">
-            
+        <h2>Step 2: Select Date &amp; Session</h2>
+        <div id="selectedClassDisplay"></div>
+        <br>
+        
+        <!-- Calendar Navigation -->
+        <div>
+            <button onclick="changeMonth(-1)">◀ Previous</button>
+            <span id="currentMonthDisplay" style="font-weight:bold;margin:0 20px;"></span>
+            <button onclick="changeMonth(1)">Next ▶</button>
+            <button onclick="goToToday()" style="margin-left:20px;">Today</button>
+        </div>
+        <br>
+        
+        <!-- Calendar Grid -->
+        <div id="calendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:700px;margin:0 auto;"></div>
+        <br>
+        
+        <!-- Legend -->
+        <div style="display:flex;gap:20px;justify-content:center;font-size:14px;">
+            <span><span style="background:#2ecc71;padding:2px 10px;border-radius:3px;"> </span> Available</span>
+            <span><span style="background:#e74c3c;padding:2px 10px;border-radius:3px;"> </span> Fully Booked</span>
+            <span><span style="background:#95a5a6;padding:2px 10px;border-radius:3px;"> </span> Inactive/Closed</span>
+            <span><span style="background:#3498db;padding:2px 10px;border-radius:3px;"> </span> Selected</span>
+        </div>
+        <br>
+        
+        <!-- Selected Date Display -->
+        <div id="selectedDateDisplay" style="font-weight:bold;text-align:center;margin:10px 0;"></div>
+        
+        <!-- Available Sessions -->
+        <div id="sessionsContainer" style="display:none;margin-top:20px;">
+            <h3>Available Sessions</h3>
+            <div id="sessionsList"></div>
+            <br>
+            <button id="nextToDetailsBtn" style="display:none;" onclick="goToStep3()">Next: Enter Details →</button>
+        </div>
+        
+        <br>
+        <button onclick="goBackStep1()">← Back to Class Selection</button>
+    </div>
+
+    <!-- Step 3: Student Details -->
+    <div id="step3" style="display:none;">
+        <h2>Step 3: Your Details</h2>
+        <form id="detailsForm">
             <div>
-                <label for="icno">IC Number (12 digits):</label><br>
-                <input type="text" id="icno" name="icno" required maxlength="12" pattern="\d{12}">
+                <label for="icno">IC Number (12 digits) or Passport No:</label><br>
+                <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012">
             </div>
             <br>
             
             <div>
                 <label for="name">Full Name:</label><br>
-                <input type="text" id="name" name="name" required>
+                <input type="text" id="name" name="name" required placeholder="e.g., Ahmad bin Abdullah">
             </div>
             <br>
             
             <div>
                 <label for="contact">Contact Number:</label><br>
-                <input type="text" id="contact" name="contact" required>
+                <input type="text" id="contact" name="contact" required placeholder="e.g., 0123456789">
             </div>
             <br>
             
-            <div>
-                <label for="bookingDate">Select Date:</label><br>
-                <select id="bookingDate" required>
-                    <option value="">-- Select Date --</option>
-                </select>
-            </div>
-            <br>
-            
-            <div>
-                <label for="sessionTime">Select Session Time:</label><br>
-                <select id="sessionTime" required>
-                    <option value="">-- Select Session --</option>
-                </select>
-            </div>
-            <br>
-            
-            <div>
-                <label for="sessionSlot">Select Session Slot:</label><br>
-                <select id="sessionSlot" required>
-                    <option value="">-- Select Slot --</option>
-                </select>
-            </div>
-            <br>
-            
-            <button type="submit">Book Now</button>
-            <button type="button" onclick="goBack()">Back</button>
+            <button type="submit">Next: Review Booking →</button>
+            <button type="button" onclick="goBackStep2()">← Back to Calendar</button>
         </form>
     </div>
 
-    <!-- Step 3: Confirmation -->
-    <div id="step3" style="display:none;">
-        <h2>Booking Confirmation</h2>
+    <!-- Step 4: Confirmation -->
+    <div id="step4" style="display:none;">
+        <h2>Step 4: Review &amp; Confirm</h2>
+        <div id="bookingSummary"></div>
+        <br>
+        <button onclick="submitBooking()">✓ Confirm Booking</button>
+        <button onclick="goBackStep3()">← Edit Details</button>
+        <button onclick="goBackStep2()">← Change Date</button>
+    </div>
+
+    <!-- Step 5: Success -->
+    <div id="step5" style="display:none;">
+        <h2>✅ Booking Confirmed!</h2>
         <div id="confirmationDetails"></div>
         <br>
-        <button onclick="window.location.reload()">Book Another</button>
-        <button onclick="window.location.href='manage-booking.html'">Manage My Bookings</button>
+        <button onclick="resetAll()">Book Another</button>
+        <button onclick="window.location.href='manage.html'">Manage My Bookings</button>
     </div>
 
     <!-- Message Display -->
@@ -94,6 +121,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Booking Logic -->
-    <script src="bookingassets/js/booking.js"></script>
+    <script src="js/booking.js"></script>
 </body>
 </html>
