@@ -382,10 +382,10 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
                 <h3 style="margin:0;color:#e74c3c;">${data.filter(b => b.status === 'cancelled').length}</h3>
                 <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Cancelled</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                <h3 style="margin:0;color:#f39c12;">${data.filter(b => b.status === 'rescheduled').length}</h3>
-                <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Rescheduled</p>
-            </div>
+            // <div style="padding:15px;border:1px solid #ddd;border-radius:4px;text-align:center;">
+            //     <h3 style="margin:0;color:#f39c12;">${data.filter(b => b.status === 'rescheduled').length}</h3>
+            //     <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Rescheduled</p>
+            // </div>
         </div>
         
         <h3 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:10px;">Booking Details</h3>
