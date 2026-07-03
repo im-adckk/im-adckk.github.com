@@ -65,6 +65,7 @@ function logoutAdmin() {
     adminLogin.style.display = 'block';
     document.getElementById('adminStatus').textContent = '🔒 Admin Access';
     document.getElementById('adminStatus').style.color = 'inherit';
+    document.getElementById('logoutBtn').style.display = 'none';
     document.getElementById('adminPassword').value = '';
     loginMessage.style.display = 'none';
     showMessage('Logged out successfully.', 'info');
@@ -79,13 +80,12 @@ loginForm.addEventListener('submit', (e) => {
     const password = document.getElementById('adminPassword').value;
     
     if (password === ADMIN_PASSWORD) {
-        // Create session
         createAdminSession();
-        
         adminLogin.style.display = 'none';
         adminContent.style.display = 'block';
         document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
         document.getElementById('adminStatus').style.color = 'green';
+        document.getElementById('logoutBtn').style.display = 'inline-block';
         initializeAdmin();
     } else {
         loginMessage.style.display = 'block';
@@ -112,7 +112,7 @@ async function initializeAdmin() {
     const firstDayOfMonth = new Date();
     firstDayOfMonth.setDate(1);
     const firstDayStr = toMalaysiaDateStr(firstDayOfMonth);
-    
+    document.getElementById('logoutBtn').style.display = 'inline-block';
     document.getElementById('reportDateFrom').value = firstDayStr;
     document.getElementById('reportDateTo').value = today;
     
