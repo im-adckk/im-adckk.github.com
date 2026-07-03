@@ -538,10 +538,17 @@ function goBackStep3() {
 // STEP 4: Submit Booking
 // ============================================
 async function submitBooking() {
+    // Disable confirm button to prevent double submission
+    const confirmBtn = document.querySelector('#step4 button[onclick="submitBooking()"]');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.textContent = 'Processing...';
+    confirmBtn.disabled = true;
+    
     try {
-        showMessage('Creating booking...', 'info');
+        showMessage('Checking for duplicate bookings...', 'info');
         
-        const { data: duplicate, error: dupError } = await supabaseClient
+        // Check for duplicates (including same day)
+        const { data: duplicateCheck, error: dupError } = await supabaseClient
             .rpc('check_duplicate_booking', {
                 p_icno: bookingData.icno,
                 p_booking_date: bookingData.date,
@@ -552,10 +559,30 @@ async function submitBooking() {
         
         if (dupError) throw dupError;
         
-        if (duplicate) {
-            showMessage('You already have a booking for this session!', 'error');
+        // If duplicate found, show detailed message
+        if (duplicateCheck && duplicateCheck.is_duplicate) {
+            let message = duplicateCheck.message;
+            
+            // Add extra guidance for same-day duplicates
+            if (duplicateCheck.existing_session_time !== bookingData.session.session_time ||
+                duplicateCheck.existing_session_slot !== bookingData.session.session_slot) {
+                message += '\n\n💡 Tip: You can only have ONE booking per day. To book a different session, first cancel your existing booking using the Session ID above.';
+            } else {
+                message += '\n\n💡 Tip: You are trying to book the exact same session. Please check your existing booking.';
+            }
+            
+            showMessage(message, 'error');
+            
+            // Show the existing booking details for reference
+            showExistingBooking(duplicateCheck);
+            
+            confirmBtn.textContent = originalText;
+            confirmBtn.disabled = false;
             return;
         }
+        
+        // Proceed with booking creation
+        showMessage('Creating booking...', 'info');
         
         const { data: booking, error: createError } = await supabaseClient
             .from('bookings')
@@ -572,13 +599,103 @@ async function submitBooking() {
             .select('session_id')
             .single();
         
-        if (createError) throw createError;
+        if (createError) {
+            // Check if it's a duplicate error from the database
+            if (createError.code === '23505') { // Unique violation
+                showMessage('This booking already exists. Please check your bookings.', 'error');
+                confirmBtn.textContent = originalText;
+                confirmBtn.disabled = false;
+                return;
+            }
+            throw createError;
+        }
         
+        // Show confirmation
         showConfirmation(booking.session_id);
         
     } catch (error) {
         console.error('Booking error:', error);
         showMessage('Error creating booking: ' + error.message, 'error');
+        confirmBtn.textContent = originalText;
+        confirmBtn.disabled = false;
+    }
+}
+
+// Show existing booking details when duplicate found
+function showExistingBooking(duplicateCheck) {
+    const summary = document.getElementById('bookingSummary');
+    const existingHTML = `
+        <div style="margin-top:20px;padding:15px;border:2px solid #e74c3c;border-radius:4px;background-color:#fff5f5;">
+            <h4 style="color:#e74c3c;">⚠️ Existing Booking Found</h4>
+            <table border="1" cellpadding="10" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:600px;margin-top:10px;">
+                <tr>
+                    <td><strong>Session ID</strong></td>
+                    <td><strong>${duplicateCheck.existing_session_id}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Session Time</strong></td>
+                    <td>${duplicateCheck.existing_session_time}</td>
+                </tr>
+                <tr>
+                    <td><strong>Session Slot</strong></td>
+                    <td>${duplicateCheck.existing_session_slot}</td>
+                </tr>
+                <tr>
+                    <td><strong>Action Required</strong></td>
+                    <td style="color:#e74c3c;">
+                        <strong>Cancel this booking first</strong>
+                        <br>
+                        <small>Go to <a href="manage.html" target="_blank">Manage My Bookings</a> and use the Session ID above to cancel.</small>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+    
+    // Insert the existing booking info below the summary
+    summary.innerHTML += existingHTML;
+}
+
+async function checkDayDuplicate() {
+    const icno = document.getElementById('icno').value.trim();
+    
+    if (!icno || icno.length < 8) return;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('bookings')
+            .select('session_id, session_time, session_slot, booking_date')
+            .eq('icno', icno)
+            .eq('booking_date', selectedDate)
+            .eq('status', 'confirmed')
+            .single();
+        
+        if (data) {
+            // Show warning but don't block navigation
+            const warningDiv = document.getElementById('dayDuplicateWarning');
+            if (!warningDiv) {
+                const detailsForm = document.getElementById('detailsForm');
+                const warning = document.createElement('div');
+                warning.id = 'dayDuplicateWarning';
+                warning.style.cssText = 'padding:10px;border:2px solid #f39c12;border-radius:4px;background-color:#fff8e1;margin-bottom:15px;';
+                warning.innerHTML = `
+                    <p style="margin:0;color:#e67e22;">
+                        ⚠️ <strong>Warning:</strong> You already have a booking on this date 
+                        (Session: ${data.session_time} - ${data.session_slot}).
+                        <br>
+                        <small>You can only have ONE booking per day. Please cancel your existing booking first.</small>
+                    </p>
+                `;
+                detailsForm.prepend(warning);
+            }
+        } else {
+            // Remove warning if exists
+            const warningDiv = document.getElementById('dayDuplicateWarning');
+            if (warningDiv) warningDiv.remove();
+        }
+    } catch (error) {
+        // No booking found or error - ignore
+        console.log('No duplicate found for this day');
     }
 }
 
@@ -653,4 +770,13 @@ document.addEventListener('DOMContentLoaded', () => {
     step3.style.display = 'none';
     step4.style.display = 'none';
     step5.style.display = 'none';
+
+    const icnoInput = document.getElementById('icno');
+    if (icnoInput) {
+        icnoInput.addEventListener('blur', checkDayDuplicate);
+        icnoInput.addEventListener('input', () => {
+            const warning = document.getElementById('dayDuplicateWarning');
+            if (warning) warning.remove();
+        });
+    }
 });
