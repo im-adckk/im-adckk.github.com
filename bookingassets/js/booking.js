@@ -220,8 +220,24 @@ async function onDateClick(dateStr) {
         return;
     }
     
+    // If clicking the same date, deselect it
+    if (selectedDate === dateStr) {
+        selectedDate = null;
+        document.getElementById('selectedDateDisplay').textContent = '';
+        document.getElementById('sessionsContainer').style.display = 'none';
+        document.getElementById('nextToDetailsBtn').style.display = 'none';
+        selectedSession = null;
+        
+        // Reset all dates to their original colors
+        await resetCalendarColors();
+        return;
+    }
+    
     selectedDate = dateStr;
     document.getElementById('selectedDateDisplay').textContent = `Selected Date: ${formatDate(dateStr)}`;
+    
+    // Reset all dates to their original colors, then highlight the selected one
+    await resetCalendarColors();
     
     // Highlight selected date
     const cells = document.querySelectorAll('#calendar div[data-date]');
@@ -230,14 +246,90 @@ async function onDateClick(dateStr) {
             cell.style.backgroundColor = '#3498db';
             cell.style.color = 'white';
             cell.style.border = '3px solid #2980b9';
-        } else {
-            // Reset border
-            cell.style.border = '1px solid #ddd';
         }
     });
     
     // Load sessions for this date
     await loadSessionsForDate(dateStr);
+}
+
+// New function to reset calendar colors
+async function resetCalendarColors() {
+    const today = new Date().toISOString().split('T')[0];
+    const cells = document.querySelectorAll('#calendar div[data-date]');
+    
+    // Get current month's data again
+    const year = currentYear;
+    const month = currentMonth;
+    const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+    const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('available_sessions')
+            .select('*')
+            .eq('class', selectedClass)
+            .gte('session_date', startDate)
+            .lte('session_date', endDate)
+            .gte('session_date', today);
+        
+        if (error) throw error;
+        
+        // Group by date
+        const availabilityMap = {};
+        data.forEach(session => {
+            if (!availabilityMap[session.session_date]) {
+                availabilityMap[session.session_date] = [];
+            }
+            availabilityMap[session.session_date].push(session);
+        });
+        
+        // Reset each cell
+        cells.forEach(cell => {
+            const dateStr = cell.dataset.date;
+            
+            // Skip if this is the currently selected date (will be highlighted separately)
+            if (dateStr === selectedDate) return;
+            
+            // Past dates
+            if (dateStr < today) {
+                cell.style.backgroundColor = '#f5f5f5';
+                cell.style.color = '#999';
+                cell.style.cursor = 'not-allowed';
+                cell.style.border = '1px solid #ddd';
+            } 
+            // Today
+            else if (dateStr === today) {
+                cell.style.backgroundColor = '#f39c12';
+                cell.style.color = 'white';
+                cell.style.border = '1px solid #ddd';
+                cell.textContent = new Date(dateStr).getDate() + ' (Today)';
+            } 
+            // Future dates
+            else {
+                const sessions = availabilityMap[dateStr] || [];
+                const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+                
+                if (hasAvailable) {
+                    cell.style.backgroundColor = '#2ecc71';
+                    cell.style.color = 'white';
+                } else if (sessions.length > 0) {
+                    // Has sessions but all full
+                    cell.style.backgroundColor = '#e74c3c';
+                    cell.style.color = 'white';
+                } else {
+                    // No sessions (inactive)
+                    cell.style.backgroundColor = '#95a5a6';
+                    cell.style.color = 'white';
+                }
+                cell.style.border = '1px solid #ddd';
+                cell.style.cursor = 'pointer';
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error resetting calendar colors:', error);
+    }
 }
 
 async function loadSessionsForDate(dateStr) {
