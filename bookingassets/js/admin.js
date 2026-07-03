@@ -213,9 +213,24 @@ async function loadStats() {
 // ALL BOOKINGS TABLE
 // ============================================
 
+// ============================================
+// ALL BOOKINGS TABLE WITH DATE FILTERS
+// ============================================
+
 async function loadAllBookings() {
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo = document.getElementById('filterDateTo').value;
     const statusFilter = document.getElementById('filterStatus').value;
     const classFilter = document.getElementById('filterClass').value;
+    
+    // Validate date range
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+        showMessage('"From" date must be before "To" date.', 'error');
+        return;
+    }
+    
+    // Show loading state
+    renderBookingsTable(null, true);
     
     try {
         let query = supabaseClient
@@ -224,6 +239,15 @@ async function loadAllBookings() {
             .order('booking_date', { ascending: false })
             .order('created_at', { ascending: false });
         
+        // Apply date filters
+        if (dateFrom) {
+            query = query.gte('booking_date', dateFrom);
+        }
+        if (dateTo) {
+            query = query.lte('booking_date', dateTo);
+        }
+        
+        // Apply other filters
         if (statusFilter !== 'all') {
             query = query.eq('status', statusFilter);
         }
@@ -236,14 +260,60 @@ async function loadAllBookings() {
         if (error) throw error;
         
         allBookingsData = data || [];
+        
+        // Update result count
+        document.getElementById('resultCount').textContent = 
+            `${allBookingsData.length} booking${allBookingsData.length !== 1 ? 's' : ''} found`;
+        
         renderBookingsTable(data);
         
     } catch (error) {
         console.error('Error loading bookings:', error);
         showMessage('Error loading bookings: ' + error.message, 'error');
+        const tbody = document.getElementById('bookingsTableBody');
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;">Error loading bookings. Please try again.</td></tr>';
+        document.getElementById('resultCount').textContent = 'Error loading data';
     }
 }
 
+// Clear all date filters and reload
+function clearDateFilters() {
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterStatus').value = 'all';
+    document.getElementById('filterClass').value = 'all';
+    loadAllBookings();
+}
+
+// Quick date range presets (optional - add to admin.html)
+function setDateRange(range) {
+    const today = getMalaysiaToday();
+    const dateFrom = document.getElementById('filterDateFrom');
+    const dateTo = document.getElementById('filterDateTo');
+    
+    dateTo.value = today;
+    
+    switch(range) {
+        case 'today':
+            dateFrom.value = today;
+            break;
+        case 'week':
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            dateFrom.value = toMalaysiaDateStr(weekAgo);
+            break;
+        case 'month':
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            dateFrom.value = toMalaysiaDateStr(monthAgo);
+            break;
+        case 'all':
+            dateFrom.value = '';
+            dateTo.value = '';
+            break;
+    }
+    loadAllBookings();
+}
 function renderBookingsTable(bookings) {
     const tbody = document.getElementById('bookingsTableBody');
     
