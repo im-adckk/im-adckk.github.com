@@ -9,20 +9,20 @@
     <h1>Manage My Bookings</h1>
     
     <div>
-        <h2>Find Your Bookings</h2>
+        <h2>Find Your Booking</h2>
         <form id="searchForm">
             <div>
-                <label for="searchIC">IC Number (12 digits):</label><br>
-                <input type="text" id="searchIC" required maxlength="12" pattern="\d{12}">
+                <label for="searchSessionId">Session ID (e.g., 260703-1234):</label><br>
+                <input type="text" id="searchSessionId" required placeholder="Enter your Session ID">
             </div>
             <br>
-            <button type="submit">Search Bookings</button>
+            <button type="submit">Find Booking</button>
         </form>
     </div>
 
-    <div id="bookingResults" style="margin-top:20px;display:none;">
-        <h3>Your Bookings</h3>
-        <div id="bookingsList"></div>
+    <div id="bookingResult" style="margin-top:20px;display:none;">
+        <h3>Your Booking Details</h3>
+        <div id="bookingDetails"></div>
     </div>
 
     <div id="message" style="margin-top:20px;padding:10px;border:1px solid #ccc;display:none;"></div>
