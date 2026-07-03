@@ -217,6 +217,12 @@ async function loadStats() {
 // ALL BOOKINGS TABLE WITH DATE FILTERS
 // ============================================
 
+// Pagination state
+let currentPage = 1;
+let rowsPerPage = 10;
+let totalPages = 1;
+let filteredBookings = [];
+
 async function loadAllBookings() {
     const dateFrom = document.getElementById('filterDateFrom').value;
     const dateTo = document.getElementById('filterDateTo').value;
@@ -260,12 +266,20 @@ async function loadAllBookings() {
         if (error) throw error;
         
         allBookingsData = data || [];
+        filteredBookings = [...allBookingsData];
+        
+        // Reset to first page when new search is performed
+        currentPage = 1;
+        
+        // Update pagination
+        updatePagination();
+        
+        // Render current page
+        renderBookingsTable(getCurrentPageData());
         
         // Update result count
         document.getElementById('resultCount').textContent = 
             `${allBookingsData.length} booking${allBookingsData.length !== 1 ? 's' : ''} found`;
-        
-        renderBookingsTable(data);
         
     } catch (error) {
         console.error('Error loading bookings:', error);
@@ -273,19 +287,147 @@ async function loadAllBookings() {
         const tbody = document.getElementById('bookingsTableBody');
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;">Error loading bookings. Please try again.</td></tr>';
         document.getElementById('resultCount').textContent = 'Error loading data';
+        document.getElementById('paginationControls').style.display = 'none';
     }
 }
 
-// Clear all date filters and reload
+// Get current page data
+function getCurrentPageData() {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredBookings.slice(startIndex, endIndex);
+}
+
+// Update pagination controls
+function updatePagination() {
+    const totalItems = filteredBookings.length;
+    totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+    
+    if (currentPage > totalPages) {
+        currentPage = totalPages;
+    }
+    
+    const paginationDiv = document.getElementById('paginationControls');
+    if (!paginationDiv) return;
+    
+    if (totalItems <= rowsPerPage) {
+        paginationDiv.style.display = 'none';
+        return;
+    }
+    
+    paginationDiv.style.display = 'flex';
+    
+    const startItem = (currentPage - 1) * rowsPerPage + 1;
+    const endItem = Math.min(currentPage * rowsPerPage, totalItems);
+    
+    document.getElementById('paginationInfo').textContent = 
+        `Showing ${startItem} - ${endItem} of ${totalItems}`;
+    
+    // Update buttons
+    document.getElementById('prevPageBtn').disabled = currentPage === 1;
+    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+    
+    // Generate page numbers
+    const pageNumbers = document.getElementById('pageNumbers');
+    pageNumbers.innerHTML = '';
+    
+    // Show limited page numbers with ellipsis
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        const firstBtn = createPageButton(1);
+        pageNumbers.appendChild(firstBtn);
+        if (startPage > 2) {
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.style.margin = '0 5px';
+            pageNumbers.appendChild(ellipsis);
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = createPageButton(i);
+        if (i === currentPage) {
+            btn.style.background = '#3498db';
+            btn.style.color = 'white';
+        }
+        pageNumbers.appendChild(btn);
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.style.margin = '0 5px';
+            pageNumbers.appendChild(ellipsis);
+        }
+        const lastBtn = createPageButton(totalPages);
+        pageNumbers.appendChild(lastBtn);
+    }
+}
+
+// Create page button
+function createPageButton(pageNum) {
+    const btn = document.createElement('button');
+    btn.textContent = pageNum;
+    btn.style.cssText = `
+        padding: 5px 10px;
+        margin: 0 3px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        background: white;
+        cursor: pointer;
+        min-width: 32px;
+    `;
+    btn.onclick = () => goToPage(pageNum);
+    return btn;
+}
+
+// Go to specific page
+function goToPage(pageNum) {
+    if (pageNum < 1 || pageNum > totalPages) return;
+    currentPage = pageNum;
+    renderBookingsTable(getCurrentPageData());
+    updatePagination();
+    // Scroll to table
+    document.getElementById('bookingsTableContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Previous page
+function prevPage() {
+    if (currentPage > 1) {
+        goToPage(currentPage - 1);
+    }
+}
+
+// Next page
+function nextPage() {
+    if (currentPage < totalPages) {
+        goToPage(currentPage + 1);
+    }
+}
+
+// Change rows per page
+function changeRowsPerPage() {
+    const select = document.getElementById('rowsPerPageSelect');
+    rowsPerPage = parseInt(select.value);
+    currentPage = 1;
+    updatePagination();
+    renderBookingsTable(getCurrentPageData());
+}
+
+// Clear all filters and reload
 function clearDateFilters() {
     document.getElementById('filterDateFrom').value = '';
     document.getElementById('filterDateTo').value = '';
     document.getElementById('filterStatus').value = 'all';
     document.getElementById('filterClass').value = 'all';
-    // loadAllBookings();
+    currentPage = 1;
+    loadAllBookings();
 }
 
-// Quick date range presets (optional - add to admin.html)
+// Quick date range presets
 function setDateRange(range) {
     const today = getMalaysiaToday();
     const dateFrom = document.getElementById('filterDateFrom');
@@ -312,8 +454,11 @@ function setDateRange(range) {
             dateTo.value = '';
             break;
     }
+    currentPage = 1;
     loadAllBookings();
 }
+
+
 function renderBookingsTable(bookings) {
     const tbody = document.getElementById('bookingsTableBody');
     
