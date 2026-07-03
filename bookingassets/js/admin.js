@@ -954,11 +954,13 @@ function showMessage(text, type = 'info') {
     }
 }
 
+
 // ============================================
 // INITIALIZE
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Set default date
     document.getElementById('adminDateSelect').value = getMalaysiaToday();
     
     // Check if admin session exists
