@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage My Bookings</title>
+</head>
+<body>
+    <h1>Manage My Bookings</h1>
+    
+    <div>
+        <h2>Find Your Bookings</h2>
+        <form id="searchForm">
+            <div>
+                <label for="searchIC">IC Number (12 digits):</label><br>
+                <input type="text" id="searchIC" required maxlength="12" pattern="\d{12}">
+            </div>
+            <br>
+            <button type="submit">Search Bookings</button>
+        </form>
+    </div>
+
+    <div id="bookingResults" style="margin-top:20px;display:none;">
+        <h3>Your Bookings</h3>
+        <div id="bookingsList"></div>
+    </div>
+
+    <div id="message" style="margin-top:20px;padding:10px;border:1px solid #ccc;display:none;"></div>
+    
+    <br>
+    <a href="index.html">← Book New Lesson</a>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="bookingassets/js/manage.js"></script>
+</body>
+</html>
