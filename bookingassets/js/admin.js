@@ -654,45 +654,97 @@ async function onAdminDateClick(dateStr) {
         const detailsDiv = document.getElementById('adminDateSessions');
         const detailsContainer = document.getElementById('adminDateDetails');
         
+        // Split data into B and B2
+        const classBData = data ? data.filter(s => s.class === 'B') : [];
+        const classB2Data = data ? data.filter(s => s.class === 'B2') : [];
+        
         let html = `
             <div style="margin:10px 0;padding:10px;background:#f8f9fa;border-radius:4px;">
                 <p><strong>Status:</strong> ${status ? (status.is_active ? '🟢 Active' : '🔴 Inactive') : '🟢 Active (default)'}</p>
                 ${status && status.reason ? `<p><strong>Reason:</strong> ${status.reason}</p>` : ''}
                 ${status && !status.is_active ? `<p style="color:red;">⚠️ This date is closed for bookings.</p>` : ''}
             </div>
-            <div style="margin:10px 0;padding:10px;background:#f8f9fa;border-radius:4px;">
-                <p><strong>Total Sessions:</strong> ${data ? data.length : 0}</p>
-                ${data && data.length > 0 ? `
-                    <div style="margin-top:10px;">
-                        <strong>Session Details:</strong>
-                        <table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:5px;font-size:13px;">
-                            <thead>
-                                <tr style="background:#e9ecef;">
-                                    <th>Class</th>
-                                    <th>Time</th>
-                                    <th>Slot</th>
-                                    <th>Booked</th>
-                                    <th>Capacity</th>
-                                    <th>Available</th>
+        `;
+        
+        // Class B Table
+        html += `
+            <div style="margin:15px 0;">
+                <h4 style="color:#2c3e50;border-bottom:2px solid #3498db;padding-bottom:5px;">🏍️ Class B (Quota: 5)</h4>
+                ${classBData.length > 0 ? `
+                    <table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:5px;font-size:13px;">
+                        <thead>
+                            <tr style="background:#3498db;color:white;">
+                                <th>Time</th>
+                                <th>Slot</th>
+                                <th>Booked</th>
+                                <th>Capacity</th>
+                                <th>Available</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${classBData.map(s => `
+                                <tr>
+                                    <td><strong>${s.session_time}</strong></td>
+                                    <td>${s.session_slot}</td>
+                                    <td>${s.current_bookings}</td>
+                                    <td>${s.max_bookings}</td>
+                                    <td style="color:${s.available_slots > 0 ? 'green' : 'red'};font-weight:bold;">
+                                        ${s.available_slots > 0 ? '✅ ' + s.available_slots : '❌ Full'}
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                ${data.map(s => `
-                                    <tr>
-                                        <td><strong>${s.class}</strong></td>
-                                        <td>${s.session_time}</td>
-                                        <td>${s.session_slot}</td>
-                                        <td>${s.current_bookings}</td>
-                                        <td>${s.max_bookings}</td>
-                                        <td style="color:${s.available_slots > 0 ? 'green' : 'red'};">
-                                            ${s.available_slots > 0 ? '✅ ' + s.available_slots : '❌ Full'}
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : '<p style="color:#999;">No sessions available for this date.</p>'}
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p style="color:#999;font-style:italic;">No Class B sessions available for this date.</p>'}
+            </div>
+        `;
+        
+        // Class B2 Table
+        html += `
+            <div style="margin:15px 0;">
+                <h4 style="color:#2c3e50;border-bottom:2px solid #e67e22;padding-bottom:5px;">🏍️ Class B2 (Quota: 15)</h4>
+                ${classB2Data.length > 0 ? `
+                    <table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:5px;font-size:13px;">
+                        <thead>
+                            <tr style="background:#e67e22;color:white;">
+                                <th>Time</th>
+                                <th>Slot</th>
+                                <th>Booked</th>
+                                <th>Capacity</th>
+                                <th>Available</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${classB2Data.map(s => `
+                                <tr>
+                                    <td><strong>${s.session_time}</strong></td>
+                                    <td>${s.session_slot}</td>
+                                    <td>${s.current_bookings}</td>
+                                    <td>${s.max_bookings}</td>
+                                    <td style="color:${s.available_slots > 0 ? 'green' : 'red'};font-weight:bold;">
+                                        ${s.available_slots > 0 ? '✅ ' + s.available_slots : '❌ Full'}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p style="color:#999;font-style:italic;">No Class B2 sessions available for this date.</p>'}
+            </div>
+        `;
+        
+        // Summary
+        const totalB = classBData.reduce((sum, s) => sum + s.available_slots, 0);
+        const totalB2 = classB2Data.reduce((sum, s) => sum + s.available_slots, 0);
+        const totalAvailable = totalB + totalB2;
+        
+        html += `
+            <div style="margin-top:15px;padding:10px;background:#f8f9fa;border-radius:4px;border:1px solid #ddd;">
+                <p style="margin:0;">
+                    <strong>Summary:</strong> 
+                    Class B: ${totalB > 0 ? '✅ ' + totalB + ' slots available' : '❌ Fully Booked'} | 
+                    Class B2: ${totalB2 > 0 ? '✅ ' + totalB2 + ' slots available' : '❌ Fully Booked'} | 
+                    <strong>Total Available: ${totalAvailable}</strong>
+                </p>
             </div>
         `;
         
