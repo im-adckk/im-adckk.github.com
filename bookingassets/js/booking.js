@@ -372,6 +372,20 @@ async function loadSessionsForDate(dateStr) {
         
         if (error) throw error;
         
+        // Sort sessions: morning first, then afternoon
+        if (data) {
+            const timeOrder = { '9am-12pm': 1, '12pm-3pm': 2 };
+            const slotOrder = { 'sesi1': 1, 'sesi2': 2, 'sesi3': 3 };
+            
+            data.sort((a, b) => {
+                // First by time
+                const timeDiff = (timeOrder[a.session_time] || 99) - (timeOrder[b.session_time] || 99);
+                if (timeDiff !== 0) return timeDiff;
+                // Then by slot
+                return (slotOrder[a.session_slot] || 99) - (slotOrder[b.session_slot] || 99);
+            });
+        }
+        
         availableSessionsData = data || [];
         
         const sessionsContainer = document.getElementById('sessionsContainer');
