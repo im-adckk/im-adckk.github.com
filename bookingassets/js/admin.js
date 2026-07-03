@@ -282,7 +282,7 @@ function clearDateFilters() {
     document.getElementById('filterDateTo').value = '';
     document.getElementById('filterStatus').value = 'all';
     document.getElementById('filterClass').value = 'all';
-    loadAllBookings();
+    // loadAllBookings();
 }
 
 // Quick date range presets (optional - add to admin.html)
