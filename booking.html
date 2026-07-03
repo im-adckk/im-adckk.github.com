@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motorcycle Lesson Booking</title>
+</head>
+<body>
+    <h1>Book Motorcycle Lesson</h1>
+    
+    <!-- Step 1: Class Selection -->
+    <div id="step1">
+        <h2>Select Class</h2>
+        <form id="classForm">
+            <div>
+                <input type="radio" id="classB" name="class" value="B" required>
+                <label for="classB">Class B (Heavy Motorcycle)</label>
+            </div>
+            <div>
+                <input type="radio" id="classB2" name="class" value="B2" required>
+                <label for="classB2">Class B2 (Light Motorcycle)</label>
+            </div>
+            <br>
+            <button type="submit">Next: Select Date &amp; Session</button>
+        </form>
+    </div>
+
+    <!-- Step 2: Booking Form -->
+    <div id="step2" style="display:none;">
+        <h2>Book Your Lesson</h2>
+        <form id="bookingForm">
+            <input type="hidden" id="selectedClass" name="selectedClass">
+            
+            <div>
+                <label for="icno">IC Number (12 digits):</label><br>
+                <input type="text" id="icno" name="icno" required maxlength="12" pattern="\d{12}">
+            </div>
+            <br>
+            
+            <div>
+                <label for="name">Full Name:</label><br>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <br>
+            
+            <div>
+                <label for="contact">Contact Number:</label><br>
+                <input type="text" id="contact" name="contact" required>
+            </div>
+            <br>
+            
+            <div>
+                <label for="bookingDate">Select Date:</label><br>
+                <select id="bookingDate" required>
+                    <option value="">-- Select Date --</option>
+                </select>
+            </div>
+            <br>
+            
+            <div>
+                <label for="sessionTime">Select Session Time:</label><br>
+                <select id="sessionTime" required>
+                    <option value="">-- Select Session --</option>
+                </select>
+            </div>
+            <br>
+            
+            <div>
+                <label for="sessionSlot">Select Session Slot:</label><br>
+                <select id="sessionSlot" required>
+                    <option value="">-- Select Slot --</option>
+                </select>
+            </div>
+            <br>
+            
+            <button type="submit">Book Now</button>
+            <button type="button" onclick="goBack()">Back</button>
+        </form>
+    </div>
+
+    <!-- Step 3: Confirmation -->
+    <div id="step3" style="display:none;">
+        <h2>Booking Confirmation</h2>
+        <div id="confirmationDetails"></div>
+        <br>
+        <button onclick="window.location.reload()">Book Another</button>
+        <button onclick="window.location.href='manage.html'">Manage My Bookings</button>
+    </div>
+
+    <!-- Message Display -->
+    <div id="message" style="margin-top:20px;padding:10px;border:1px solid #ccc;display:none;"></div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Booking Logic -->
+    <script src="bookingassets/js/booking.js"></script>
+</body>
+</html>
