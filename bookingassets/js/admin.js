@@ -961,6 +961,20 @@ function showMessage(text, type = 'info') {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('adminDateSelect').value = getMalaysiaToday();
     
-    adminLogin.style.display = 'block';
-    adminContent.style.display = 'none';
+    // Check if admin session exists
+    if (checkAdminSession()) {
+        // Auto-login
+        adminLogin.style.display = 'none';
+        adminContent.style.display = 'block';
+        document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
+        document.getElementById('adminStatus').style.color = 'green';
+        document.getElementById('logoutBtn').style.display = 'inline-block';
+        initializeAdmin();
+    } else {
+        // Show login
+        adminLogin.style.display = 'block';
+        adminContent.style.display = 'none';
+        // Auto-focus password field
+        document.getElementById('adminPassword').focus();
+    }
 });
