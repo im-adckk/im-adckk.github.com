@@ -6,8 +6,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 // State variables
 let selectedClass = '';
-let currentMonth = new Date().getMonth();
-let currentYear = new Date().getFullYear();
+let currentMonth = 0;
+let currentYear = 0;
 let selectedDate = null;
 let selectedSession = null;
 let availableSessionsData = [];
@@ -22,6 +22,64 @@ const step5 = document.getElementById('step5');
 const classForm = document.getElementById('classForm');
 const detailsForm = document.getElementById('detailsForm');
 const messageDiv = document.getElementById('message');
+
+// ============================================
+// TIMEZONE HELPER FUNCTIONS (Malaysia UTC+8)
+// ============================================
+
+function getMalaysiaDate(dateInput) {
+    const date = new Date(dateInput);
+    const malaysiaOffset = 8 * 60;
+    const localOffset = date.getTimezoneOffset();
+    const malaysiaTime = date.getTime() + (localOffset + malaysiaOffset) * 60 * 1000;
+    return new Date(malaysiaTime);
+}
+
+function getMalaysiaToday() {
+    const now = new Date();
+    const malaysiaDate = getMalaysiaDate(now);
+    const year = malaysiaDate.getFullYear();
+    const month = String(malaysiaDate.getMonth() + 1).padStart(2, '0');
+    const day = String(malaysiaDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function toMalaysiaDateStr(dateObj) {
+    const malaysiaDate = getMalaysiaDate(dateObj);
+    const year = malaysiaDate.getFullYear();
+    const month = String(malaysiaDate.getMonth() + 1).padStart(2, '0');
+    const day = String(malaysiaDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatMalaysiaDate(dateString) {
+    const date = new Date(dateString + 'T00:00:00');
+    const malaysiaDate = getMalaysiaDate(date);
+    const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric'
+    };
+    return malaysiaDate.toLocaleDateString('en-MY', options);
+}
+
+function getMalaysiaMonthYear() {
+    const today = getMalaysiaToday();
+    const date = new Date(today + 'T00:00:00');
+    return {
+        month: date.getMonth(),
+        year: date.getFullYear()
+    };
+}
+
+// ============================================
+// INITIALIZE MONTH/YEAR
+// ============================================
+function initMonthYear() {
+    const { month, year } = getMalaysiaMonthYear();
+    currentMonth = month;
+    currentYear = year;
+}
 
 // ============================================
 // STEP 1: Class Selection
@@ -47,15 +105,13 @@ function renderCalendar() {
     
     const firstDay = new Date(currentYear, currentMonth, 1).getDay();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getMalaysiaToday();
     
     monthDisplay.textContent = new Date(currentYear, currentMonth).toLocaleDateString('en-MY', { 
         month: 'long', 
         year: 'numeric' 
     });
     
-    // Clear calendar
     calendar.innerHTML = '';
     
     // Day headers
@@ -79,7 +135,7 @@ function renderCalendar() {
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
         const dateObj = new Date(currentYear, currentMonth, day);
-        const dateStr = dateObj.toISOString().split('T')[0];
+        const dateStr = toMalaysiaDateStr(dateObj);
         const div = document.createElement('div');
         div.textContent = day;
         div.style.padding = '10px 5px';
@@ -89,22 +145,19 @@ function renderCalendar() {
         div.style.borderRadius = '4px';
         div.dataset.date = dateStr;
         
-        // Past dates
         if (dateStr < todayStr) {
             div.style.backgroundColor = '#f5f5f5';
             div.style.color = '#999';
             div.style.cursor = 'not-allowed';
         } 
-        // Today
         else if (dateStr === todayStr) {
             div.style.backgroundColor = '#f39c12';
             div.style.color = 'white';
             div.textContent = day + ' (Today)';
             div.style.cursor = 'not-allowed';
         } 
-        // Future dates - will be styled based on availability
         else {
-            div.style.backgroundColor = '#95a5a6'; // Default: inactive
+            div.style.backgroundColor = '#95a5a6';
             div.style.color = 'white';
         }
         
@@ -116,18 +169,20 @@ function renderCalendar() {
 async function checkAvailabilityForMonth() {
     const year = currentYear;
     const month = currentMonth;
-    const startDate = new Date(year, month, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    const startDateStr = toMalaysiaDateStr(startDate);
+    const endDateStr = toMalaysiaDateStr(endDate);
+    const todayStr = getMalaysiaToday();
     
     try {
         const { data, error } = await supabaseClient
             .from('available_sessions')
             .select('*')
             .eq('class', selectedClass)
-            .gte('session_date', startDate)
-            .lte('session_date', endDate)
-            .gte('session_date', today);
+            .gte('session_date', startDateStr)
+            .lte('session_date', endDateStr)
+            .gte('session_date', todayStr);
         
         if (error) throw error;
         
@@ -143,7 +198,7 @@ async function checkAvailabilityForMonth() {
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
             
-            if (dateStr < today || dateStr === today) return;
+            if (dateStr < todayStr || dateStr === todayStr) return;
             
             const sessions = availabilityMap[dateStr] || [];
             const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
@@ -166,22 +221,24 @@ async function checkAvailabilityForMonth() {
 }
 
 async function resetCalendarColors() {
-    const today = new Date().toISOString().split('T')[0];
+    const todayStr = getMalaysiaToday();
     const cells = document.querySelectorAll('#calendar div[data-date]');
     
     const year = currentYear;
     const month = currentMonth;
-    const startDate = new Date(year, month, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    const startDateStr = toMalaysiaDateStr(startDate);
+    const endDateStr = toMalaysiaDateStr(endDate);
     
     try {
         const { data, error } = await supabaseClient
             .from('available_sessions')
             .select('*')
             .eq('class', selectedClass)
-            .gte('session_date', startDate)
-            .lte('session_date', endDate)
-            .gte('session_date', today);
+            .gte('session_date', startDateStr)
+            .lte('session_date', endDateStr)
+            .gte('session_date', todayStr);
         
         if (error) throw error;
         
@@ -196,20 +253,19 @@ async function resetCalendarColors() {
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
             
-            // Skip if this is the currently selected date
             if (dateStr === selectedDate) return;
             
-            if (dateStr < today) {
+            if (dateStr < todayStr) {
                 cell.style.backgroundColor = '#f5f5f5';
                 cell.style.color = '#999';
                 cell.style.cursor = 'not-allowed';
                 cell.style.border = '1px solid #ddd';
             } 
-            else if (dateStr === today) {
+            else if (dateStr === todayStr) {
                 cell.style.backgroundColor = '#f39c12';
                 cell.style.color = 'white';
                 cell.style.border = '1px solid #ddd';
-                const day = new Date(dateStr).getDate();
+                const day = new Date(dateStr + 'T00:00:00').getDate();
                 cell.textContent = day + ' (Today)';
             } 
             else {
@@ -255,9 +311,9 @@ function changeMonth(delta) {
 }
 
 function goToToday() {
-    const today = new Date();
-    currentMonth = today.getMonth();
-    currentYear = today.getFullYear();
+    const { month, year } = getMalaysiaMonthYear();
+    currentMonth = month;
+    currentYear = year;
     selectedDate = null;
     selectedSession = null;
     document.getElementById('selectedDateDisplay').textContent = '';
@@ -268,18 +324,17 @@ function goToToday() {
 }
 
 async function onDateClick(dateStr) {
-    const today = new Date().toISOString().split('T')[0];
+    const todayStr = getMalaysiaToday();
     
-    if (dateStr < today) {
+    if (dateStr < todayStr) {
         showMessage('Cannot select past dates.', 'error');
         return;
     }
-    if (dateStr === today) {
+    if (dateStr === todayStr) {
         showMessage('Cannot book for today. Please select a future date.', 'error');
         return;
     }
     
-    // If clicking the same date, deselect it
     if (selectedDate === dateStr) {
         selectedDate = null;
         selectedSession = null;
@@ -291,12 +346,10 @@ async function onDateClick(dateStr) {
     }
     
     selectedDate = dateStr;
-    document.getElementById('selectedDateDisplay').textContent = `Selected Date: ${formatDate(dateStr)}`;
+    document.getElementById('selectedDateDisplay').textContent = `Selected Date: ${formatMalaysiaDate(dateStr)}`;
     
-    // Reset all dates to their original colors
     await resetCalendarColors();
     
-    // Highlight selected date
     const cells = document.querySelectorAll('#calendar div[data-date]');
     cells.forEach(cell => {
         if (cell.dataset.date === dateStr) {
@@ -451,7 +504,7 @@ function goToStep4() {
             </tr>
             <tr>
                 <td><strong>Date</strong></td>
-                <td>${formatDate(bookingData.date)}</td>
+                <td>${formatMalaysiaDate(bookingData.date)}</td>
             </tr>
             <tr>
                 <td><strong>Session</strong></td>
@@ -537,7 +590,7 @@ function showConfirmation(sessionId) {
         <div style="padding:20px;border:2px solid #2ecc71;border-radius:8px;max-width:500px;margin:0 auto;">
             <p><strong>Session ID:</strong> ${sessionId}</p>
             <p><strong>Class:</strong> ${bookingData.class}</p>
-            <p><strong>Date:</strong> ${formatDate(bookingData.date)}</p>
+            <p><strong>Date:</strong> ${formatMalaysiaDate(bookingData.date)}</p>
             <p><strong>Session:</strong> ${bookingData.session.session_time} - ${bookingData.session.session_slot}</p>
             <p><strong>Name:</strong> ${bookingData.name}</p>
             <p><strong>IC/Passport:</strong> ${bookingData.icno}</p>
@@ -590,15 +643,11 @@ function showMessage(text, type = 'info') {
     }
 }
 
-function formatDate(dateString) {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString + 'T00:00:00').toLocaleDateString('en-MY', options);
-}
-
 // ============================================
 // Initialize
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
+    initMonthYear();
     step1.style.display = 'block';
     step2.style.display = 'none';
     step3.style.display = 'none';
