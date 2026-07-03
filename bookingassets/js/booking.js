@@ -2,171 +2,359 @@
 const SUPABASE_URL = 'https://yrrinzreyafiowehhhon.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
 
-// Use window.supabase instead of declaring a new variable
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // State variables
 let selectedClass = '';
-let availableDates = [];
-let availableSessions = [];
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let selectedDate = null;
+let selectedSession = null;
+let availableSessionsData = [];
+let bookingData = {};
 
 // DOM Elements
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
+const step4 = document.getElementById('step4');
+const step5 = document.getElementById('step5');
 const classForm = document.getElementById('classForm');
-const bookingForm = document.getElementById('bookingForm');
-const selectedClassInput = document.getElementById('selectedClass');
-const bookingDateSelect = document.getElementById('bookingDate');
-const sessionTimeSelect = document.getElementById('sessionTime');
-const sessionSlotSelect = document.getElementById('sessionSlot');
+const detailsForm = document.getElementById('detailsForm');
 const messageDiv = document.getElementById('message');
-const confirmationDetails = document.getElementById('confirmationDetails');
 
-// Class Selection
+// ============================================
+// STEP 1: Class Selection
+// ============================================
 classForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     selectedClass = document.querySelector('input[name="class"]:checked').value;
-    selectedClassInput.value = selectedClass;
+    document.getElementById('selectedClassDisplay').textContent = `Selected Class: ${selectedClass}`;
     
-    // Show booking form
     step1.style.display = 'none';
     step2.style.display = 'block';
     
-    // Load available dates
-    await loadAvailableDates();
+    renderCalendar();
+    await checkAvailabilityForMonth();
 });
 
-// Booking Form Submit
-bookingForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await createBooking();
-});
-
-// Load Available Dates
-async function loadAvailableDates() {
-    try {
-        showMessage('Loading available dates...', 'info');
+// ============================================
+// STEP 2: Calendar
+// ============================================
+function renderCalendar() {
+    const calendar = document.getElementById('calendar');
+    const monthDisplay = document.getElementById('currentMonthDisplay');
+    
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    monthDisplay.textContent = new Date(currentYear, currentMonth).toLocaleDateString('en-MY', { 
+        month: 'long', 
+        year: 'numeric' 
+    });
+    
+    // Clear calendar
+    calendar.innerHTML = '';
+    
+    // Day headers
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    dayNames.forEach(day => {
+        const div = document.createElement('div');
+        div.textContent = day;
+        div.style.fontWeight = 'bold';
+        div.style.textAlign = 'center';
+        div.style.padding = '5px';
+        calendar.appendChild(div);
+    });
+    
+    // Empty cells for days before first day
+    for (let i = 0; i < firstDay; i++) {
+        const div = document.createElement('div');
+        div.style.padding = '5px';
+        calendar.appendChild(div);
+    }
+    
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(currentYear, currentMonth, day);
+        const dateStr = dateObj.toISOString().split('T')[0];
+        const div = document.createElement('div');
+        div.textContent = day;
+        div.style.padding = '10px 5px';
+        div.style.textAlign = 'center';
+        div.style.border = '1px solid #ddd';
+        div.style.cursor = 'pointer';
+        div.style.borderRadius = '4px';
+        div.dataset.date = dateStr;
         
-        // Get all available dates with sessions
-        const { data, error } = await supabaseClient
-            .rpc('get_available_sessions_for_date', {
-                check_date: null,
-                class_filter: selectedClass
-            });
-        
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-            showMessage('No available sessions found for your selected class.', 'error');
-            return;
+        // Past dates
+        if (dateStr < todayStr) {
+            div.style.backgroundColor = '#f5f5f5';
+            div.style.color = '#999';
+            div.style.cursor = 'not-allowed';
+        } 
+        // Today
+        else if (dateStr === todayStr) {
+            div.style.backgroundColor = '#f39c12';
+            div.style.color = 'white';
+            div.textContent = day + ' (Today)';
+            div.style.cursor = 'not-allowed';
+        } 
+        // Future dates - will be styled based on availability
+        else {
+            div.style.backgroundColor = '#95a5a6'; // Default: inactive
+            div.style.color = 'white';
         }
         
-        // Get unique dates
-        const dates = [...new Set(data.map(item => item.session_date))].sort();
-        availableDates = dates;
+        // Highlight selected date
+        if (dateStr === selectedDate) {
+            div.style.backgroundColor = '#3498db';
+            div.style.color = 'white';
+            div.style.border = '3px solid #2980b9';
+        }
         
-        // Populate date dropdown
-        bookingDateSelect.innerHTML = '<option value="">-- Select Date --</option>';
-        dates.forEach(date => {
-            const option = document.createElement('option');
-            option.value = date;
-            option.textContent = formatDate(date);
-            bookingDateSelect.appendChild(option);
-        });
-        
-        showMessage('Select a date to continue.', 'info');
-        
-    } catch (error) {
-        console.error('Error loading dates:', error);
-        showMessage('Error loading available dates. Please try again.', 'error');
+        div.addEventListener('click', () => onDateClick(dateStr));
+        calendar.appendChild(div);
     }
 }
 
-// Load Sessions for Selected Date
-bookingDateSelect.addEventListener('change', async () => {
-    const selectedDate = bookingDateSelect.value;
-    if (!selectedDate) {
-        sessionTimeSelect.innerHTML = '<option value="">-- Select Session --</option>';
-        sessionSlotSelect.innerHTML = '<option value="">-- Select Slot --</option>';
+async function checkAvailabilityForMonth() {
+    const year = currentYear;
+    const month = currentMonth;
+    const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+    const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+        // Get all sessions for the month
+        const { data, error } = await supabaseClient
+            .from('available_sessions')
+            .select('*')
+            .eq('class', selectedClass)
+            .gte('session_date', startDate)
+            .lte('session_date', endDate)
+            .gte('session_date', today);
+        
+        if (error) throw error;
+        
+        // Group by date
+        const availabilityMap = {};
+        data.forEach(session => {
+            if (!availabilityMap[session.session_date]) {
+                availabilityMap[session.session_date] = [];
+            }
+            availabilityMap[session.session_date].push(session);
+        });
+        
+        // Update calendar cells
+        const cells = document.querySelectorAll('#calendar div[data-date]');
+        cells.forEach(cell => {
+            const dateStr = cell.dataset.date;
+            
+            // Skip past dates and today
+            if (dateStr < today || dateStr === today) return;
+            
+            const sessions = availabilityMap[dateStr] || [];
+            const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+            
+            if (hasAvailable) {
+                cell.style.backgroundColor = '#2ecc71';
+                cell.style.color = 'white';
+            } else if (sessions.length > 0) {
+                // Has sessions but all full
+                cell.style.backgroundColor = '#e74c3c';
+                cell.style.color = 'white';
+            } else {
+                // No sessions (inactive)
+                cell.style.backgroundColor = '#95a5a6';
+                cell.style.color = 'white';
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error checking availability:', error);
+    }
+}
+
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    } else if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+    }
+    selectedDate = null;
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').style.display = 'none';
+    document.getElementById('nextToDetailsBtn').style.display = 'none';
+    renderCalendar();
+    checkAvailabilityForMonth();
+}
+
+function goToToday() {
+    const today = new Date();
+    currentMonth = today.getMonth();
+    currentYear = today.getFullYear();
+    selectedDate = null;
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').style.display = 'none';
+    document.getElementById('nextToDetailsBtn').style.display = 'none';
+    renderCalendar();
+    checkAvailabilityForMonth();
+}
+
+async function onDateClick(dateStr) {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Disable past dates and today
+    if (dateStr < today) {
+        showMessage('Cannot select past dates.', 'error');
+        return;
+    }
+    if (dateStr === today) {
+        showMessage('Cannot book for today. Please select a future date.', 'error');
         return;
     }
     
+    selectedDate = dateStr;
+    document.getElementById('selectedDateDisplay').textContent = `Selected Date: ${formatDate(dateStr)}`;
+    
+    // Highlight selected date
+    const cells = document.querySelectorAll('#calendar div[data-date]');
+    cells.forEach(cell => {
+        if (cell.dataset.date === dateStr) {
+            cell.style.backgroundColor = '#3498db';
+            cell.style.color = 'white';
+            cell.style.border = '3px solid #2980b9';
+        } else {
+            // Reset border
+            cell.style.border = '1px solid #ddd';
+        }
+    });
+    
+    // Load sessions for this date
+    await loadSessionsForDate(dateStr);
+}
+
+async function loadSessionsForDate(dateStr) {
     try {
         const { data, error } = await supabaseClient
             .rpc('get_available_sessions_for_date', {
-                check_date: selectedDate,
+                check_date: dateStr,
                 class_filter: selectedClass
             });
         
         if (error) throw error;
         
+        availableSessionsData = data || [];
+        
+        const sessionsContainer = document.getElementById('sessionsContainer');
+        const sessionsList = document.getElementById('sessionsList');
+        const nextBtn = document.getElementById('nextToDetailsBtn');
+        
         if (!data || data.length === 0) {
-            showMessage('No sessions available for this date.', 'error');
+            sessionsList.innerHTML = '<p style="color:red;">No sessions available for this date.</p>';
+            sessionsContainer.style.display = 'block';
+            nextBtn.style.display = 'none';
             return;
         }
         
-        availableSessions = data;
-        
-        // Populate session times
-        const times = [...new Set(data.map(item => item.session_time))].sort();
-        sessionTimeSelect.innerHTML = '<option value="">-- Select Session --</option>';
-        times.forEach(time => {
-            const option = document.createElement('option');
-            option.value = time;
-            option.textContent = time;
-            sessionTimeSelect.appendChild(option);
+        // Build session list
+        let html = '';
+        data.forEach((session, index) => {
+            const available = session.max_bookings - session.current_bookings;
+            const isSelected = selectedSession === index;
+            html += `
+                <div style="
+                    padding:10px;
+                    margin:5px 0;
+                    border:2px solid ${isSelected ? '#3498db' : '#ddd'};
+                    border-radius:4px;
+                    cursor:pointer;
+                    background-color: ${isSelected ? '#ebf5fb' : 'white'};
+                " onclick="selectSession(${index})">
+                    <strong>${session.session_time}</strong> - ${session.session_slot}
+                    <span style="float:right;">
+                        ${available} slots available
+                    </span>
+                </div>
+            `;
         });
         
-        // Reset slot dropdown
-        sessionSlotSelect.innerHTML = '<option value="">-- Select Slot --</option>';
+        sessionsList.innerHTML = html;
+        sessionsContainer.style.display = 'block';
+        nextBtn.style.display = 'none';
         
-        showMessage('Select a session time.', 'info');
+        // Reset selected session
+        selectedSession = null;
+        
+        showMessage('Select a session time to continue.', 'info');
         
     } catch (error) {
         console.error('Error loading sessions:', error);
         showMessage('Error loading sessions. Please try again.', 'error');
     }
-});
+}
 
-// Load Slots for Selected Time
-sessionTimeSelect.addEventListener('change', () => {
-    const selectedTime = sessionTimeSelect.value;
-    const selectedDate = bookingDateSelect.value;
+function selectSession(index) {
+    selectedSession = index;
+    const sessionsList = document.getElementById('sessionsList');
+    const items = sessionsList.querySelectorAll('div');
     
-    if (!selectedTime || !selectedDate) {
-        sessionSlotSelect.innerHTML = '<option value="">-- Select Slot --</option>';
+    items.forEach((item, i) => {
+        if (i === index) {
+            item.style.border = '2px solid #3498db';
+            item.style.backgroundColor = '#ebf5fb';
+        } else {
+            item.style.border = '2px solid #ddd';
+            item.style.backgroundColor = 'white';
+        }
+    });
+    
+    document.getElementById('nextToDetailsBtn').style.display = 'block';
+    showMessage('Session selected. Click "Next" to enter your details.', 'success');
+}
+
+function goToStep3() {
+    if (selectedSession === null) {
+        showMessage('Please select a session first.', 'error');
         return;
     }
     
-    // Filter slots for selected time and date
-    const slots = availableSessions
-        .filter(s => s.session_time === selectedTime && s.available_slots > 0)
-        .map(s => s.session_slot)
-        .sort();
-    
-    sessionSlotSelect.innerHTML = '<option value="">-- Select Slot --</option>';
-    slots.forEach(slot => {
-        const option = document.createElement('option');
-        option.value = slot;
-        const available = availableSessions.find(s => s.session_slot === slot && s.session_time === selectedTime);
-        option.textContent = `${slot} (${available.available_slots} slots available)`;
-        sessionSlotSelect.appendChild(option);
-    });
+    step2.style.display = 'none';
+    step3.style.display = 'block';
+}
+
+function goBackStep1() {
+    step2.style.display = 'none';
+    step1.style.display = 'block';
+}
+
+function goBackStep2() {
+    step3.style.display = 'none';
+    step2.style.display = 'block';
+}
+
+// ============================================
+// STEP 3: Student Details
+// ============================================
+detailsForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    goToStep4();
 });
 
-// Create Booking
-async function createBooking() {
+function goToStep4() {
     const icno = document.getElementById('icno').value.trim();
     const name = document.getElementById('name').value.trim();
     const contact = document.getElementById('contact').value.trim();
-    const bookingDate = bookingDateSelect.value;
-    const sessionTime = sessionTimeSelect.value;
-    const sessionSlot = sessionSlotSelect.value;
     
     // Validation
-    if (!icno || icno.length !== 12 || !/^\d{12}$/.test(icno)) {
-        showMessage('Please enter a valid 12-digit IC number.', 'error');
+    if (!icno || icno.length < 8) {
+        showMessage('Please enter a valid IC or Passport number.', 'error');
         return;
     }
     
@@ -180,22 +368,71 @@ async function createBooking() {
         return;
     }
     
-    if (!bookingDate || !sessionTime || !sessionSlot) {
-        showMessage('Please select date, time, and slot.', 'error');
-        return;
-    }
+    // Store booking data
+    bookingData = {
+        icno: icno,
+        name: name,
+        contact: contact,
+        class: selectedClass,
+        date: selectedDate,
+        session: availableSessionsData[selectedSession]
+    };
     
+    // Display summary
+    const summary = document.getElementById('bookingSummary');
+    summary.innerHTML = `
+        <table border="1" cellpadding="10" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:600px;">
+            <tr>
+                <td><strong>Class</strong></td>
+                <td>${bookingData.class}</td>
+            </tr>
+            <tr>
+                <td><strong>Date</strong></td>
+                <td>${formatDate(bookingData.date)}</td>
+            </tr>
+            <tr>
+                <td><strong>Session</strong></td>
+                <td>${bookingData.session.session_time} - ${bookingData.session.session_slot}</td>
+            </tr>
+            <tr>
+                <td><strong>Name</strong></td>
+                <td>${bookingData.name}</td>
+            </tr>
+            <tr>
+                <td><strong>IC/Passport</strong></td>
+                <td>${bookingData.icno}</td>
+            </tr>
+            <tr>
+                <td><strong>Contact</strong></td>
+                <td>${bookingData.contact}</td>
+            </tr>
+        </table>
+    `;
+    
+    step3.style.display = 'none';
+    step4.style.display = 'block';
+}
+
+function goBackStep3() {
+    step4.style.display = 'none';
+    step3.style.display = 'block';
+}
+
+// ============================================
+// STEP 4: Submit Booking
+// ============================================
+async function submitBooking() {
     try {
         showMessage('Creating booking...', 'info');
         
         // Check for duplicate booking
         const { data: duplicate, error: dupError } = await supabaseClient
             .rpc('check_duplicate_booking', {
-                p_icno: icno,
-                p_booking_date: bookingDate,
-                p_session_time: sessionTime,
-                p_session_slot: sessionSlot,
-                p_class: selectedClass
+                p_icno: bookingData.icno,
+                p_booking_date: bookingData.date,
+                p_session_time: bookingData.session.session_time,
+                p_session_slot: bookingData.session.session_slot,
+                p_class: bookingData.class
             });
         
         if (dupError) throw dupError;
@@ -209,13 +446,13 @@ async function createBooking() {
         const { data: booking, error: createError } = await supabaseClient
             .from('bookings')
             .insert([{
-                icno: icno,
-                name: name,
-                contact_no: contact,
-                class: selectedClass,
-                booking_date: bookingDate,
-                session_time: sessionTime,
-                session_slot: sessionSlot,
+                icno: bookingData.icno,
+                name: bookingData.name,
+                contact_no: bookingData.contact,
+                class: bookingData.class,
+                booking_date: bookingData.date,
+                session_time: bookingData.session.session_time,
+                session_slot: bookingData.session.session_slot,
                 status: 'confirmed'
             }])
             .select('session_id')
@@ -224,7 +461,7 @@ async function createBooking() {
         if (createError) throw createError;
         
         // Show confirmation
-        showConfirmation(booking.session_id, name, bookingDate, sessionTime, sessionSlot);
+        showConfirmation(booking.session_id);
         
     } catch (error) {
         console.error('Booking error:', error);
@@ -232,32 +469,47 @@ async function createBooking() {
     }
 }
 
-// Show Confirmation
-function showConfirmation(sessionId, name, date, time, slot) {
-    step2.style.display = 'none';
-    step3.style.display = 'block';
+function showConfirmation(sessionId) {
+    step4.style.display = 'none';
+    step5.style.display = 'block';
     
-    confirmationDetails.innerHTML = `
-        <p><strong>Session ID:</strong> ${sessionId}</p>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Class:</strong> ${selectedClass}</p>
-        <p><strong>Date:</strong> ${formatDate(date)}</p>
-        <p><strong>Time:</strong> ${time}</p>
-        <p><strong>Slot:</strong> ${slot}</p>
-        <p style="color: green; font-weight: bold;">✓ Booking Confirmed!</p>
-        <p><small>Please save your Session ID for future reference.</small></p>
+    document.getElementById('confirmationDetails').innerHTML = `
+        <div style="padding:20px;border:2px solid #2ecc71;border-radius:8px;max-width:500px;margin:0 auto;">
+            <p><strong>Session ID:</strong> ${sessionId}</p>
+            <p><strong>Class:</strong> ${bookingData.class}</p>
+            <p><strong>Date:</strong> ${formatDate(bookingData.date)}</p>
+            <p><strong>Session:</strong> ${bookingData.session.session_time} - ${bookingData.session.session_slot}</p>
+            <p><strong>Name:</strong> ${bookingData.name}</p>
+            <p><strong>IC/Passport:</strong> ${bookingData.icno}</p>
+            <p><strong>Contact:</strong> ${bookingData.contact}</p>
+            <p style="color:green;font-weight:bold;font-size:18px;">✓ Booking Confirmed!</p>
+            <p><small>Please save your Session ID for future reference.</small></p>
+        </div>
     `;
     
     showMessage('Booking successful!', 'success');
 }
 
-// Go Back
-function goBack() {
-    step2.style.display = 'none';
+// ============================================
+// Reset
+// ============================================
+function resetAll() {
+    step5.style.display = 'none';
     step1.style.display = 'block';
+    selectedDate = null;
+    selectedSession = null;
+    bookingData = {};
+    document.getElementById('icno').value = '';
+    document.getElementById('name').value = '';
+    document.getElementById('contact').value = '';
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').style.display = 'none';
+    document.getElementById('nextToDetailsBtn').style.display = 'none';
 }
 
-// Show Message
+// ============================================
+// Utilities
+// ============================================
 function showMessage(text, type = 'info') {
     messageDiv.style.display = 'block';
     messageDiv.textContent = text;
@@ -278,16 +530,18 @@ function showMessage(text, type = 'info') {
     }
 }
 
-// Format Date
 function formatDate(dateString) {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString + 'T00:00:00').toLocaleDateString('en-MY', options);
 }
 
-// Load available dates on page load
+// ============================================
+// Initialize
+// ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we're returning from manage page
     step1.style.display = 'block';
     step2.style.display = 'none';
     step3.style.display = 'none';
+    step4.style.display = 'none';
+    step5.style.display = 'none';
 });
