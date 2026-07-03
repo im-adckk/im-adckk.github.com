@@ -108,13 +108,6 @@ function renderCalendar() {
             div.style.color = 'white';
         }
         
-        // Highlight selected date
-        if (dateStr === selectedDate) {
-            div.style.backgroundColor = '#3498db';
-            div.style.color = 'white';
-            div.style.border = '3px solid #2980b9';
-        }
-        
         div.addEventListener('click', () => onDateClick(dateStr));
         calendar.appendChild(div);
     }
@@ -128,7 +121,6 @@ async function checkAvailabilityForMonth() {
     const today = new Date().toISOString().split('T')[0];
     
     try {
-        // Get all sessions for the month
         const { data, error } = await supabaseClient
             .from('available_sessions')
             .select('*')
@@ -139,7 +131,6 @@ async function checkAvailabilityForMonth() {
         
         if (error) throw error;
         
-        // Group by date
         const availabilityMap = {};
         data.forEach(session => {
             if (!availabilityMap[session.session_date]) {
@@ -148,12 +139,10 @@ async function checkAvailabilityForMonth() {
             availabilityMap[session.session_date].push(session);
         });
         
-        // Update calendar cells
         const cells = document.querySelectorAll('#calendar div[data-date]');
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
             
-            // Skip past dates and today
             if (dateStr < today || dateStr === today) return;
             
             const sessions = availabilityMap[dateStr] || [];
@@ -163,11 +152,9 @@ async function checkAvailabilityForMonth() {
                 cell.style.backgroundColor = '#2ecc71';
                 cell.style.color = 'white';
             } else if (sessions.length > 0) {
-                // Has sessions but all full
                 cell.style.backgroundColor = '#e74c3c';
                 cell.style.color = 'white';
             } else {
-                // No sessions (inactive)
                 cell.style.backgroundColor = '#95a5a6';
                 cell.style.color = 'white';
             }
@@ -178,87 +165,10 @@ async function checkAvailabilityForMonth() {
     }
 }
 
-function changeMonth(delta) {
-    currentMonth += delta;
-    if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-    } else if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-    }
-    selectedDate = null;
-    document.getElementById('selectedDateDisplay').textContent = '';
-    document.getElementById('sessionsContainer').style.display = 'none';
-    document.getElementById('nextToDetailsBtn').style.display = 'none';
-    renderCalendar();
-    checkAvailabilityForMonth();
-}
-
-function goToToday() {
-    const today = new Date();
-    currentMonth = today.getMonth();
-    currentYear = today.getFullYear();
-    selectedDate = null;
-    document.getElementById('selectedDateDisplay').textContent = '';
-    document.getElementById('sessionsContainer').style.display = 'none';
-    document.getElementById('nextToDetailsBtn').style.display = 'none';
-    renderCalendar();
-    checkAvailabilityForMonth();
-}
-
-async function onDateClick(dateStr) {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Disable past dates and today
-    if (dateStr < today) {
-        showMessage('Cannot select past dates.', 'error');
-        return;
-    }
-    if (dateStr === today) {
-        showMessage('Cannot book for today. Please select a future date.', 'error');
-        return;
-    }
-    
-    // If clicking the same date, deselect it
-    if (selectedDate === dateStr) {
-        selectedDate = null;
-        document.getElementById('selectedDateDisplay').textContent = '';
-        document.getElementById('sessionsContainer').style.display = 'none';
-        document.getElementById('nextToDetailsBtn').style.display = 'none';
-        selectedSession = null;
-        
-        // Reset all dates to their original colors
-        await resetCalendarColors();
-        return;
-    }
-    
-    selectedDate = dateStr;
-    document.getElementById('selectedDateDisplay').textContent = `Selected Date: ${formatDate(dateStr)}`;
-    
-    // Reset all dates to their original colors, then highlight the selected one
-    await resetCalendarColors();
-    
-    // Highlight selected date
-    const cells = document.querySelectorAll('#calendar div[data-date]');
-    cells.forEach(cell => {
-        if (cell.dataset.date === dateStr) {
-            cell.style.backgroundColor = '#3498db';
-            cell.style.color = 'white';
-            cell.style.border = '3px solid #2980b9';
-        }
-    });
-    
-    // Load sessions for this date
-    await loadSessionsForDate(dateStr);
-}
-
-// New function to reset calendar colors
 async function resetCalendarColors() {
     const today = new Date().toISOString().split('T')[0];
     const cells = document.querySelectorAll('#calendar div[data-date]');
     
-    // Get current month's data again
     const year = currentYear;
     const month = currentMonth;
     const startDate = new Date(year, month, 1).toISOString().split('T')[0];
@@ -275,7 +185,6 @@ async function resetCalendarColors() {
         
         if (error) throw error;
         
-        // Group by date
         const availabilityMap = {};
         data.forEach(session => {
             if (!availabilityMap[session.session_date]) {
@@ -284,28 +193,25 @@ async function resetCalendarColors() {
             availabilityMap[session.session_date].push(session);
         });
         
-        // Reset each cell
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
             
-            // Skip if this is the currently selected date (will be highlighted separately)
+            // Skip if this is the currently selected date
             if (dateStr === selectedDate) return;
             
-            // Past dates
             if (dateStr < today) {
                 cell.style.backgroundColor = '#f5f5f5';
                 cell.style.color = '#999';
                 cell.style.cursor = 'not-allowed';
                 cell.style.border = '1px solid #ddd';
             } 
-            // Today
             else if (dateStr === today) {
                 cell.style.backgroundColor = '#f39c12';
                 cell.style.color = 'white';
                 cell.style.border = '1px solid #ddd';
-                cell.textContent = new Date(dateStr).getDate() + ' (Today)';
+                const day = new Date(dateStr).getDate();
+                cell.textContent = day + ' (Today)';
             } 
-            // Future dates
             else {
                 const sessions = availabilityMap[dateStr] || [];
                 const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
@@ -314,11 +220,9 @@ async function resetCalendarColors() {
                     cell.style.backgroundColor = '#2ecc71';
                     cell.style.color = 'white';
                 } else if (sessions.length > 0) {
-                    // Has sessions but all full
                     cell.style.backgroundColor = '#e74c3c';
                     cell.style.color = 'white';
                 } else {
-                    // No sessions (inactive)
                     cell.style.backgroundColor = '#95a5a6';
                     cell.style.color = 'white';
                 }
@@ -330,6 +234,79 @@ async function resetCalendarColors() {
     } catch (error) {
         console.error('Error resetting calendar colors:', error);
     }
+}
+
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    } else if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+    }
+    selectedDate = null;
+    selectedSession = null;
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').style.display = 'none';
+    document.getElementById('nextToDetailsBtn').style.display = 'none';
+    renderCalendar();
+    checkAvailabilityForMonth();
+}
+
+function goToToday() {
+    const today = new Date();
+    currentMonth = today.getMonth();
+    currentYear = today.getFullYear();
+    selectedDate = null;
+    selectedSession = null;
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').style.display = 'none';
+    document.getElementById('nextToDetailsBtn').style.display = 'none';
+    renderCalendar();
+    checkAvailabilityForMonth();
+}
+
+async function onDateClick(dateStr) {
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (dateStr < today) {
+        showMessage('Cannot select past dates.', 'error');
+        return;
+    }
+    if (dateStr === today) {
+        showMessage('Cannot book for today. Please select a future date.', 'error');
+        return;
+    }
+    
+    // If clicking the same date, deselect it
+    if (selectedDate === dateStr) {
+        selectedDate = null;
+        selectedSession = null;
+        document.getElementById('selectedDateDisplay').textContent = '';
+        document.getElementById('sessionsContainer').style.display = 'none';
+        document.getElementById('nextToDetailsBtn').style.display = 'none';
+        await resetCalendarColors();
+        return;
+    }
+    
+    selectedDate = dateStr;
+    document.getElementById('selectedDateDisplay').textContent = `Selected Date: ${formatDate(dateStr)}`;
+    
+    // Reset all dates to their original colors
+    await resetCalendarColors();
+    
+    // Highlight selected date
+    const cells = document.querySelectorAll('#calendar div[data-date]');
+    cells.forEach(cell => {
+        if (cell.dataset.date === dateStr) {
+            cell.style.backgroundColor = '#3498db';
+            cell.style.color = 'white';
+            cell.style.border = '3px solid #2980b9';
+        }
+    });
+    
+    await loadSessionsForDate(dateStr);
 }
 
 async function loadSessionsForDate(dateStr) {
@@ -355,7 +332,6 @@ async function loadSessionsForDate(dateStr) {
             return;
         }
         
-        // Build session list
         let html = '';
         data.forEach((session, index) => {
             const available = session.max_bookings - session.current_bookings;
@@ -380,8 +356,6 @@ async function loadSessionsForDate(dateStr) {
         sessionsList.innerHTML = html;
         sessionsContainer.style.display = 'block';
         nextBtn.style.display = 'none';
-        
-        // Reset selected session
         selectedSession = null;
         
         showMessage('Select a session time to continue.', 'info');
@@ -444,7 +418,6 @@ function goToStep4() {
     const name = document.getElementById('name').value.trim();
     const contact = document.getElementById('contact').value.trim();
     
-    // Validation
     if (!icno || icno.length < 8) {
         showMessage('Please enter a valid IC or Passport number.', 'error');
         return;
@@ -460,7 +433,6 @@ function goToStep4() {
         return;
     }
     
-    // Store booking data
     bookingData = {
         icno: icno,
         name: name,
@@ -470,7 +442,6 @@ function goToStep4() {
         session: availableSessionsData[selectedSession]
     };
     
-    // Display summary
     const summary = document.getElementById('bookingSummary');
     summary.innerHTML = `
         <table border="1" cellpadding="10" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:600px;">
@@ -517,7 +488,6 @@ async function submitBooking() {
     try {
         showMessage('Creating booking...', 'info');
         
-        // Check for duplicate booking
         const { data: duplicate, error: dupError } = await supabaseClient
             .rpc('check_duplicate_booking', {
                 p_icno: bookingData.icno,
@@ -534,7 +504,6 @@ async function submitBooking() {
             return;
         }
         
-        // Create booking
         const { data: booking, error: createError } = await supabaseClient
             .from('bookings')
             .insert([{
@@ -552,7 +521,6 @@ async function submitBooking() {
         
         if (createError) throw createError;
         
-        // Show confirmation
         showConfirmation(booking.session_id);
         
     } catch (error) {
