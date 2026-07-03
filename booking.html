@@ -1,132 +1,406 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Motorcycle Lesson Booking</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Motorcycle Lesson Booking</title>
+  <!-- Basecoat UI system (lightweight, mobile-first) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@basecoat/core@0.9.0/dist/basecoat.min.css">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* ----- separated CSS ----- */
+    body {
+      background: var(--bc-bg, #f4f6f9);
+      padding: 1rem 0.75rem;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+    .app-container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    /* card style for steps */
+    .step-card {
+      background: white;
+      border-radius: 20px;
+      padding: 1.5rem 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02);
+      margin-bottom: 1.5rem;
+    }
+    .step-card h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #1e293b;
+    }
+    .step-card h2 i {
+      color: #3b82f6;
+      font-size: 1.2rem;
+      width: 1.8rem;
+    }
+    /* class selection side by side */
+    .radio-inline-group {
+      display: flex;
+      flex-direction: row;
+      gap: 0.75rem;
+      margin: 0.5rem 0 1.2rem;
+      flex-wrap: wrap;
+    }
+    .radio-inline-group label {
+      flex: 1 1 0;
+      min-width: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      background: #f8fafc;
+      padding: 0.7rem 0.5rem;
+      border-radius: 60px;
+      border: 1px solid #e9edf2;
+      transition: 0.1s;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .radio-inline-group label:has(input:checked) {
+      background: #eef2ff;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+    }
+    .radio-inline-group label i {
+      color: #3b82f6;
+      font-size: 1.2rem;
+      width: 1.6rem;
+    }
+    /* buttons centered */
+    .step-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 1.2rem;
+      justify-content: center;
+    }
+    .step-actions .btn {
+      min-width: 120px;
+      justify-content: center;
+    }
+    .btn {
+      border-radius: 60px;
+      font-weight: 500;
+      padding: 0.6rem 1.6rem;
+      transition: 0.1s;
+      border: none;
+      background: #f1f5f9;
+      color: #1e293b;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #d1d9e6;
+    }
+    .btn-sm {
+      padding: 0.4rem 1rem;
+      font-size: 0.9rem;
+    }
+    .btn-link {
+      background: transparent;
+      color: #3b82f6;
+      text-decoration: underline;
+    }
+    /* calendar */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    .calendar-grid .day-header {
+      font-weight: 600;
+      text-align: center;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #64748b;
+      padding: 0.3rem 0;
+    }
+    .calendar-grid .day-cell {
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: #f1f5f9;
+      color: #1e293b;
+      transition: 0.1s;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .calendar-grid .day-cell.disabled {
+      opacity: 0.5;
+      background: #e9edf2;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+    .calendar-grid .day-cell.today {
+      background: #fbbf24;
+      color: #0f172a;
+      font-weight: 600;
+      border-color: #f59e0b;
+    }
+    .calendar-grid .day-cell.available { background: #22c55e; color: white; }
+    .calendar-grid .day-cell.fully-booked { background: #ef4444; color: white; }
+    .calendar-grid .day-cell.inactive { background: #94a3b8; color: white; }
+    .calendar-grid .day-cell.selected {
+      background: #3b82f6;
+      color: white;
+      border: 2px solid #1d4ed8;
+      transform: scale(0.96);
+    }
+    .calendar-grid .day-cell:active { transform: scale(0.92); }
+    /* legend */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem 1.2rem;
+      font-size: 0.7rem;
+      margin: 0.8rem 0 0.2rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .legend-swatch {
+      width: 1.1rem;
+      height: 1.1rem;
+      border-radius: 30px;
+      display: inline-block;
+      background: #94a3b8;
+    }
+    /* sessions */
+    .session-item {
+      padding: 0.7rem 1rem;
+      border-radius: 60px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: 0.1s;
+    }
+    .session-item.selected {
+      border-color: #3b82f6;
+      background: #eff6ff;
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+    }
+    .session-item i {
+      color: #3b82f6;
+      margin-right: 0.5rem;
+      width: 1.4rem;
+    }
+    .session-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .badge {
+      background: #e2e8f0;
+      padding: 0.2rem 0.8rem;
+      border-radius: 60px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+    .badge-success { background: #dcfce7; color: #166534; }
+    /* form */
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+    .form-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 500;
+      margin-bottom: 0.2rem;
+      font-size: 0.9rem;
+    }
+    .form-group label i {
+      color: #3b82f6;
+      width: 1.2rem;
+    }
+    .form-control {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      border-radius: 60px;
+      border: 1px solid #d1d9e6;
+      background: white;
+      font-size: 0.95rem;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .summary-table td {
+      padding: 0.5rem 0.3rem;
+      border-bottom: 1px solid #e9edf2;
+    }
+    .summary-table td:first-child {
+      font-weight: 500;
+      color: #475569;
+      width: 40%;
+    }
+    .manage-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #f1f5f9;
+      padding: 0.4rem 1.2rem;
+      border-radius: 60px;
+      font-size: 0.9rem;
+      color: #1e293b;
+      text-decoration: none;
+      margin-bottom: 0.8rem;
+    }
+    .manage-link i { color: #3b82f6; }
+    .message-box {
+      border-radius: 60px;
+      padding: 0.8rem 1.2rem;
+      background: #f8fafc;
+      border-left: 4px solid #94a3b8;
+      margin-top: 1rem;
+    }
+    .message-box.error { border-left-color: #ef4444; background: #fef2f2; }
+    .message-box.success { border-left-color: #22c55e; background: #f0fdf4; }
+    .text-center { text-align: center; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .mt-2 { margin-top: 0.5rem; }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .fs-small { font-size: 0.8rem; }
+    .gap-2 { gap: 0.5rem; }
+  </style>
 </head>
 <body>
-    <h1>Book Motorcycle Lesson</h1>
+<div class="app-container">
 
+  <!-- manage link -->
+  <a href="manage-booking.html" class="manage-link"><i class="fas fa-search"></i> Manage My Bookings</a>
 
-    <div style="margin-bottom:20px;padding:10px;background:#f5f5f5;border-radius:4px;">
-        <a href="manage-booking.html">🔍 Manage My Bookings</a>
+  <!-- STEP 1 -->
+  <div id="step1" class="step-card">
+    <h2><i class="fas fa-motorcycle"></i> Step 1: Select Class</h2>
+    <form id="classForm">
+      <div class="radio-inline-group">
+        <label for="classB"><i class="fas fa-tachometer-alt"></i> Class B</label>
+        <input type="radio" id="classB" name="class" value="B" required style="display:none;">
+        <label for="classB2"><i class="fas fa-tachometer-alt"></i> Class B2</label>
+        <input type="radio" id="classB2" name="class" value="B2" required style="display:none;">
+      </div>
+      <div class="step-actions">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-arrow-right"></i> Next: Select Date</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="step2" class="step-card" style="display:none;">
+    <h2><i class="fas fa-calendar-alt"></i> Step 2: Date & Session</h2>
+    <div id="selectedClassDisplay" class="badge" style="margin-bottom:0.75rem;"></div>
+    <div class="flex-between" style="margin-bottom:0.75rem;">
+      <button onclick="changeMonth(-1)" class="btn btn-outline btn-sm"><i class="fas fa-chevron-left"></i></button>
+      <span id="currentMonthDisplay" style="font-weight:600;font-size:1rem;"></span>
+      <button onclick="changeMonth(1)" class="btn btn-outline btn-sm"><i class="fas fa-chevron-right"></i></button>
+      <button onclick="goToToday()" class="btn btn-outline btn-sm"><i class="fas fa-calendar-day"></i> Today</button>
     </div>
-    
-    <!-- Step 1: Class Selection -->
-    <div id="step1">
-        <h2>Step 1: Select Class</h2>
-        <form id="classForm">
-            <div>
-                <input type="radio" id="classB" name="class" value="B" required>
-                <label for="classB">Class B (Heavy Motorcycle)</label>
-            </div>
-            <div>
-                <input type="radio" id="classB2" name="class" value="B2" required>
-                <label for="classB2">Class B2 (Light Motorcycle)</label>
-            </div>
-            <br>
-            <button type="submit">Next: Select Date</button>
-        </form>
+    <div id="calendar" class="calendar-grid"></div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-swatch" style="background:#22c55e;"></span> Available</span>
+      <span class="legend-item"><span class="legend-swatch" style="background:#ef4444;"></span> Full</span>
+      <span class="legend-item"><span class="legend-swatch" style="background:#94a3b8;"></span> Inactive</span>
+      <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6;"></span> Selected</span>
     </div>
-
-    <!-- Step 2: Calendar & Session Selection -->
-    <div id="step2" style="display:none;">
-        <h2>Step 2: Select Date &amp; Session</h2>
-        <div id="selectedClassDisplay"></div>
-        <br>
-        
-        <!-- Calendar Navigation -->
-        <div>
-            <button onclick="changeMonth(-1)">◀ Previous</button>
-            <span id="currentMonthDisplay" style="font-weight:bold;margin:0 20px;"></span>
-            <button onclick="changeMonth(1)">Next ▶</button>
-            <button onclick="goToToday()" style="margin-left:20px;">Today</button>
-        </div>
-        <br>
-        
-        <!-- Calendar Grid -->
-        <div id="calendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:700px;margin:0 auto;"></div>
-        <br>
-        
-        <!-- Legend -->
-        <div style="display:flex;gap:20px;justify-content:center;font-size:14px;">
-            <span><span style="background:#2ecc71;padding:2px 10px;border-radius:3px;"> </span> Available</span>
-            <span><span style="background:#e74c3c;padding:2px 10px;border-radius:3px;"> </span> Fully Booked</span>
-            <span><span style="background:#95a5a6;padding:2px 10px;border-radius:3px;"> </span> Inactive/Closed</span>
-            <span><span style="background:#3498db;padding:2px 10px;border-radius:3px;"> </span> Selected</span>
-        </div>
-        <br>
-        
-        <!-- Selected Date Display -->
-        <div id="selectedDateDisplay" style="font-weight:bold;text-align:center;margin:10px 0;"></div>
-        
-        <!-- Available Sessions -->
-        <div id="sessionsContainer" style="display:none;margin-top:20px;">
-            <h3>Available Sessions</h3>
-            <div id="sessionsList"></div>
-            <br>
-            <button id="nextToDetailsBtn" style="display:none;" onclick="goToStep3()">Next: Enter Details →</button>
-        </div>
-        
-        <br>
-        <button onclick="goBackStep1()">← Back to Class Selection</button>
+    <div id="selectedDateDisplay" class="text-center" style="font-weight:500;margin:0.5rem 0;"></div>
+    <div id="sessionsContainer" style="display:none; margin-top: 0.5rem;">
+      <h3 style="font-size:1rem;font-weight:600;margin:0 0 0.5rem;"><i class="fas fa-clock"></i> Available Sessions</h3>
+      <div id="sessionsList"></div>
+      <div class="step-actions">
+        <button id="nextToDetailsBtn" class="btn btn-primary" style="display:none;" onclick="goToStep3()"><i class="fas fa-user"></i> Next: Enter Details</button>
+      </div>
     </div>
-
-    <!-- Step 3: Student Details -->
-    <div id="step3" style="display:none;">
-        <h2>Step 3: Your Details</h2>
-        <div id="dayDuplicateWarning"></div>
-        <form id="detailsForm">
-            <div>
-                <label for="icno">IC Number (12 digits) or Passport No:</label><br>
-                <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012">
-            </div>
-            <br>
-            
-            <div>
-                <label for="name">Full Name:</label><br>
-                <input type="text" id="name" name="name" required placeholder="e.g., Ahmad bin Abdullah">
-            </div>
-            <br>
-            
-            <div>
-                <label for="contact">Contact Number:</label><br>
-                <input type="text" id="contact" name="contact" required placeholder="e.g., 0123456789">
-            </div>
-            <br>
-            
-            <button type="submit">Next: Review Booking →</button>
-            <button type="button" onclick="goBackStep2()">← Back to Calendar</button>
-        </form>
+    <div class="step-actions">
+      <button onclick="goBackStep1()" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back</button>
     </div>
+  </div>
 
-    <!-- Step 4: Confirmation -->
-    <div id="step4" style="display:none;">
-        <h2>Step 4: Review &amp; Confirm</h2>
-        <div id="bookingSummary"></div>
-        <br>
-        <button onclick="submitBooking()">✓ Confirm Booking</button>
-        <button onclick="goBackStep3()">← Edit Details</button>
-        <button onclick="goBackStep2()">← Change Date</button>
+  <!-- STEP 3 -->
+  <div id="step3" class="step-card" style="display:none;">
+    <h2><i class="fas fa-id-card"></i> Step 3: Your Details</h2>
+    <div id="dayDuplicateWarning" style="margin-bottom:0.5rem;"></div>
+    <form id="detailsForm">
+      <div class="form-group">
+        <label for="icno"><i class="fas fa-id-card"></i> IC (12 digits) or Passport</label>
+        <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="name"><i class="fas fa-user"></i> Full Name</label>
+        <input type="text" id="name" name="name" required placeholder="e.g., Ahmad bin Abdullah" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="contact"><i class="fas fa-phone"></i> Contact Number</label>
+        <input type="text" id="contact" name="contact" required placeholder="e.g., 0123456789" class="form-control">
+      </div>
+      <div class="step-actions">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Review</button>
+        <button type="button" onclick="goBackStep2()" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Calendar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- STEP 4 -->
+  <div id="step4" class="step-card" style="display:none;">
+    <h2><i class="fas fa-clipboard-check"></i> Step 4: Review & Confirm</h2>
+    <div id="bookingSummary"></div>
+    <div class="step-actions">
+      <button onclick="submitBooking()" class="btn btn-primary"><i class="fas fa-check-circle"></i> Confirm Booking</button>
+      <button onclick="goBackStep3()" class="btn btn-outline"><i class="fas fa-edit"></i> Edit</button>
+      <button onclick="goBackStep2()" class="btn btn-outline"><i class="fas fa-calendar"></i> Change Date</button>
     </div>
+  </div>
 
-    <!-- Step 5: Success -->
-    <div id="step5" style="display:none;">
-        <h2>✅ Booking Confirmed!</h2>
-        <div id="confirmationDetails"></div>
-        <br>
-        <button onclick="resetAll()">Book Another</button>
-        <button onclick="window.location.href='manage-booking.html'">Manage My Bookings</button>
+  <!-- STEP 5 -->
+  <div id="step5" class="step-card" style="display:none;">
+    <h2><i class="fas fa-check-circle" style="color:#22c55e;"></i> Booking Confirmed!</h2>
+    <div id="confirmationDetails"></div>
+    <div class="step-actions">
+      <button onclick="resetAll()" class="btn btn-primary"><i class="fas fa-plus"></i> Book Another</button>
+      <button onclick="window.location.href='manage-booking.html'" class="btn btn-outline"><i class="fas fa-list"></i> Manage</button>
     </div>
+  </div>
 
-    <!-- Message Display -->
-    <div id="message" style="margin-top:20px;padding:10px;border:1px solid #ccc;display:none;"></div>
+  <!-- message -->
+  <div id="message" class="message-box" style="display:none;"></div>
+</div>
 
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Booking Logic -->
-    <script src="bookingassets/js/booking.js"></script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Booking logic (separated) -->
+<script src="bookingassets/js/booking.js"></script>
 </body>
 </html>
