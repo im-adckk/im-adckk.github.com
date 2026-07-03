@@ -6,6 +6,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 // Admin password (simple - you can change this)
 const ADMIN_PASSWORD = 'admin123';
+const ADMIN_SESSION_KEY = 'admin_logged_in';
+const ADMIN_LOGIN_TIME_KEY = 'admin_login_time';
 
 // State
 let adminMonth = new Date().getMonth();
@@ -20,6 +22,55 @@ const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
 
 // ============================================
+// ADMIN SESSION MANAGEMENT
+// ============================================
+
+// Check if admin session exists and is valid
+function checkAdminSession() {
+    const isLoggedIn = sessionStorage.getItem(ADMIN_SESSION_KEY);
+    const loginTime = sessionStorage.getItem(ADMIN_LOGIN_TIME_KEY);
+    
+    if (isLoggedIn === 'true' && loginTime) {
+        // Optional: Session timeout after 24 hours (86400000 ms)
+        const sessionAge = Date.now() - parseInt(loginTime);
+        const maxSessionAge = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (sessionAge < maxSessionAge) {
+            return true;
+        } else {
+            // Session expired, clear it
+            clearAdminSession();
+            return false;
+        }
+    }
+    return false;
+}
+
+// Create admin session
+function createAdminSession() {
+    sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    sessionStorage.setItem(ADMIN_LOGIN_TIME_KEY, Date.now().toString());
+}
+
+// Clear admin session (logout)
+function clearAdminSession() {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_LOGIN_TIME_KEY);
+}
+
+// Logout function
+function logoutAdmin() {
+    clearAdminSession();
+    adminContent.style.display = 'none';
+    adminLogin.style.display = 'block';
+    document.getElementById('adminStatus').textContent = '🔒 Admin Access';
+    document.getElementById('adminStatus').style.color = 'inherit';
+    document.getElementById('adminPassword').value = '';
+    loginMessage.style.display = 'none';
+    showMessage('Logged out successfully.', 'info');
+}
+
+// ============================================
 // ADMIN LOGIN
 // ============================================
 
@@ -28,6 +79,9 @@ loginForm.addEventListener('submit', (e) => {
     const password = document.getElementById('adminPassword').value;
     
     if (password === ADMIN_PASSWORD) {
+        // Create session
+        createAdminSession();
+        
         adminLogin.style.display = 'none';
         adminContent.style.display = 'block';
         document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
@@ -38,6 +92,13 @@ loginForm.addEventListener('submit', (e) => {
         loginMessage.textContent = '❌ Incorrect password. Please try again.';
         document.getElementById('adminPassword').value = '';
         document.getElementById('adminPassword').focus();
+    }
+});
+
+// Also allow Enter key to submit
+document.getElementById('adminPassword').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        loginForm.dispatchEvent(new Event('submit'));
     }
 });
 
@@ -60,6 +121,30 @@ async function initializeAdmin() {
     renderAdminCalendar();
     loadAdminCalendarData();
 }
+
+// ============================================
+// INITIALIZE PAGE - Check Session on Load
+// ============================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('adminDateSelect').value = getMalaysiaToday();
+    
+    // Check if admin session exists
+    if (checkAdminSession()) {
+        // Auto-login
+        adminLogin.style.display = 'none';
+        adminContent.style.display = 'block';
+        document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
+        document.getElementById('adminStatus').style.color = 'green';
+        initializeAdmin();
+    } else {
+        // Show login
+        adminLogin.style.display = 'block';
+        adminContent.style.display = 'none';
+        // Auto-focus password field
+        document.getElementById('adminPassword').focus();
+    }
+});
 
 // ============================================
 // STATS (same as before)
