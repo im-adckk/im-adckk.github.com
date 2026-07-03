@@ -176,7 +176,8 @@ async function checkAvailabilityForMonth() {
     const todayStr = getMalaysiaToday();
     
     try {
-        const { data, error } = await supabaseClient
+        // Get sessions
+        const { data: sessions, error: sessionsError } = await supabaseClient
             .from('available_sessions')
             .select('*')
             .eq('class', selectedClass)
@@ -184,33 +185,64 @@ async function checkAvailabilityForMonth() {
             .lte('session_date', endDateStr)
             .gte('session_date', todayStr);
         
-        if (error) throw error;
+        if (sessionsError) throw sessionsError;
         
-        const availabilityMap = {};
-        data.forEach(session => {
-            if (!availabilityMap[session.session_date]) {
-                availabilityMap[session.session_date] = [];
+        // Get date statuses (inactive dates)
+        const { data: statuses, error: statusError } = await supabaseClient
+            .from('date_status')
+            .select('target_date, is_active, reason')
+            .gte('target_date', startDateStr)
+            .lte('target_date', endDateStr);
+        
+        if (statusError) throw statusError;
+        
+        // Build maps
+        const sessionMap = {};
+        sessions.forEach(session => {
+            if (!sessionMap[session.session_date]) {
+                sessionMap[session.session_date] = [];
             }
-            availabilityMap[session.session_date].push(session);
+            sessionMap[session.session_date].push(session);
         });
         
+        const statusMap = {};
+        statuses.forEach(status => {
+            statusMap[status.target_date] = status;
+        });
+        
+        // Update calendar cells
         const cells = document.querySelectorAll('#calendar div[data-date]');
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
             
+            // Skip past dates and today
             if (dateStr < todayStr || dateStr === todayStr) return;
             
-            const sessions = availabilityMap[dateStr] || [];
+            const sessions = sessionMap[dateStr] || [];
+            const status = statusMap[dateStr];
+            
+            // Check if date is inactive
+            const isInactive = status ? !status.is_active : false;
+            
+            // If inactive, show gray
+            if (isInactive) {
+                cell.style.backgroundColor = '#95a5a6';  // Gray for inactive
+                cell.style.color = 'white';
+                cell.title = status.reason || 'Date is closed for bookings';
+                return;
+            }
+            
+            // Check if any sessions have available slots
             const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
             
             if (hasAvailable) {
-                cell.style.backgroundColor = '#2ecc71';
+                cell.style.backgroundColor = '#2ecc71';  // Green for available
                 cell.style.color = 'white';
             } else if (sessions.length > 0) {
-                cell.style.backgroundColor = '#e74c3c';
+                cell.style.backgroundColor = '#e74c3c';  // Red for fully booked
                 cell.style.color = 'white';
             } else {
-                cell.style.backgroundColor = '#95a5a6';
+                cell.style.backgroundColor = '#95a5a6';  // Gray for no sessions
                 cell.style.color = 'white';
             }
         });
@@ -232,7 +264,8 @@ async function resetCalendarColors() {
     const endDateStr = toMalaysiaDateStr(endDate);
     
     try {
-        const { data, error } = await supabaseClient
+        // Get sessions
+        const { data: sessions, error: sessionsError } = await supabaseClient
             .from('available_sessions')
             .select('*')
             .eq('class', selectedClass)
@@ -240,19 +273,34 @@ async function resetCalendarColors() {
             .lte('session_date', endDateStr)
             .gte('session_date', todayStr);
         
-        if (error) throw error;
+        if (sessionsError) throw sessionsError;
         
-        const availabilityMap = {};
-        data.forEach(session => {
-            if (!availabilityMap[session.session_date]) {
-                availabilityMap[session.session_date] = [];
+        // Get date statuses
+        const { data: statuses, error: statusError } = await supabaseClient
+            .from('date_status')
+            .select('target_date, is_active, reason')
+            .gte('target_date', startDateStr)
+            .lte('target_date', endDateStr);
+        
+        if (statusError) throw statusError;
+        
+        const sessionMap = {};
+        sessions.forEach(session => {
+            if (!sessionMap[session.session_date]) {
+                sessionMap[session.session_date] = [];
             }
-            availabilityMap[session.session_date].push(session);
+            sessionMap[session.session_date].push(session);
+        });
+        
+        const statusMap = {};
+        statuses.forEach(status => {
+            statusMap[status.target_date] = status;
         });
         
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
             
+            // Skip if this is the currently selected date
             if (dateStr === selectedDate) return;
             
             if (dateStr < todayStr) {
@@ -260,6 +308,7 @@ async function resetCalendarColors() {
                 cell.style.color = '#999';
                 cell.style.cursor = 'not-allowed';
                 cell.style.border = '1px solid #ddd';
+                cell.title = '';
             } 
             else if (dateStr === todayStr) {
                 cell.style.backgroundColor = '#f39c12';
@@ -267,20 +316,34 @@ async function resetCalendarColors() {
                 cell.style.border = '1px solid #ddd';
                 const day = new Date(dateStr + 'T00:00:00').getDate();
                 cell.textContent = day + ' (Today)';
+                cell.title = 'Today - Cannot book';
             } 
             else {
-                const sessions = availabilityMap[dateStr] || [];
-                const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+                const sessions = sessionMap[dateStr] || [];
+                const status = statusMap[dateStr];
+                const isInactive = status ? !status.is_active : false;
                 
-                if (hasAvailable) {
-                    cell.style.backgroundColor = '#2ecc71';
-                    cell.style.color = 'white';
-                } else if (sessions.length > 0) {
-                    cell.style.backgroundColor = '#e74c3c';
-                    cell.style.color = 'white';
-                } else {
+                // If inactive, show gray
+                if (isInactive) {
                     cell.style.backgroundColor = '#95a5a6';
                     cell.style.color = 'white';
+                    cell.title = status.reason || 'Date is closed for bookings';
+                } else {
+                    const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+                    
+                    if (hasAvailable) {
+                        cell.style.backgroundColor = '#2ecc71';
+                        cell.style.color = 'white';
+                        cell.title = 'Available';
+                    } else if (sessions.length > 0) {
+                        cell.style.backgroundColor = '#e74c3c';
+                        cell.style.color = 'white';
+                        cell.title = 'Fully Booked';
+                    } else {
+                        cell.style.backgroundColor = '#95a5a6';
+                        cell.style.color = 'white';
+                        cell.title = 'No sessions available';
+                    }
                 }
                 cell.style.border = '1px solid #ddd';
                 cell.style.cursor = 'pointer';
@@ -335,6 +398,28 @@ async function onDateClick(dateStr) {
         return;
     }
     
+    // Check if date is inactive
+    try {
+        const { data: status, error } = await supabaseClient
+            .from('date_status')
+            .select('is_active, reason')
+            .eq('target_date', dateStr)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') throw error;
+        
+        // If date is explicitly set to inactive
+        if (status && !status.is_active) {
+            const reason = status.reason ? ` (Reason: ${status.reason})` : '';
+            showMessage(`This date is closed for bookings.${reason}`, 'error');
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking date status:', error);
+        // Continue anyway - don't block if there's an error
+    }
+    
+    // If clicking the same date, deselect it
     if (selectedDate === dateStr) {
         selectedDate = null;
         selectedSession = null;
