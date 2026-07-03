@@ -1,7 +1,9 @@
+// Supabase Configuration
 const SUPABASE_URL = 'https://yrrinzreyafiowehhhon.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Use window.supabase instead of declaring a new variable
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // DOM Elements
 const searchForm = document.getElementById('searchForm');
@@ -29,7 +31,7 @@ async function searchBookings() {
         showMessage('Searching...', 'info');
         
         // Get all bookings (including past) for this IC
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('bookings')
             .select('*')
             .eq('icno', icno)
@@ -128,7 +130,7 @@ async function cancelBooking(sessionId) {
     try {
         showMessage('Cancelling booking...', 'info');
         
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .rpc('cancel_booking', { p_session_id: sessionId });
         
         if (error) throw error;
