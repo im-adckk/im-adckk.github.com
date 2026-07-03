@@ -631,6 +631,18 @@ async function onAdminDateClick(dateStr) {
         
         if (error) throw error;
         
+        // Sort sessions: morning first, then afternoon
+        if (data) {
+            const timeOrder = { '9am-12pm': 1, '12pm-3pm': 2 };
+            const slotOrder = { 'sesi1': 1, 'sesi2': 2, 'sesi3': 3 };
+            
+            data.sort((a, b) => {
+                const timeDiff = (timeOrder[a.session_time] || 99) - (timeOrder[b.session_time] || 99);
+                if (timeDiff !== 0) return timeDiff;
+                return (slotOrder[a.session_slot] || 99) - (slotOrder[b.session_slot] || 99);
+            });
+        }
+        
         const { data: status, error: statusError } = await supabaseClient
             .from('date_status')
             .select('*')
