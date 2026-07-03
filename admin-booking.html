@@ -159,6 +159,32 @@
             </div>
         </div>
 
+        <!-- Pagination Controls -->
+        <div id="paginationControls" style="display:none;margin-top:15px;padding:10px;background:#f8f9fa;border-radius:4px;border:1px solid #ddd;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span id="paginationInfo" style="font-size:14px;color:#666;"></span>
+                <div>
+                    <label for="rowsPerPageSelect" style="font-size:12px;color:#666;">Rows:</label>
+                    <select id="rowsPerPageSelect" onchange="changeRowsPerPage()" style="padding:3px 5px;border:1px solid #ddd;border-radius:3px;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;">
+                <button id="prevPageBtn" onclick="prevPage()" style="padding:5px 12px;border:1px solid #ddd;border-radius:3px;background:white;cursor:pointer;">
+                    ◀ Prev
+                </button>
+                <div id="pageNumbers" style="display:flex;align-items:center;gap:3px;"></div>
+                <button id="nextPageBtn" onclick="nextPage()" style="padding:5px 12px;border:1px solid #ddd;border-radius:3px;background:white;cursor:pointer;">
+                    Next ▶
+                </button>
+            </div>
+        </div>
+    </div>
+
         <!-- Tab: Calendar View -->
         <div id="tabContentCalendar" style="display:none;">
             <div style="margin:10px 0;">
