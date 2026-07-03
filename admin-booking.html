@@ -96,22 +96,46 @@
 
         <!-- Tab: All Bookings -->
         <div id="tabContentBookings">
-            <div style="margin:10px 0;">
-                <label for="filterStatus">Filter by Status:</label>
-                <select id="filterStatus" onchange="loadAllBookings()">
-                    <option value="all">All</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="rescheduled">Rescheduled</option>
-                </select>
-                
-                <label for="filterClass" style="margin-left:10px;">Filter by Class:</label>
-                <select id="filterClass" onchange="loadAllBookings()">
-                    <option value="all">All</option>
-                    <option value="B">Class B</option>
-                    <option value="B2">Class B2</option>
-                </select>
-            </div>
+            <div style="margin:10px 0;padding:15px;background:#f8f9fa;border-radius:4px;border:1px solid #ddd;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <div>
+                            <label for="filterDateFrom">Date From:</label>
+                            <input type="date" id="filterDateFrom">
+                        </div>
+                        <div>
+                            <label for="filterDateTo">Date To:</label>
+                            <input type="date" id="filterDateTo">
+                        </div>
+                        <div>
+                            <label for="filterStatus">Status:</label>
+                            <select id="filterStatus" onchange="loadAllBookings()">
+                                <option value="all">All</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="rescheduled">Rescheduled</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterClass">Class:</label>
+                            <select id="filterClass" onchange="loadAllBookings()">
+                                <option value="all">All</option>
+                                <option value="B">Class B</option>
+                                <option value="B2">Class B2</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button onclick="loadAllBookings()" style="padding:8px 16px;background:#3498db;color:white;border:none;border-radius:4px;cursor:pointer;">
+                                🔍 Search
+                            </button>
+                            <button onclick="clearDateFilters()" style="padding:8px 16px;background:#95a5a6;color:white;border:none;border-radius:4px;cursor:pointer;">
+                                Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;font-size:12px;color:#666;">
+                        <span id="resultCount">0 bookings found</span>
+                    </div>
+                </div>
             <div id="bookingsTableContainer" style="overflow-x:auto;">
                 <table id="bookingsTable" border="1" cellpadding="10" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
                     <thead>
