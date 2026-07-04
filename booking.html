@@ -267,32 +267,62 @@
   </div>
 
   <!-- ============================================ -->
-  <!-- STEP 4: Confirmation -->
+  <!-- CONFIRMATION DIALOG (Modal) -->
   <!-- ============================================ -->
-  <div id="step4" class="card hidden">
-    <header>
-      <h2 class="font-semibold">Step 4 &middot; Review &amp; Confirm</h2>
-      <p class="text-sm text-muted-foreground">Double-check everything before you confirm</p>
-    </header>
-    <section>
-      <div id="bookingSummary"></div>
-    </section>
-    <footer class="flex flex-col gap-2">
-      <button class="btn w-full justify-center gap-2" onclick="submitBooking()">
-        <i data-lucide="check" class="w-4 h-4"></i>
-        Confirm Booking
-      </button>
-      <div class="flex gap-2">
-        <button class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep3()">
-          <i data-lucide="pencil" class="w-4 h-4"></i>
-          Edit Details
+  <div id="confirmDialog" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div class="bg-background rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-in slide-in-from-bottom-4 duration-300">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+          <i data-lucide="triangle-alert" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg">Confirm Booking</h3>
+          <p class="text-sm text-muted-foreground">Please verify your details before confirming</p>
+        </div>
+      </div>
+      
+      <div class="bg-muted/30 rounded-xl p-4 space-y-2 text-sm">
+        <div class="flex justify-between gap-2">
+          <span class="text-muted-foreground">Class:</span>
+          <span class="font-medium" id="confirmClass">-</span>
+        </div>
+        <div class="flex justify-between gap-2">
+          <span class="text-muted-foreground">Date:</span>
+          <span class="font-medium" id="confirmDate">-</span>
+        </div>
+        <div class="flex justify-between gap-2">
+          <span class="text-muted-foreground">Session:</span>
+          <span class="font-medium" id="confirmSession">-</span>
+        </div>
+        <div class="flex justify-between gap-2">
+          <span class="text-muted-foreground">Student:</span>
+          <span class="font-medium" id="confirmName">-</span>
+        </div>
+        <div class="flex justify-between gap-2">
+          <span class="text-muted-foreground">IC/Passport:</span>
+          <span class="font-medium" id="confirmIC">-</span>
+        </div>
+        <div class="flex justify-between gap-2">
+          <span class="text-muted-foreground">Contact:</span>
+          <span class="font-medium" id="confirmContact">-</span>
+        </div>
+      </div>
+      
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
+        <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
+        By confirming, you agree to our booking terms and conditions.
+      </div>
+      
+      <div class="flex gap-2 pt-2">
+        <button type="button" class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="closeConfirmDialog()">
+          Cancel
         </button>
-        <button class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep2()">
-          <i data-lucide="calendar" class="w-4 h-4"></i>
-          Change Date
+        <button type="button" class="btn flex-1 justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onclick="confirmBooking()">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          Confirm Booking
         </button>
       </div>
-    </footer>
+    </div>
   </div>
 
   <!-- ============================================ -->
