@@ -298,6 +298,35 @@
   </div>
 
   <!-- ============================================ -->
+  <!-- STEP 4: Confirmation -->
+  <!-- ============================================ -->
+  <div id="step4" class="card hidden">
+    <header>
+      <h2 class="font-semibold">Step 4 &middot; Review &amp; Confirm</h2>
+      <p class="text-sm text-muted-foreground">Double-check everything before you confirm</p>
+    </header>
+    <section>
+      <div id="bookingSummary"></div>
+    </section>
+    <footer class="flex flex-col gap-2">
+      <button class="btn w-full justify-center gap-2" onclick="submitBooking()">
+        <i data-lucide="check" class="w-4 h-4"></i>
+        Confirm Booking
+      </button>
+      <div class="flex gap-2">
+        <button class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep3()">
+          <i data-lucide="pencil" class="w-4 h-4"></i>
+          Edit Details
+        </button>
+        <button class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep2()">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          Change Date
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ============================================ -->
   <!-- CONFIRMATION DIALOG (Modal) -->
   <!-- ============================================ -->
   <div id="confirmDialog" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
