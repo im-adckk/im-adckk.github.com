@@ -19,6 +19,17 @@
   .cal-cell { aspect-ratio: 1 / 1; display:flex; align-items:center; justify-content:center; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 500; transition: all .15s ease; border:none; }
   .cal-head { text-align:center; font-size: 0.7rem; font-weight:600; color: var(--color-muted-foreground); padding: 0.25rem 0; }
   #message.hidden, .hidden { display:none !important; }
+
+   .group:has(:checked) {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.08);
+    box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.15);
+  }
+  
+  .group:has(:checked) .badge {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
 </style>
 </head>
 <body class="bg-background text-foreground min-h-screen">
