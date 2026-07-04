@@ -3,7 +3,7 @@ const SUPABASE_URL = 'https://yrrinzreyafiowehhhon.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  
+   
 // Admin password (simple - you can change this)
 const ADMIN_PASSWORD = 'admin123';
 const ADMIN_SESSION_KEY = 'admin_logged_in';
