@@ -212,6 +212,67 @@ async function loadStats() {
 // ============================================
 // ALL BOOKINGS TABLE
 // ============================================
+async function loadAllBookings() {
+    renderBookingsTable([], true); // Show loading spinner
+    
+    try {
+        // 1. Get filter input values
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        const status = document.getElementById('filterStatus').value;
+        const classType = document.getElementById('filterClass').value;
+        
+        // 2. Begin building the Supabase Query with exact row counting
+        let query = supabaseClient
+            .from('bookings')
+            .select('*', { count: 'exact' });
+            
+        // 3. Apply server-side filters
+        if (dateFrom) {
+            query = query.gte('booking_date', dateFrom);
+        }
+        if (dateTo) {
+            query = query.lte('booking_date', dateTo);
+        }
+        if (status && status !== 'all') {
+            query = query.eq('status', status);
+        }
+        if (classType && classType !== 'all') {
+            query = query.eq('class', classType);
+        }
+        
+        // 4. Calculate Server-side limits based on current page
+        const fromRow = (currentPage - 1) * rowsPerPage;
+        const toRow = fromRow + rowsPerPage - 1;
+        
+        // 5. Apply pagination range and sorting order
+        query = query
+            .order('booking_date', { ascending: false })
+            .order('session_time', { ascending: true })
+            .range(fromRow, toRow);
+            
+        // 6. Execute remote query
+        const { data, error, count } = await query;
+        
+        if (error) throw error;
+        
+        // 7. Store state locally
+        allBookingsData = data || [];
+        totalDBCount = count || 0;
+        
+        // Update total counter text on screen
+        document.getElementById('resultCount').textContent = `${totalDBCount} bookings found`;
+        
+        // 8. Render the limited page block and update controls
+        renderBookingsTable(allBookingsData);
+        updatePaginationServerSide();
+        
+    } catch (error) {
+        console.error('Error loading server bookings:', error);
+        showMessage('Failed to load bookings from database.', 'error');
+        renderBookingsTable([]);
+    }
+}
 
 // ============================================
 // ALL BOOKINGS TABLE WITH DATE FILTERS
