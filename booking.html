@@ -1,406 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>Motorcycle Lesson Booking</title>
-  <!-- Basecoat UI system (lightweight, mobile-first) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@basecoat/core@0.9.0/dist/basecoat.min.css">
-  <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    /* ----- separated CSS ----- */
-    body {
-      background: var(--bc-bg, #f4f6f9);
-      padding: 1rem 0.75rem;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-    }
-    .app-container {
-      max-width: 640px;
-      margin: 0 auto;
-    }
-    /* card style for steps */
-    .step-card {
-      background: white;
-      border-radius: 20px;
-      padding: 1.5rem 1rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02);
-      margin-bottom: 1.5rem;
-    }
-    .step-card h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-top: 0;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: #1e293b;
-    }
-    .step-card h2 i {
-      color: #3b82f6;
-      font-size: 1.2rem;
-      width: 1.8rem;
-    }
-    /* class selection side by side */
-    .radio-inline-group {
-      display: flex;
-      flex-direction: row;
-      gap: 0.75rem;
-      margin: 0.5rem 0 1.2rem;
-      flex-wrap: wrap;
-    }
-    .radio-inline-group label {
-      flex: 1 1 0;
-      min-width: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      background: #f8fafc;
-      padding: 0.7rem 0.5rem;
-      border-radius: 60px;
-      border: 1px solid #e9edf2;
-      transition: 0.1s;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    .radio-inline-group label:has(input:checked) {
-      background: #eef2ff;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
-    }
-    .radio-inline-group label i {
-      color: #3b82f6;
-      font-size: 1.2rem;
-      width: 1.6rem;
-    }
-    /* buttons centered */
-    .step-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-      margin-top: 1.2rem;
-      justify-content: center;
-    }
-    .step-actions .btn {
-      min-width: 120px;
-      justify-content: center;
-    }
-    .btn {
-      border-radius: 60px;
-      font-weight: 500;
-      padding: 0.6rem 1.6rem;
-      transition: 0.1s;
-      border: none;
-      background: #f1f5f9;
-      color: #1e293b;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      cursor: pointer;
-    }
-    .btn-primary {
-      background: #3b82f6;
-      color: white;
-    }
-    .btn-primary:hover { background: #2563eb; }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid #d1d9e6;
-    }
-    .btn-sm {
-      padding: 0.4rem 1rem;
-      font-size: 0.9rem;
-    }
-    .btn-link {
-      background: transparent;
-      color: #3b82f6;
-      text-decoration: underline;
-    }
-    /* calendar */
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
-      max-width: 100%;
-      margin: 0 auto;
-    }
-    .calendar-grid .day-header {
-      font-weight: 600;
-      text-align: center;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      color: #64748b;
-      padding: 0.3rem 0;
-    }
-    .calendar-grid .day-cell {
-      aspect-ratio: 1 / 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 40px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      background: #f1f5f9;
-      color: #1e293b;
-      transition: 0.1s;
-      border: 1px solid transparent;
-      cursor: pointer;
-    }
-    .calendar-grid .day-cell.disabled {
-      opacity: 0.5;
-      background: #e9edf2;
-      color: #94a3b8;
-      pointer-events: none;
-    }
-    .calendar-grid .day-cell.today {
-      background: #fbbf24;
-      color: #0f172a;
-      font-weight: 600;
-      border-color: #f59e0b;
-    }
-    .calendar-grid .day-cell.available { background: #22c55e; color: white; }
-    .calendar-grid .day-cell.fully-booked { background: #ef4444; color: white; }
-    .calendar-grid .day-cell.inactive { background: #94a3b8; color: white; }
-    .calendar-grid .day-cell.selected {
-      background: #3b82f6;
-      color: white;
-      border: 2px solid #1d4ed8;
-      transform: scale(0.96);
-    }
-    .calendar-grid .day-cell:active { transform: scale(0.92); }
-    /* legend */
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.6rem 1.2rem;
-      font-size: 0.7rem;
-      margin: 0.8rem 0 0.2rem;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-    }
-    .legend-swatch {
-      width: 1.1rem;
-      height: 1.1rem;
-      border-radius: 30px;
-      display: inline-block;
-      background: #94a3b8;
-    }
-    /* sessions */
-    .session-item {
-      padding: 0.7rem 1rem;
-      border-radius: 60px;
-      border: 1px solid #e2e8f0;
-      background: white;
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      transition: 0.1s;
-    }
-    .session-item.selected {
-      border-color: #3b82f6;
-      background: #eff6ff;
-      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
-    }
-    .session-item i {
-      color: #3b82f6;
-      margin-right: 0.5rem;
-      width: 1.4rem;
-    }
-    .session-meta {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    .badge {
-      background: #e2e8f0;
-      padding: 0.2rem 0.8rem;
-      border-radius: 60px;
-      font-size: 0.7rem;
-      font-weight: 500;
-    }
-    .badge-success { background: #dcfce7; color: #166534; }
-    /* form */
-    .form-group {
-      margin-bottom: 1.2rem;
-    }
-    .form-group label {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-weight: 500;
-      margin-bottom: 0.2rem;
-      font-size: 0.9rem;
-    }
-    .form-group label i {
-      color: #3b82f6;
-      width: 1.2rem;
-    }
-    .form-control {
-      width: 100%;
-      padding: 0.7rem 1rem;
-      border-radius: 60px;
-      border: 1px solid #d1d9e6;
-      background: white;
-      font-size: 0.95rem;
-    }
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-    .summary-table td {
-      padding: 0.5rem 0.3rem;
-      border-bottom: 1px solid #e9edf2;
-    }
-    .summary-table td:first-child {
-      font-weight: 500;
-      color: #475569;
-      width: 40%;
-    }
-    .manage-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: #f1f5f9;
-      padding: 0.4rem 1.2rem;
-      border-radius: 60px;
-      font-size: 0.9rem;
-      color: #1e293b;
-      text-decoration: none;
-      margin-bottom: 0.8rem;
-    }
-    .manage-link i { color: #3b82f6; }
-    .message-box {
-      border-radius: 60px;
-      padding: 0.8rem 1.2rem;
-      background: #f8fafc;
-      border-left: 4px solid #94a3b8;
-      margin-top: 1rem;
-    }
-    .message-box.error { border-left-color: #ef4444; background: #fef2f2; }
-    .message-box.success { border-left-color: #22c55e; background: #f0fdf4; }
-    .text-center { text-align: center; }
-    .flex-between { display: flex; justify-content: space-between; align-items: center; }
-    .mt-2 { margin-top: 0.5rem; }
-    .mb-1 { margin-bottom: 0.5rem; }
-    .fs-small { font-size: 0.8rem; }
-    .gap-2 { gap: 0.5rem; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motorcycle Lesson Booking</title>
+
+<!-- Tailwind JIT (browser build) -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<!-- Basecoat UI (shadcn-style components for plain HTML) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@1.0.1/dist/basecoat.cdn.min.css">
+<script src="https://cdn.jsdelivr.net/npm/basecoat-css@1.0.1/dist/js/all.min.js" defer></script>
+<!-- Lucide icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+  /* Small helpers Tailwind's JIT won't need config for, kept minimal on purpose */
+  .step-dot { width: 2rem; height: 2rem; border-radius: 9999px; display:flex; align-items:center; justify-content:center; font-size: 0.75rem; font-weight: 600; flex-shrink:0; transition: all .2s ease; }
+  .cal-cell { aspect-ratio: 1 / 1; display:flex; align-items:center; justify-content:center; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 500; transition: all .15s ease; border:none; }
+  .cal-head { text-align:center; font-size: 0.7rem; font-weight:600; color: var(--color-muted-foreground); padding: 0.25rem 0; }
+  #message.hidden, .hidden { display:none !important; }
+</style>
 </head>
-<body>
-<div class="app-container">
+<body class="bg-background text-foreground min-h-screen">
 
-  <!-- manage link -->
-  <a href="manage-booking.html" class="manage-link"><i class="fas fa-search"></i> Manage My Bookings</a>
+<div class="w-full max-w-md mx-auto px-4 py-6 space-y-5">
 
-  <!-- STEP 1 -->
-  <div id="step1" class="step-card">
-    <h2><i class="fas fa-motorcycle"></i> Step 1: Select Class</h2>
-    <form id="classForm">
-      <div class="radio-inline-group">
-        <label for="classB"><i class="fas fa-tachometer-alt"></i> Class B</label>
-        <input type="radio" id="classB" name="class" value="B" required style="display:none;">
-        <label for="classB2"><i class="fas fa-tachometer-alt"></i> Class B2</label>
-        <input type="radio" id="classB2" name="class" value="B2" required style="display:none;">
-      </div>
-      <div class="step-actions">
-        <button type="submit" class="btn btn-primary"><i class="fas fa-arrow-right"></i> Next: Select Date</button>
-      </div>
-    </form>
+  <!-- App header -->
+  <header class="text-center space-y-1">
+    <div class="mx-auto w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+      <i data-lucide="bike" class="w-6 h-6"></i>
+    </div>
+    <h1 class="text-lg font-semibold">Book Motorcycle Lesson</h1>
+    <p class="text-sm text-muted-foreground">Pick a class, date, and session in a few taps</p>
+  </header>
+
+  <!-- Manage bookings link -->
+  <a href="manage-booking.html" class="btn w-full justify-center gap-2" data-variant="outline">
+    <i data-lucide="search" class="w-4 h-4"></i>
+    Manage My Bookings
+  </a>
+
+  <!-- Step progress indicator -->
+  <div id="stepIndicator" class="flex items-center justify-center gap-1" aria-hidden="true">
+    <div class="step-dot" data-step="1">1</div>
+    <div class="flex-1 h-0.5 bg-muted" data-line="1"></div>
+    <div class="step-dot" data-step="2">2</div>
+    <div class="flex-1 h-0.5 bg-muted" data-line="2"></div>
+    <div class="step-dot" data-step="3">3</div>
+    <div class="flex-1 h-0.5 bg-muted" data-line="3"></div>
+    <div class="step-dot" data-step="4">4</div>
+    <div class="flex-1 h-0.5 bg-muted" data-line="4"></div>
+    <div class="step-dot" data-step="5">5</div>
   </div>
 
-  <!-- STEP 2 -->
-  <div id="step2" class="step-card" style="display:none;">
-    <h2><i class="fas fa-calendar-alt"></i> Step 2: Date & Session</h2>
-    <div id="selectedClassDisplay" class="badge" style="margin-bottom:0.75rem;"></div>
-    <div class="flex-between" style="margin-bottom:0.75rem;">
-      <button onclick="changeMonth(-1)" class="btn btn-outline btn-sm"><i class="fas fa-chevron-left"></i></button>
-      <span id="currentMonthDisplay" style="font-weight:600;font-size:1rem;"></span>
-      <button onclick="changeMonth(1)" class="btn btn-outline btn-sm"><i class="fas fa-chevron-right"></i></button>
-      <button onclick="goToToday()" class="btn btn-outline btn-sm"><i class="fas fa-calendar-day"></i> Today</button>
-    </div>
-    <div id="calendar" class="calendar-grid"></div>
-    <div class="legend">
-      <span class="legend-item"><span class="legend-swatch" style="background:#22c55e;"></span> Available</span>
-      <span class="legend-item"><span class="legend-swatch" style="background:#ef4444;"></span> Full</span>
-      <span class="legend-item"><span class="legend-swatch" style="background:#94a3b8;"></span> Inactive</span>
-      <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6;"></span> Selected</span>
-    </div>
-    <div id="selectedDateDisplay" class="text-center" style="font-weight:500;margin:0.5rem 0;"></div>
-    <div id="sessionsContainer" style="display:none; margin-top: 0.5rem;">
-      <h3 style="font-size:1rem;font-weight:600;margin:0 0 0.5rem;"><i class="fas fa-clock"></i> Available Sessions</h3>
-      <div id="sessionsList"></div>
-      <div class="step-actions">
-        <button id="nextToDetailsBtn" class="btn btn-primary" style="display:none;" onclick="goToStep3()"><i class="fas fa-user"></i> Next: Enter Details</button>
-      </div>
-    </div>
-    <div class="step-actions">
-      <button onclick="goBackStep1()" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back</button>
-    </div>
+  <!-- Message / alert -->
+  <div id="message" class="alert hidden items-start gap-2" role="alert">
+    <i id="messageIcon" data-lucide="info" class="w-4 h-4 mt-0.5 shrink-0"></i>
+    <span id="messageText" class="whitespace-pre-line text-sm"></span>
   </div>
 
-  <!-- STEP 3 -->
-  <div id="step3" class="step-card" style="display:none;">
-    <h2><i class="fas fa-id-card"></i> Step 3: Your Details</h2>
-    <div id="dayDuplicateWarning" style="margin-bottom:0.5rem;"></div>
-    <form id="detailsForm">
-      <div class="form-group">
-        <label for="icno"><i class="fas fa-id-card"></i> IC (12 digits) or Passport</label>
-        <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012" class="form-control">
-      </div>
-      <div class="form-group">
-        <label for="name"><i class="fas fa-user"></i> Full Name</label>
-        <input type="text" id="name" name="name" required placeholder="e.g., Ahmad bin Abdullah" class="form-control">
-      </div>
-      <div class="form-group">
-        <label for="contact"><i class="fas fa-phone"></i> Contact Number</label>
-        <input type="text" id="contact" name="contact" required placeholder="e.g., 0123456789" class="form-control">
-      </div>
-      <div class="step-actions">
-        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Review</button>
-        <button type="button" onclick="goBackStep2()" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Calendar</button>
-      </div>
-    </form>
+  <!-- ============================================ -->
+  <!-- STEP 1: Class Selection -->
+  <!-- ============================================ -->
+  <div id="step1" class="card">
+    <header>
+      <h2 class="font-semibold">Step 1 &middot; Select Class</h2>
+      <p class="text-sm text-muted-foreground">Choose the motorcycle class for your lesson</p>
+    </header>
+    <section>
+      <form id="classForm" class="space-y-3">
+        <label for="classB" class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input type="radio" id="classB" name="class" value="B" class="input" required>
+          <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <i data-lucide="bike" class="w-5 h-5"></i>
+          </span>
+          <span class="flex-1">
+            <span class="block font-medium text-sm">Class B</span>
+            <span class="block text-xs text-muted-foreground">Heavy Motorcycle</span>
+          </span>
+          <span class="badge" data-variant="secondary">Heavy</span>
+        </label>
+
+        <label for="classB2" class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input type="radio" id="classB2" name="class" value="B2" class="input" required>
+          <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <i data-lucide="bike" class="w-5 h-5"></i>
+          </span>
+          <span class="flex-1">
+            <span class="block font-medium text-sm">Class B2</span>
+            <span class="block text-xs text-muted-foreground">Light Motorcycle</span>
+          </span>
+          <span class="badge" data-variant="secondary">Light</span>
+        </label>
+
+        <button type="submit" class="btn w-full justify-center gap-2 mt-2">
+          Next: Select Date
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </section>
   </div>
 
-  <!-- STEP 4 -->
-  <div id="step4" class="step-card" style="display:none;">
-    <h2><i class="fas fa-clipboard-check"></i> Step 4: Review & Confirm</h2>
-    <div id="bookingSummary"></div>
-    <div class="step-actions">
-      <button onclick="submitBooking()" class="btn btn-primary"><i class="fas fa-check-circle"></i> Confirm Booking</button>
-      <button onclick="goBackStep3()" class="btn btn-outline"><i class="fas fa-edit"></i> Edit</button>
-      <button onclick="goBackStep2()" class="btn btn-outline"><i class="fas fa-calendar"></i> Change Date</button>
-    </div>
+  <!-- ============================================ -->
+  <!-- STEP 2: Calendar & Session Selection -->
+  <!-- ============================================ -->
+  <div id="step2" class="card hidden">
+    <header>
+      <h2 class="font-semibold">Step 2 &middot; Select Date &amp; Session</h2>
+      <p class="text-sm text-muted-foreground">Tap an available day, then choose a time</p>
+      <div id="selectedClassDisplay" class="pt-1"></div>
+    </header>
+    <section class="space-y-4">
+
+      <!-- Calendar navigation -->
+      <div class="flex items-center justify-between gap-2">
+        <button type="button" class="btn" data-variant="outline" data-size="icon" onclick="changeMonth(-1)" aria-label="Previous month">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        </button>
+        <span id="currentMonthDisplay" class="font-semibold text-sm text-center"></span>
+        <button type="button" class="btn" data-variant="outline" data-size="icon" onclick="changeMonth(1)" aria-label="Next month">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <button type="button" class="btn w-full justify-center gap-2" data-variant="outline" data-size="sm" onclick="goToToday()">
+        <i data-lucide="calendar-search" class="w-4 h-4"></i>
+        Jump to Today
+      </button>
+
+      <!-- Calendar grid -->
+      <div id="calendar" class="grid grid-cols-7 gap-1"></div>
+
+      <!-- Legend -->
+      <div class="flex flex-wrap gap-x-3 gap-y-1 justify-center text-xs text-muted-foreground">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>Available</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-red-500"></span>Fully Booked</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-muted"></span>Inactive/Closed</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-blue-600"></span>Selected</span>
+      </div>
+
+      <!-- Selected date -->
+      <div id="selectedDateDisplay" class="text-center text-sm font-medium"></div>
+
+      <!-- Sessions -->
+      <div id="sessionsContainer" class="hidden space-y-2">
+        <h3 class="text-sm font-semibold flex items-center gap-1.5">
+          <i data-lucide="clock" class="w-4 h-4"></i>
+          Available Sessions
+        </h3>
+        <div id="sessionsList" class="space-y-2"></div>
+        <button id="nextToDetailsBtn" class="btn w-full justify-center gap-2 hidden" onclick="goToStep3()">
+          Next: Enter Details
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </section>
+    <footer>
+      <button type="button" class="btn w-full justify-center gap-2" data-variant="outline" onclick="goBackStep1()">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        Back to Class Selection
+      </button>
+    </footer>
   </div>
 
-  <!-- STEP 5 -->
-  <div id="step5" class="step-card" style="display:none;">
-    <h2><i class="fas fa-check-circle" style="color:#22c55e;"></i> Booking Confirmed!</h2>
-    <div id="confirmationDetails"></div>
-    <div class="step-actions">
-      <button onclick="resetAll()" class="btn btn-primary"><i class="fas fa-plus"></i> Book Another</button>
-      <button onclick="window.location.href='manage-booking.html'" class="btn btn-outline"><i class="fas fa-list"></i> Manage</button>
-    </div>
+  <!-- ============================================ -->
+  <!-- STEP 3: Student Details -->
+  <!-- ============================================ -->
+  <div id="step3" class="card hidden">
+    <header>
+      <h2 class="font-semibold">Step 3 &middot; Your Details</h2>
+      <p class="text-sm text-muted-foreground">Tell us who's attending the lesson</p>
+    </header>
+    <section>
+      <div id="dayDuplicateWarning"></div>
+      <form id="detailsForm" class="space-y-4">
+        <div class="grid gap-2">
+          <label for="icno" class="label">IC Number (12 digits) or Passport No</label>
+          <div class="relative">
+            <i data-lucide="id-card" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+            <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012" class="input pl-9">
+          </div>
+        </div>
+
+        <div class="grid gap-2">
+          <label for="name" class="label">Full Name</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+            <input type="text" id="name" name="name" required placeholder="e.g., Ahmad bin Abdullah" class="input pl-9">
+          </div>
+        </div>
+
+        <div class="grid gap-2">
+          <label for="contact" class="label">Contact Number</label>
+          <div class="relative">
+            <i data-lucide="phone" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+            <input type="text" id="contact" name="contact" required placeholder="e.g., 0123456789" class="input pl-9">
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep2()">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Back
+          </button>
+          <button type="submit" class="btn flex-1 justify-center gap-2">
+            Next
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </form>
+    </section>
   </div>
 
-  <!-- message -->
-  <div id="message" class="message-box" style="display:none;"></div>
+  <!-- ============================================ -->
+  <!-- STEP 4: Confirmation -->
+  <!-- ============================================ -->
+  <div id="step4" class="card hidden">
+    <header>
+      <h2 class="font-semibold">Step 4 &middot; Review &amp; Confirm</h2>
+      <p class="text-sm text-muted-foreground">Double-check everything before you confirm</p>
+    </header>
+    <section>
+      <div id="bookingSummary"></div>
+    </section>
+    <footer class="flex flex-col gap-2">
+      <button class="btn w-full justify-center gap-2" onclick="submitBooking()">
+        <i data-lucide="check" class="w-4 h-4"></i>
+        Confirm Booking
+      </button>
+      <div class="flex gap-2">
+        <button class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep3()">
+          <i data-lucide="pencil" class="w-4 h-4"></i>
+          Edit Details
+        </button>
+        <button class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep2()">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          Change Date
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- STEP 5: Success -->
+  <!-- ============================================ -->
+  <div id="step5" class="card hidden">
+    <header class="text-center">
+      <div class="mx-auto w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-1">
+        <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+      </div>
+      <h2 class="font-semibold">Booking Confirmed!</h2>
+    </header>
+    <section>
+      <div id="confirmationDetails"></div>
+    </section>
+    <footer class="flex gap-2">
+      <button class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="resetAll()">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        Book Another
+      </button>
+      <button class="btn flex-1 justify-center gap-2" onclick="window.location.href='manage-booking.html'">
+        <i data-lucide="list-checks" class="w-4 h-4"></i>
+        Manage Bookings
+      </button>
+    </footer>
+  </div>
+
 </div>
 
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Booking logic (separated) -->
+
+<!-- Booking Logic -->
 <script src="bookingassets/js/booking.js"></script>
 </body>
 </html>
+
