@@ -675,7 +675,43 @@ function goBackStep3() {
 // ============================================
 // STEP 4: Submit Booking
 // ============================================
-async function submitBooking() {
+
+function showConfirmDialog() {
+    // Populate dialog with booking data
+    document.getElementById('confirmClass').textContent = bookingData.class;
+    document.getElementById('confirmDate').textContent = formatMalaysiaDate(bookingData.date);
+    document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${bookingData.session.session_slot}`;
+    document.getElementById('confirmName').textContent = bookingData.name;
+    document.getElementById('confirmIC').textContent = bookingData.icno;
+    document.getElementById('confirmContact').textContent = bookingData.contact;
+    
+    // Show dialog
+    document.getElementById('confirmDialog').classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent scrolling
+    refreshIcons();
+}
+
+// Close confirmation dialog
+function closeConfirmDialog() {
+    document.getElementById('confirmDialog').classList.add('hidden');
+    document.body.style.overflow = ''; // Restore scrolling
+}
+
+function submitBooking() {
+    // Validate that we have all required data
+    if (!bookingData || !bookingData.class || !bookingData.date || !bookingData.session || !bookingData.name) {
+        showMessage('Missing booking information. Please go back and check your details.', 'error');
+        return;
+    }
+    
+    // Show confirmation dialog
+    showConfirmDialog();
+}
+
+// Confirm booking (called from dialog)
+async function confirmBooking() {
+    closeConfirmDialog();
+    
     // Disable confirm button to prevent double submission
     const confirmBtn = document.querySelector('#step4 button[onclick="submitBooking()"]');
     const originalHTML = confirmBtn.innerHTML;
@@ -762,7 +798,6 @@ async function submitBooking() {
         refreshIcons();
     }
 }
-
 // Show existing booking details when duplicate found
 function showExistingBooking(duplicateCheck) {
     const summary = document.getElementById('bookingSummary');
