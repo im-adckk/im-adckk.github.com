@@ -223,73 +223,7 @@ let rowsPerPage = 10;
 let totalPages = 1;
 let filteredBookings = [];
 
-async function loadAllBookings() {
-    const dateFrom = document.getElementById('filterDateFrom').value;
-    const dateTo = document.getElementById('filterDateTo').value;
-    const statusFilter = document.getElementById('filterStatus').value;
-    const classFilter = document.getElementById('filterClass').value;
-    
-    // Validate date range
-    if (dateFrom && dateTo && dateFrom > dateTo) {
-        showMessage('"From" date must be before "To" date.', 'error');
-        return;
-    }
-    
-    // Show loading state
-    renderBookingsTable(null, true);
-    
-    try {
-        let query = supabaseClient
-            .from('bookings')
-            .select('*')
-            .order('booking_date', { ascending: false })
-            .order('created_at', { ascending: false });
-        
-        // Apply date filters
-        if (dateFrom) {
-            query = query.gte('booking_date', dateFrom);
-        }
-        if (dateTo) {
-            query = query.lte('booking_date', dateTo);
-        }
-        
-        // Apply other filters
-        if (statusFilter !== 'all') {
-            query = query.eq('status', statusFilter);
-        }
-        if (classFilter !== 'all') {
-            query = query.eq('class', classFilter);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        allBookingsData = data || [];
-        filteredBookings = [...allBookingsData];
-        
-        // Reset to first page when new search is performed
-        currentPage = 1;
-        
-        // Update pagination
-        updatePagination();
-        
-        // Render current page
-        renderBookingsTable(getCurrentPageData());
-        
-        // Update result count
-        document.getElementById('resultCount').textContent = 
-            `${allBookingsData.length} booking${allBookingsData.length !== 1 ? 's' : ''} found`;
-        
-    } catch (error) {
-        console.error('Error loading bookings:', error);
-        showMessage('Error loading bookings: ' + error.message, 'error');
-        const tbody = document.getElementById('bookingsTableBody');
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;">Error loading bookings. Please try again.</td></tr>';
-        document.getElementById('resultCount').textContent = 'Error loading data';
-        document.getElementById('paginationControls').style.display = 'none';
-    }
-}
+updatePaginationServerSide
 
 // Get current page data
 function getCurrentPageData() {
@@ -298,10 +232,8 @@ function getCurrentPageData() {
     return filteredBookings.slice(startIndex, endIndex);
 }
 
-// Update pagination controls
-function updatePagination() {
-    const totalItems = filteredBookings.length;
-    totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+function updatePaginationServerSide() {
+    totalPages = Math.ceil(totalDBCount / rowsPerPage) || 1;
     
     if (currentPage > totalPages) {
         currentPage = totalPages;
@@ -310,48 +242,42 @@ function updatePagination() {
     const paginationDiv = document.getElementById('paginationControls');
     if (!paginationDiv) return;
     
-    // Use classList to show/hide to bypass the !important CSS rule
-    if (totalItems <= rowsPerPage) {
-        paginationDiv.classList.add('hidden');
-        return;
-    }
-    
+    // Always show controls container so the layout doesn't jump around
     paginationDiv.classList.remove('hidden');
     
-    const startItem = (currentPage - 1) * rowsPerPage + 1;
-    const endItem = Math.min(currentPage * rowsPerPage, totalItems);
+    const startItem = totalDBCount === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+    const endItem = Math.min(currentPage * rowsPerPage, totalDBCount);
     
     document.getElementById('paginationInfo').textContent = 
-        `Showing ${startItem} - ${endItem} of ${totalItems}`;
+        `Showing ${startItem} - ${endItem} of ${totalDBCount}`;
     
-    // Update buttons
+    // Toggle action button states
     document.getElementById('prevPageBtn').disabled = currentPage === 1;
     document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
     
-    // Generate page numbers
     const pageNumbers = document.getElementById('pageNumbers');
     pageNumbers.innerHTML = '';
     
-    // Show limited page numbers with ellipsis
+    if (totalPages <= 1) return; // No number links needed if it fits on 1 page
+    
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, currentPage + 2);
     
     if (startPage > 1) {
-        const firstBtn = createPageButton(1);
-        pageNumbers.appendChild(firstBtn);
+        pageNumbers.appendChild(createServerPageBtn(1));
         if (startPage > 2) {
-            const ellipsis = document.createElement('span');
-            ellipsis.textContent = '...';
-            ellipsis.style.margin = '0 5px';
-            pageNumbers.appendChild(ellipsis);
+            const span = document.createElement('span');
+            span.textContent = '...';
+            span.style.margin = '0 5px';
+            pageNumbers.appendChild(span);
         }
     }
     
     for (let i = startPage; i <= endPage; i++) {
-        const btn = createPageButton(i);
+        const btn = createServerPageBtn(i);
         if (i === currentPage) {
-            btn.classList.add('active'); // Use your CSS .active class definition
-            btn.style.background = '#3498db';
+            btn.classList.add('active');
+            btn.style.background = 'var(--color-primary, #3498db)';
             btn.style.color = 'white';
         }
         pageNumbers.appendChild(btn);
@@ -359,59 +285,51 @@ function updatePagination() {
     
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
-            const ellipsis = document.createElement('span');
-            ellipsis.textContent = '...';
-            ellipsis.style.margin = '0 5px';
-            pageNumbers.appendChild(ellipsis);
+            const span = document.createElement('span');
+            span.textContent = '...';
+            span.style.margin = '0 5px';
+            pageNumbers.appendChild(span);
         }
-        const lastBtn = createPageButton(totalPages);
-        pageNumbers.appendChild(lastBtn);
+        pageNumbers.appendChild(createServerPageBtn(totalPages));
     }
 }
-// Create page button
-function createPageButton(pageNum) {
+
+function createServerPageBtn(pageNum) {
     const btn = document.createElement('button');
-    btn.className = 'page-btn'; // Assign standard page button styling from your HTML
+    btn.className = 'page-btn';
     btn.textContent = pageNum;
-    btn.onclick = () => goToPage(pageNum);
+    btn.onclick = () => goToPageServer(pageNum);
     return btn;
 }
 
-// Go to specific page
-function goToPage(pageNum) {
+// Actions fetch records from DB when navigation changes
+async function goToPageServer(pageNum) {
     if (pageNum < 1 || pageNum > totalPages) return;
     currentPage = pageNum;
-    renderBookingsTable(getCurrentPageData());
-    updatePagination();
+    await loadAllBookings(); // Triggers range request to database
     
-    // Safely check if container exists before triggering scroll view
-    const tableContainer = document.getElementById('bookingsTableContainer');
-    if (tableContainer) {
-        tableContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const container = document.getElementById('bookingsTableContainer');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 
-// Previous page
-function prevPage() {
+async function prevPage() {
     if (currentPage > 1) {
-        goToPage(currentPage - 1);
+        await goToPageServer(currentPage - 1);
     }
 }
 
-// Next page
-function nextPage() {
+async function nextPage() {
     if (currentPage < totalPages) {
-        goToPage(currentPage + 1);
+        await goToPageServer(currentPage + 1);
     }
 }
 
-// Change rows per page
-function changeRowsPerPage() {
-    const select = document.getElementById('rowsPerPageSelect');
-    rowsPerPage = parseInt(select.value);
-    currentPage = 1;
-    updatePagination();
-    renderBookingsTable(getCurrentPageData());
+async function changeRowsPerPage() {
+    rowsPerPage = parseInt(document.getElementById('rowsPerPageSelect').value) || 10;
+    currentPage = 1; // Reset to page 1 to prevent indexing errors
+    await loadAllBookings();
 }
 
 // Clear all filters and reload
