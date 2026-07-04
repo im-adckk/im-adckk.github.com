@@ -30,6 +30,37 @@
     background: var(--color-primary);
     color: var(--color-primary-foreground);
   }
+
+  /* Confirmation Dialog Animations */
+  @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+  }
+  
+  @keyframes slideInFromBottom {
+      from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.95);
+      }
+      to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+      }
+  }
+  
+  .fade-in {
+      animation: fadeIn 0.2s ease-out;
+  }
+  
+  .slide-in-from-bottom-4 {
+      animation: slideInFromBottom 0.3s ease-out;
+  }
+  
+  /* Dialog backdrop blur */
+  .backdrop-blur-sm {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+  }
 </style>
 </head>
 <body class="bg-background text-foreground min-h-screen">
