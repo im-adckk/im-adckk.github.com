@@ -61,13 +61,13 @@ function clearAdminSession() {
 // Logout function
 function logoutAdmin() {
     clearAdminSession();
-    adminContent.style.display = 'none';
-    adminLogin.style.display = 'block';
+    adminContent.classList.add('hidden');
+    adminLogin.classList.remove('hidden');
     document.getElementById('adminStatus').textContent = '🔒 Admin Access';
     document.getElementById('adminStatus').style.color = 'inherit';
-    document.getElementById('logoutBtn').style.display = 'none';
+    document.getElementById('logoutBtn').classList.add('hidden');
     document.getElementById('adminPassword').value = '';
-    loginMessage.style.display = 'none';
+    loginMessage.classList.add('hidden');
     showMessage('Logged out successfully.', 'info');
 }
 
@@ -81,8 +81,8 @@ loginForm.addEventListener('submit', (e) => {
     
     if (password === ADMIN_PASSWORD) {
         createAdminSession();
-        adminLogin.style.display = 'none';
-        adminContent.style.display = 'block';
+        adminLogin.classList.add('hidden');
+        adminContent.classList.remove('hidden');
         document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
         document.getElementById('adminStatus').style.color = 'green';
         document.getElementById('logoutBtn').style.display = 'inline-block';
@@ -132,15 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if admin session exists
     if (checkAdminSession()) {
         // Auto-login
-        adminLogin.style.display = 'none';
-        adminContent.style.display = 'block';
+        adminLogin.classList.add('hidden');
+        adminContent.classList.remove('hidden');
         document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
         document.getElementById('adminStatus').style.color = 'green';
         initializeAdmin();
     } else {
         // Show login
-        adminLogin.style.display = 'block';
-        adminContent.style.display = 'none';
+        adminLogin.classList.remove('hidden');
+        adminContent.classList.add('hidden');
         // Auto-focus password field
         document.getElementById('adminPassword').focus();
     }
@@ -1079,22 +1079,21 @@ function showTab(tab) {
         t.style.background = '#95a5a6';
         t.style.color = 'white';
     });
-    contents.forEach(c => c.style.display = 'none');
+    contents.forEach(c => c.classList.add('hidden'));
     
     // Show selected tab
     if (tab === 'bookings') {
         tabBookings.style.background = '#3498db';
-        contentBookings.style.display = 'block';
-        // Load bookings only when this tab is clicked
+        contentBookings.classList.remove('hidden');
         loadAllBookings();
     } else if (tab === 'calendar') {
         tabCalendar.style.background = '#3498db';
-        contentCalendar.style.display = 'block';
+        contentCalendar.classList.remove('hidden');
         renderAdminCalendar();
         loadAdminCalendarData();
     } else if (tab === 'report') {
         tabReport.style.background = '#3498db';
-        contentReport.style.display = 'block';
+        contentReport.classList.remove('hidden');
     }
 }
 
@@ -1182,16 +1181,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if admin session exists
     if (checkAdminSession()) {
         // Auto-login
-        adminLogin.style.display = 'none';
-        adminContent.style.display = 'block';
+        adminLogin.classList.add('hidden');
+        adminContent.classList.remove('hidden');
         document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
         document.getElementById('adminStatus').style.color = 'green';
         document.getElementById('logoutBtn').style.display = 'inline-block';
         initializeAdmin();
     } else {
         // Show login
-        adminLogin.style.display = 'block';
-        adminContent.style.display = 'none';
+        adminLogin.classList.remove('hidden');
+        adminContent.classList.add('hidden');
         // Auto-focus password field
         document.getElementById('adminPassword').focus();
     }
