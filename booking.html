@@ -100,7 +100,7 @@
             </div>
             
             <!-- Image overlay that becomes clear on selection -->
-            <div class="absolute inset-0 transition-all duration-500 group-has-[:checked]:opacity-100"
+            <div class="absolute inset-0 transition-all duration-500 peer-checked:opacity-100"
                  style="background-image: url('bookingassets/b.png'); 
                         background-size: cover; 
                         background-position: center; 
@@ -109,16 +109,11 @@
             </div>
             
             <!-- Dark overlay for text readability -->
-            <div class="absolute inset-0 bg-black/40 transition-all duration-300 group-has-[:checked]:bg-black/20"></div>
-            
-            <!-- Selection indicator (replaces radio button) -->
-            <div class="absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white/50 flex items-center justify-center transition-all duration-200 peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white bg-white/20 backdrop-blur-sm peer-checked:scale-110">
-              <i data-lucide="check" class="w-3.5 h-3.5 text-transparent peer-checked:text-white transition-all duration-200"></i>
-            </div>
+            <div class="absolute inset-0 bg-black/40 transition-all duration-300 peer-checked:bg-black/20"></div>
             
             <!-- Content (above background) -->
             <div class="relative z-10 flex flex-col items-center gap-2 text-white">
-              <span class="block font-semibold text-lg mt-6 drop-shadow-lg">Class B</span>
+              <span class="block font-semibold text-lg mt-4 drop-shadow-lg">Class B</span>
               <span class="block text-xs text-white/80 drop-shadow-lg">Heavy Motorcycle</span>
               <span class="badge bg-white/20 text-white border-white/30 backdrop-blur-sm">&lt;500cc</span>
             </div>
@@ -139,7 +134,7 @@
             </div>
             
             <!-- Image overlay that becomes clear on selection -->
-            <div class="absolute inset-0 transition-all duration-500 group-has-[:checked]:opacity-100"
+            <div class="absolute inset-0 transition-all duration-500 peer-checked:opacity-100"
                  style="background-image: url('bookingassets/b2.png'); 
                         background-size: cover; 
                         background-position: center; 
@@ -148,16 +143,11 @@
             </div>
             
             <!-- Dark overlay for text readability -->
-            <div class="absolute inset-0 bg-black/40 transition-all duration-300 group-has-[:checked]:bg-black/20"></div>
-            
-            <!-- Selection indicator (replaces radio button) -->
-            <div class="absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white/50 flex items-center justify-center transition-all duration-200 peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white bg-white/20 backdrop-blur-sm peer-checked:scale-110">
-              <i data-lucide="check" class="w-3.5 h-3.5 text-transparent peer-checked:text-white transition-all duration-200"></i>
-            </div>
+            <div class="absolute inset-0 bg-black/40 transition-all duration-300 peer-checked:bg-black/20"></div>
             
             <!-- Content (above background) -->
             <div class="relative z-10 flex flex-col items-center gap-2 text-white">
-              <span class="block font-semibold text-lg mt-6 drop-shadow-lg">Class B2</span>
+              <span class="block font-semibold text-lg mt-4 drop-shadow-lg">Class B2</span>
               <span class="block text-xs text-white/80 drop-shadow-lg">Light Motorcycle</span>
               <span class="badge bg-white/20 text-white border-white/30 backdrop-blur-sm">&gt;250cc</span>
             </div>
