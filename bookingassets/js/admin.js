@@ -310,12 +310,13 @@ function updatePagination() {
     const paginationDiv = document.getElementById('paginationControls');
     if (!paginationDiv) return;
     
+    // Use classList to show/hide to bypass the !important CSS rule
     if (totalItems <= rowsPerPage) {
-        paginationDiv.style.display = 'none';
+        paginationDiv.classList.add('hidden');
         return;
     }
     
-    paginationDiv.style.display = 'flex';
+    paginationDiv.classList.remove('hidden');
     
     const startItem = (currentPage - 1) * rowsPerPage + 1;
     const endItem = Math.min(currentPage * rowsPerPage, totalItems);
@@ -349,6 +350,7 @@ function updatePagination() {
     for (let i = startPage; i <= endPage; i++) {
         const btn = createPageButton(i);
         if (i === currentPage) {
+            btn.classList.add('active'); // Use your CSS .active class definition
             btn.style.background = '#3498db';
             btn.style.color = 'white';
         }
@@ -366,20 +368,11 @@ function updatePagination() {
         pageNumbers.appendChild(lastBtn);
     }
 }
-
 // Create page button
 function createPageButton(pageNum) {
     const btn = document.createElement('button');
+    btn.className = 'page-btn'; // Assign standard page button styling from your HTML
     btn.textContent = pageNum;
-    btn.style.cssText = `
-        padding: 5px 10px;
-        margin: 0 3px;
-        border: 1px solid #ddd;
-        border-radius: 3px;
-        background: white;
-        cursor: pointer;
-        min-width: 32px;
-    `;
     btn.onclick = () => goToPage(pageNum);
     return btn;
 }
@@ -390,8 +383,12 @@ function goToPage(pageNum) {
     currentPage = pageNum;
     renderBookingsTable(getCurrentPageData());
     updatePagination();
-    // Scroll to table
-    document.getElementById('bookingsTableContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Safely check if container exists before triggering scroll view
+    const tableContainer = document.getElementById('bookingsTableContainer');
+    if (tableContainer) {
+        tableContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // Previous page
