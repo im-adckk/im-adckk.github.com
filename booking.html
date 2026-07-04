@@ -86,30 +86,27 @@
       <form id="classForm" class="space-y-4">
         <div class="grid grid-cols-2 gap-3">
           <!-- Class B - Heavy Motorcycle -->
-          <label for="classB" class="group relative flex flex-col items-center text-center gap-2 rounded-xl border-2 p-4 cursor-pointer transition-all duration-300 hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:shadow-lg has-[:checked]:scale-[1.02] overflow-hidden min-h-[180px]">
+          <label for="classB" class="group relative flex flex-col items-center text-center gap-2 rounded-xl border-2 border-muted p-4 cursor-pointer transition-all duration-300 hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:shadow-lg has-[:checked]:scale-[1.02] overflow-hidden min-h-[180px]">
             <input type="radio" id="classB" name="class" value="B" class="sr-only peer" required>
             
-            <!-- Background Image with blur and opacity -->
-            <div class="absolute inset-0 transition-all duration-500" 
-                 style="background-image: url('bookingassets/b.png'); 
+            <!-- Blurred background (always visible) -->
+            <div class="absolute inset-0 transition-all duration-500 peer-checked:opacity-0" 
+                 style="background-image: url('bookingassets/B.png'); 
                         background-size: cover; 
                         background-position: center; 
-                        filter: blur(4px) brightness(0.7);
-                        opacity: 0.5;
-                        transform: scale(1.1);">
+                        filter: blur(4px) brightness(0.7);">
             </div>
             
-            <!-- Image overlay that becomes clear on selection -->
-            <div class="absolute inset-0 transition-all duration-500 peer-checked:opacity-100"
-                 style="background-image: url('bookingassets/b.png'); 
+            <!-- Clear background (hidden initially, shows on selection) -->
+            <div class="absolute inset-0 transition-all duration-500 opacity-0 peer-checked:opacity-100"
+                 style="background-image: url('bookingassets/B.png'); 
                         background-size: cover; 
                         background-position: center; 
-                        opacity: 0;
-                        filter: blur(0px);">
+                        filter: blur(0px) brightness(1);">
             </div>
             
             <!-- Dark overlay for text readability -->
-            <div class="absolute inset-0 bg-black/40 transition-all duration-300 peer-checked:bg-black/20"></div>
+            <div class="absolute inset-0 bg-black/50 transition-all duration-300 peer-checked:bg-black/20"></div>
             
             <!-- Content (above background) -->
             <div class="relative z-10 flex flex-col items-center gap-2 text-white">
@@ -120,30 +117,27 @@
           </label>
   
           <!-- Class B2 - Light Motorcycle -->
-          <label for="classB2" class="group relative flex flex-col items-center text-center gap-2 rounded-xl border-2 p-4 cursor-pointer transition-all duration-300 hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:shadow-lg has-[:checked]:scale-[1.02] overflow-hidden min-h-[180px]">
+          <label for="classB2" class="group relative flex flex-col items-center text-center gap-2 rounded-xl border-2 border-muted p-4 cursor-pointer transition-all duration-300 hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:shadow-lg has-[:checked]:scale-[1.02] overflow-hidden min-h-[180px]">
             <input type="radio" id="classB2" name="class" value="B2" class="sr-only peer" required>
             
-            <!-- Background Image with blur and opacity -->
-            <div class="absolute inset-0 transition-all duration-500" 
+            <!-- Blurred background (always visible) -->
+            <div class="absolute inset-0 transition-all duration-500 peer-checked:opacity-0" 
                  style="background-image: url('bookingassets/b2.png'); 
                         background-size: cover; 
                         background-position: center; 
-                        filter: blur(4px) brightness(0.7);
-                        opacity: 0.5;
-                        transform: scale(1.1);">
+                        filter: blur(4px) brightness(0.7);">
             </div>
             
-            <!-- Image overlay that becomes clear on selection -->
-            <div class="absolute inset-0 transition-all duration-500 peer-checked:opacity-100"
+            <!-- Clear background (hidden initially, shows on selection) -->
+            <div class="absolute inset-0 transition-all duration-500 opacity-0 peer-checked:opacity-100"
                  style="background-image: url('bookingassets/b2.png'); 
                         background-size: cover; 
                         background-position: center; 
-                        opacity: 0;
-                        filter: blur(0px);">
+                        filter: blur(0px) brightness(1);">
             </div>
             
             <!-- Dark overlay for text readability -->
-            <div class="absolute inset-0 bg-black/40 transition-all duration-300 peer-checked:bg-black/20"></div>
+            <div class="absolute inset-0 bg-black/50 transition-all duration-300 peer-checked:bg-black/20"></div>
             
             <!-- Content (above background) -->
             <div class="relative z-10 flex flex-col items-center gap-2 text-white">
