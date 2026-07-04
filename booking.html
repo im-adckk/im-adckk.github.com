@@ -25,13 +25,15 @@
 
 <div class="w-full max-w-md mx-auto px-4 py-6 space-y-5">
 
-  <!-- App header -->
-  <header class="text-center space-y-1">
-    <div class="mx-auto w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-      <i data-lucide="bike" class="w-6 h-6"></i>
+  <!-- App header / logo -->
+  <header class="text-center space-y-2">
+    <div class="mx-auto w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm ring-1 ring-primary/20">
+      <i data-lucide="bike" class="w-7 h-7"></i>
     </div>
-    <h1 class="text-lg font-semibold">Book Motorcycle Lesson</h1>
-    <p class="text-sm text-muted-foreground">Pick a class, date, and session in a few taps</p>
+    <div class="space-y-0.5">
+      <h1 class="text-lg font-semibold tracking-tight">Book Motorcycle Lesson</h1>
+      <p class="text-sm text-muted-foreground">Pick a class, date, and session in a few taps</p>
+    </div>
   </header>
 
   <!-- Manage bookings link -->
@@ -68,32 +70,36 @@
       <p class="text-sm text-muted-foreground">Choose the motorcycle class for your lesson</p>
     </header>
     <section>
-      <form id="classForm" class="space-y-3">
-        <label for="classB" class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-          <input type="radio" id="classB" name="class" value="B" class="input" required>
-          <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <i data-lucide="bike" class="w-5 h-5"></i>
-          </span>
-          <span class="flex-1">
-            <span class="block font-medium text-sm">Class B</span>
+      <form id="classForm" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <label for="classB" class="group relative flex flex-col items-center text-center gap-2 rounded-xl border-2 p-4 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:shadow-sm">
+            <input type="radio" id="classB" name="class" value="B" class="sr-only" required>
+            <span class="absolute top-2 right-2 w-5 h-5 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-transparent group-has-[:checked]:border-primary group-has-[:checked]:bg-primary group-has-[:checked]:text-primary-foreground transition-colors">
+              <i data-lucide="check" class="w-3 h-3"></i>
+            </span>
+            <span class="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-has-[:checked]:bg-primary/10">
+              <i data-lucide="bike" class="w-6 h-6"></i>
+            </span>
+            <span class="block font-semibold text-sm">Class B</span>
             <span class="block text-xs text-muted-foreground">Heavy Motorcycle</span>
-          </span>
-          <span class="badge" data-variant="secondary">Heavy</span>
-        </label>
+            <span class="badge" data-variant="secondary">&lt;500cc</span>
+          </label>
 
-        <label for="classB2" class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-          <input type="radio" id="classB2" name="class" value="B2" class="input" required>
-          <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <i data-lucide="bike" class="w-5 h-5"></i>
-          </span>
-          <span class="flex-1">
-            <span class="block font-medium text-sm">Class B2</span>
+          <label for="classB2" class="group relative flex flex-col items-center text-center gap-2 rounded-xl border-2 p-4 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:shadow-sm">
+            <input type="radio" id="classB2" name="class" value="B2" class="sr-only" required>
+            <span class="absolute top-2 right-2 w-5 h-5 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-transparent group-has-[:checked]:border-primary group-has-[:checked]:bg-primary group-has-[:checked]:text-primary-foreground transition-colors">
+              <i data-lucide="check" class="w-3 h-3"></i>
+            </span>
+            <span class="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-has-[:checked]:bg-primary/10">
+              <i data-lucide="bike" class="w-6 h-6"></i>
+            </span>
+            <span class="block font-semibold text-sm">Class B2</span>
             <span class="block text-xs text-muted-foreground">Light Motorcycle</span>
-          </span>
-          <span class="badge" data-variant="secondary">Light</span>
-        </label>
+            <span class="badge" data-variant="secondary">&gt;250cc</span>
+          </label>
+        </div>
 
-        <button type="submit" class="btn w-full justify-center gap-2 mt-2">
+        <button type="submit" class="btn w-full justify-center gap-2">
           Next: Select Date
           <i data-lucide="arrow-right" class="w-4 h-4"></i>
         </button>
@@ -271,7 +277,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!-- Booking Logic -->
-<script src="bookingassets/js/booking.js"></script>
+<script src="booking.js"></script>
 </body>
 </html>
-
