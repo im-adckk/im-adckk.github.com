@@ -456,8 +456,13 @@ function setDateRange(range) {
 }
 
 
-function renderBookingsTable(bookings) {
+function renderBookingsTable(bookings, isLoading = false) {
     const tbody = document.getElementById('bookingsTableBody');
+    
+    if (isLoading) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">Loading bookings...</td></tr>';
+        return;
+    }
     
     if (!bookings || bookings.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No bookings found.</td></tr>';
@@ -466,20 +471,21 @@ function renderBookingsTable(bookings) {
     
     let html = '';
     bookings.forEach(booking => {
-        const statusColor = booking.status === 'confirmed' ? 'green' : 
-                           booking.status === 'cancelled' ? 'red' : 'orange';
+        // Match the status badge styles defined in your HTML CSS definitions
+        const statusClass = booking.status === 'confirmed' ? 'status-confirmed' : 
+                            booking.status === 'cancelled' ? 'status-cancelled' : 'status-rescheduled';
         
         html += `
             <tr>
-                <td><strong>${booking.session_id}</strong></td>
-                <td>${booking.icno}</td>
-                <td>${booking.name}</td>
-                <td>${booking.contact_no}</td>
-                <td><strong>${booking.class}</strong></td>
+                <td><strong>${booking.session_id || ''}</strong></td>
+                <td>${booking.icno || ''}</td>
+                <td>${booking.name || ''}</td>
+                <td>${booking.contact_no || ''}</td>
+                <td><span class="font-bold">${booking.class || ''}</span></td>
                 <td>${formatMalaysiaDate(booking.booking_date)}</td>
-                <td>${booking.session_time}</td>
-                <td>${booking.session_slot}</td>
-                <td style="color:${statusColor};font-weight:bold;">${booking.status.toUpperCase()}</td>
+                <td>${booking.session_time || ''}</td>
+                <td>${booking.session_slot || ''}</td>
+                <td><span class="status-badge ${statusClass}">${booking.status.toUpperCase()}</span></td>
                 <td>${formatDateTime(booking.created_at)}</td>
             </tr>
         `;
@@ -487,7 +493,6 @@ function renderBookingsTable(bookings) {
     
     tbody.innerHTML = html;
 }
-
 // ============================================
 // PDF REPORT GENERATION
 // ============================================
