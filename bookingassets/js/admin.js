@@ -749,9 +749,7 @@ function renderAdminCalendar() {
     dayNames.forEach(day => {
         const div = document.createElement('div');
         div.textContent = day;
-        div.style.fontWeight = 'bold';
-        div.style.textAlign = 'center';
-        div.style.padding = '5px';
+        div.className = 'admin-cal-head';
         calendar.appendChild(div);
     });
     
@@ -766,14 +764,14 @@ function renderAdminCalendar() {
         const dateStr = toMalaysiaDateStr(dateObj);
         const div = document.createElement('div');
         div.textContent = day;
-        div.style.padding = '10px 5px';
-        div.style.textAlign = 'center';
-        div.style.border = '1px solid #ddd';
-        div.style.cursor = 'pointer';
-        div.style.borderRadius = '4px';
+        div.className = 'admin-cal-cell';
         div.dataset.date = dateStr;
         div.style.backgroundColor = '#f5f5f5';
         div.style.color = '#999';
+        
+        // Initialize with empty data
+        div.dataset.sessions = '[]';
+        div.dataset.status = 'null';
         
         div.addEventListener('click', () => onAdminDateClick(dateStr));
         calendar.appendChild(div);
@@ -904,46 +902,79 @@ async function onAdminDateClick(dateStr) {
     document.getElementById('adminSelectedDate').textContent = `📅 ${formatMalaysiaDate(dateStr)}`;
     
     try {
-        const { data, error } = await supabaseClient
-            .rpc('get_available_sessions_for_date', {
-                check_date: dateStr,
-                class_filter: null
-            });
+        // First try to get data from the calendar cells
+        const cells = document.querySelectorAll('#adminCalendar div[data-date]');
+        let sessionData = null;
+        let statusData = null;
         
-        if (error) throw error;
+        // Find the clicked cell and get its data
+        cells.forEach(cell => {
+            if (cell.dataset.date === dateStr) {
+                try {
+                    const sessions = cell.dataset.sessions;
+                    if (sessions && sessions !== 'undefined') {
+                        sessionData = JSON.parse(sessions);
+                    }
+                } catch (e) {
+                    console.error('Error parsing sessions data:', e);
+                }
+                try {
+                    const status = cell.dataset.status;
+                    if (status && status !== 'undefined') {
+                        statusData = JSON.parse(status);
+                    }
+                } catch (e) {
+                    console.error('Error parsing status data:', e);
+                }
+            }
+        });
         
-        // Sort sessions: morning first, then afternoon
-        if (data) {
-            const timeOrder = { '9am-12pm': 1, '12pm-3pm': 2 };
-            const slotOrder = { 'sesi1': 1, 'sesi2': 2, 'sesi3': 3 };
-            
-            data.sort((a, b) => {
-                const timeDiff = (timeOrder[a.session_time] || 99) - (timeOrder[b.session_time] || 99);
-                if (timeDiff !== 0) return timeDiff;
-                return (slotOrder[a.session_slot] || 99) - (slotOrder[b.session_slot] || 99);
-            });
+        // If no data in cell, try RPC as fallback
+        if (!sessionData) {
+            try {
+                const { data, error } = await supabaseClient
+                    .rpc('get_available_sessions_for_date', {
+                        check_date: dateStr,
+                        class_filter: null
+                    });
+                
+                if (error) throw error;
+                sessionData = data || [];
+            } catch (rpcError) {
+                console.warn('RPC fallback failed, using empty data:', rpcError);
+                sessionData = [];
+            }
         }
         
-        const { data: status, error: statusError } = await supabaseClient
-            .from('date_status')
-            .select('*')
-            .eq('target_date', dateStr)
-            .single();
-        
-        if (statusError && statusError.code !== 'PGRST116') throw statusError;
+        // Get status if not already loaded
+        if (!statusData) {
+            try {
+                const { data: status, error: statusError } = await supabaseClient
+                    .from('date_status')
+                    .select('*')
+                    .eq('target_date', dateStr)
+                    .single();
+                
+                if (statusError && statusError.code !== 'PGRST116') throw statusError;
+                statusData = status || null;
+            } catch (statusError) {
+                console.warn('Status fetch failed:', statusError);
+                statusData = null;
+            }
+        }
         
         const detailsDiv = document.getElementById('adminDateSessions');
         const detailsContainer = document.getElementById('adminDateDetails');
         
         // Split data into B and B2
-        const classBData = data ? data.filter(s => s.class === 'B') : [];
-        const classB2Data = data ? data.filter(s => s.class === 'B2') : [];
+        const classBData = sessionData ? sessionData.filter(s => s.class === 'B') : [];
+        const classB2Data = sessionData ? sessionData.filter(s => s.class === 'B2') : [];
         
         let html = `
             <div style="margin:10px 0;padding:10px;background:#f8f9fa;border-radius:4px;">
-                <p><strong>Status:</strong> ${status ? (status.is_active ? '🟢 Active' : '🔴 Inactive') : '🟢 Active (default)'}</p>
-                ${status && status.reason ? `<p><strong>Reason:</strong> ${status.reason}</p>` : ''}
-                ${status && !status.is_active ? `<p style="color:red;">⚠️ This date is closed for bookings.</p>` : ''}
+                <p><strong>Status:</strong> ${statusData ? (statusData.is_active ? '🟢 Active' : '🔴 Inactive') : '🟢 Active (default)'}</p>
+                ${statusData && statusData.reason ? `<p><strong>Reason:</strong> ${statusData.reason}</p>` : ''}
+                ${statusData && !statusData.is_active ? `<p style="color:red;">⚠️ This date is closed for bookings.</p>` : ''}
             </div>
         `;
         
@@ -965,12 +996,12 @@ async function onAdminDateClick(dateStr) {
                         <tbody>
                             ${classBData.map(s => `
                                 <tr>
-                                    <td><strong>${s.session_time}</strong></td>
-                                    <td>${s.session_slot}</td>
-                                    <td>${s.current_bookings}</td>
-                                    <td>${s.max_bookings}</td>
-                                    <td style="color:${s.available_slots > 0 ? 'green' : 'red'};font-weight:bold;">
-                                        ${s.available_slots > 0 ? '✅ ' + s.available_slots : '❌ Full'}
+                                    <td><strong>${s.session_time || 'N/A'}</strong></td>
+                                    <td>${s.session_slot || 'N/A'}</td>
+                                    <td>${s.current_bookings || 0}</td>
+                                    <td>${s.max_bookings || 5}</td>
+                                    <td style="color:${(s.current_bookings < s.max_bookings) ? 'green' : 'red'};font-weight:bold;">
+                                        ${(s.current_bookings < s.max_bookings) ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
                                     </td>
                                 </tr>
                             `).join('')}
@@ -998,12 +1029,12 @@ async function onAdminDateClick(dateStr) {
                         <tbody>
                             ${classB2Data.map(s => `
                                 <tr>
-                                    <td><strong>${s.session_time}</strong></td>
-                                    <td>${s.session_slot}</td>
-                                    <td>${s.current_bookings}</td>
-                                    <td>${s.max_bookings}</td>
-                                    <td style="color:${s.available_slots > 0 ? 'green' : 'red'};font-weight:bold;">
-                                        ${s.available_slots > 0 ? '✅ ' + s.available_slots : '❌ Full'}
+                                    <td><strong>${s.session_time || 'N/A'}</strong></td>
+                                    <td>${s.session_slot || 'N/A'}</td>
+                                    <td>${s.current_bookings || 0}</td>
+                                    <td>${s.max_bookings || 15}</td>
+                                    <td style="color:${(s.current_bookings < s.max_bookings) ? 'green' : 'red'};font-weight:bold;">
+                                        ${(s.current_bookings < s.max_bookings) ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
                                     </td>
                                 </tr>
                             `).join('')}
@@ -1014,8 +1045,8 @@ async function onAdminDateClick(dateStr) {
         `;
         
         // Summary
-        const totalB = classBData.reduce((sum, s) => sum + s.available_slots, 0);
-        const totalB2 = classB2Data.reduce((sum, s) => sum + s.available_slots, 0);
+        const totalB = classBData.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
+        const totalB2 = classB2Data.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
         const totalAvailable = totalB + totalB2;
         
         html += `
@@ -1031,6 +1062,7 @@ async function onAdminDateClick(dateStr) {
         
         detailsDiv.innerHTML = html;
         detailsContainer.style.display = 'block';
+        detailsContainer.classList.remove('hidden');
         
         document.getElementById('adminDateSelect').value = dateStr;
         
