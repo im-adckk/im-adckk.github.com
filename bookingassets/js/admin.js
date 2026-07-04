@@ -117,7 +117,7 @@ async function initializeAdmin() {
     document.getElementById('reportDateTo').value = today;
     
     await loadStats();
-    //await loadAllBookings();
+    await loadAllBookings();
     renderAdminCalendar();
     loadAdminCalendarData();
 }
