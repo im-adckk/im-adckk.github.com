@@ -205,158 +205,432 @@ function renderCalendar() {
         const cell = document.createElement('button');
         cell.type = 'button';
         cell.textContent = day;
-        cell.className = `${CAL_BASE} text-base`;
+        cell.dataset.date = dateStr;
 
         if (dateStr < todayStr) {
             setCellState(cell, 'past');
-            cell.disabled = true;
+        } else if (dateStr === todayStr) {
+            // Today: rendered the same as an unavailable day, no special label/highlight.
+            setCellState(cell, 'past');
+            cell.title = 'Today - cannot book';
         } else {
-            setCellState(cell, 'inactive');
-            cell.addEventListener('click', (e) => {
-                e.preventDefault();
-                selectDate(dateStr, cell);
-            });
+            setCellState(cell, 'none');
         }
 
+        cell.addEventListener('click', () => onDateClick(dateStr));
         calendar.appendChild(cell);
     }
 
     refreshIcons();
 }
 
-function selectDate(dateStr, cell) {
-    document.querySelectorAll('#calendar button').forEach(btn => {
-        btn.classList.remove(...Object.values(CAL_STATE_CLASSES).flat().split(' '));
-        if (!btn.textContent || !btn.textContent.match(/^\d+$/)) return;
-        if (btn.disabled) {
-            setCellState(btn, 'past');
-        } else {
-            setCellState(btn, 'inactive');
-        }
-    });
+async function checkAvailabilityForMonth() {
+    const year = currentYear;
+    const month = currentMonth;
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    const startDateStr = toMalaysiaDateStr(startDate);
+    const endDateStr = toMalaysiaDateStr(endDate);
+    const todayStr = getMalaysiaToday();
 
-    selectedDate = dateStr;
-    setCellState(cell, 'selected');
-    document.getElementById('selectedDateDisplay').textContent = formatMalaysiaDate(selectedDate);
-    document.getElementById('sessionsContainer').classList.remove('hidden');
-    document.getElementById('nextToDetailsBtn').classList.remove('hidden');
-
-    loadSessions(selectedDate);
-    hideMessage();
-}
-
-async function loadSessions(dateStr) {
     try {
-        const { data, error } = await supabaseClient
+        // Get sessions
+        const { data: sessions, error: sessionsError } = await supabaseClient
             .from('available_sessions')
             .select('*')
             .eq('class', selectedClass)
-            .order('session_time', { ascending: true });
+            .gte('session_date', startDateStr)
+            .lte('session_date', endDateStr)
+            .gte('session_date', todayStr);
 
-        if (error) throw error;
+        if (sessionsError) throw sessionsError;
 
-        availableSessionsData = data || [];
-        renderSessionButtons();
-    } catch (error) {
-        console.error('Error loading sessions:', error);
-    }
-}
+        // Get date statuses (inactive dates)
+        const { data: statuses, error: statusError } = await supabaseClient
+            .from('date_status')
+            .select('target_date, is_active, reason')
+            .gte('target_date', startDateStr)
+            .lte('target_date', endDateStr);
 
-function renderSessionButtons() {
-    const container = document.getElementById('sessionsContainer');
-    const buttonsContainer = container.querySelector('[role="group"]');
-    buttonsContainer.innerHTML = '';
+        if (statusError) throw statusError;
 
-    if (!availableSessionsData || availableSessionsData.length === 0) {
-        buttonsContainer.innerHTML = '<p class="text-sm text-muted-foreground col-span-full text-center py-4">No sessions available.</p>';
-        return;
-    }
-
-    availableSessionsData.forEach(session => {
-        const label = document.createElement('label');
-        label.className = 'group relative flex flex-col items-center text-center gap-2 rounded-lg border-2 border-muted p-3 cursor-pointer transition-all duration-300 hover:border-primary/50 min-h-24';
-        label.innerHTML = `
-            <input type="radio" name="session" class="sr-only peer" required>
-            <span class="relative z-10 font-semibold text-sm">${session.session_time}</span>
-            <span class="relative z-10 text-xs text-muted-foreground">${session.session_slot} slot${session.session_slot > 1 ? 's' : ''}</span>
-            <span class="relative z-10 badge" data-variant="secondary">${session.session_slot} available</span>
-        `;
-
-        const radio = label.querySelector('input');
-        radio.value = JSON.stringify({
-            session_time: session.session_time,
-            session_slot: session.session_slot,
-            id: session.id
+        // Build maps
+        const sessionMap = {};
+        sessions.forEach(session => {
+            if (!sessionMap[session.session_date]) {
+                sessionMap[session.session_date] = [];
+            }
+            sessionMap[session.session_date].push(session);
         });
 
-        radio.addEventListener('change', () => {
-            selectedSession = JSON.parse(radio.value);
-            document.querySelectorAll('#sessionsContainer label').forEach(l => {
-                l.classList.remove('border-primary', 'shadow-lg', 'scale-105');
-            });
-            label.classList.add('border-primary', 'shadow-lg', 'scale-105');
+        const statusMap = {};
+        statuses.forEach(status => {
+            statusMap[status.target_date] = status;
         });
 
-        buttonsContainer.appendChild(label);
-    });
+        // Update calendar cells
+        const cells = document.querySelectorAll('#calendar button[data-date]');
+        cells.forEach(cell => {
+            const dateStr = cell.dataset.date;
 
-    refreshIcons();
-}
+            // Skip past dates and today
+            if (dateStr < todayStr || dateStr === todayStr) return;
 
-async function checkAvailabilityForMonth() {
-    try {
-        const { data: sessions, error } = await supabaseClient
-            .from('available_sessions')
-            .select('session_date')
-            .eq('class', selectedClass)
-            .gte('session_date', `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`);
+            const sessions = sessionMap[dateStr] || [];
+            const status = statusMap[dateStr];
 
-        if (error) throw error;
+            // Check if date is inactive
+            const isInactive = status ? !status.is_active : false;
 
-        const availableDates = new Set(sessions?.map(s => s.session_date) || []);
+            // If inactive, show muted
+            if (isInactive) {
+                setCellState(cell, 'inactive');
+                cell.title = status.reason || 'Date is closed for bookings';
+                return;
+            }
 
-        document.querySelectorAll('#calendar button').forEach(cell => {
-            if (!cell.textContent || !cell.textContent.match(/^\d+$/)) return;
-            const day = parseInt(cell.textContent);
-            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            // Check if any sessions have available slots
+            const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
 
-            if (availableDates.has(dateStr)) {
-                cell.disabled = false;
+            if (hasAvailable) {
+                setCellState(cell, 'available');
+                cell.title = 'Available';
+            } else if (sessions.length > 0) {
+                setCellState(cell, 'full');
+                cell.title = 'Fully Booked';
+            } else {
+                setCellState(cell, 'none');
+                cell.title = 'No sessions available';
             }
         });
+
     } catch (error) {
         console.error('Error checking availability:', error);
     }
 }
 
-function prevMonth() {
-    if (currentMonth === 0) {
+async function resetCalendarColors() {
+    const todayStr = getMalaysiaToday();
+    const cells = document.querySelectorAll('#calendar button[data-date]');
+
+    const year = currentYear;
+    const month = currentMonth;
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    const startDateStr = toMalaysiaDateStr(startDate);
+    const endDateStr = toMalaysiaDateStr(endDate);
+
+    try {
+        // Get sessions
+        const { data: sessions, error: sessionsError } = await supabaseClient
+            .from('available_sessions')
+            .select('*')
+            .eq('class', selectedClass)
+            .gte('session_date', startDateStr)
+            .lte('session_date', endDateStr)
+            .gte('session_date', todayStr);
+
+        if (sessionsError) throw sessionsError;
+
+        // Get date statuses
+        const { data: statuses, error: statusError } = await supabaseClient
+            .from('date_status')
+            .select('target_date, is_active, reason')
+            .gte('target_date', startDateStr)
+            .lte('target_date', endDateStr);
+
+        if (statusError) throw statusError;
+
+        const sessionMap = {};
+        sessions.forEach(session => {
+            if (!sessionMap[session.session_date]) {
+                sessionMap[session.session_date] = [];
+            }
+            sessionMap[session.session_date].push(session);
+        });
+
+        const statusMap = {};
+        statuses.forEach(status => {
+            statusMap[status.target_date] = status;
+        });
+
+        cells.forEach(cell => {
+            const dateStr = cell.dataset.date;
+
+            // Skip if this is the currently selected date
+            if (dateStr === selectedDate) return;
+
+            if (dateStr < todayStr) {
+                setCellState(cell, 'past');
+                cell.title = '';
+            }
+            else if (dateStr === todayStr) {
+                // Today: same muted look as any other non-bookable day, no label.
+                setCellState(cell, 'past');
+                cell.title = 'Today - cannot book';
+            }
+            else {
+                const sessions = sessionMap[dateStr] || [];
+                const status = statusMap[dateStr];
+                const isInactive = status ? !status.is_active : false;
+
+                if (isInactive) {
+                    setCellState(cell, 'inactive');
+                    cell.title = status.reason || 'Date is closed for bookings';
+                } else {
+                    const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+
+                    if (hasAvailable) {
+                        setCellState(cell, 'available');
+                        cell.title = 'Available';
+                    } else if (sessions.length > 0) {
+                        setCellState(cell, 'full');
+                        cell.title = 'Fully Booked';
+                    } else {
+                        setCellState(cell, 'none');
+                        cell.title = 'No sessions available';
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error resetting calendar colors:', error);
+    }
+}
+
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    } else if (currentMonth < 0) {
         currentMonth = 11;
         currentYear--;
-    } else {
-        currentMonth--;
     }
+    selectedDate = null;
+    selectedSession = null;
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').classList.add('hidden');
+    document.getElementById('nextToDetailsBtn').classList.add('hidden');
     renderCalendar();
     checkAvailabilityForMonth();
 }
 
-function nextMonth() {
-    if (currentMonth === 11) {
-        currentMonth = 0;
-        currentYear++;
-    } else {
-        currentMonth++;
-    }
+function goToToday() {
+    const { month, year } = getMalaysiaMonthYear();
+    currentMonth = month;
+    currentYear = year;
+    selectedDate = null;
+    selectedSession = null;
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').classList.add('hidden');
+    document.getElementById('nextToDetailsBtn').classList.add('hidden');
     renderCalendar();
     checkAvailabilityForMonth();
+}
+
+async function onDateClick(dateStr) {
+    const todayStr = getMalaysiaToday();
+
+    if (dateStr < todayStr) {
+        showMessage('Cannot select past dates.', 'error');
+        return;
+    }
+    if (dateStr === todayStr) {
+        showMessage('Cannot book for today. Please select a future date.', 'error');
+        return;
+    }
+
+    // Check if date is inactive
+    try {
+        const { data: status, error } = await supabaseClient
+            .from('date_status')
+            .select('is_active, reason')
+            .eq('target_date', dateStr)
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        // If date is explicitly set to inactive
+        if (status && !status.is_active) {
+            const reason = status.reason ? ` (Reason: ${status.reason})` : '';
+            showMessage(`This date is closed for bookings.${reason}`, 'error');
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking date status:', error);
+        // Continue anyway - don't block if there's an error
+    }
+
+    // If clicking the same date, deselect it
+    if (selectedDate === dateStr) {
+        selectedDate = null;
+        selectedSession = null;
+        document.getElementById('selectedDateDisplay').textContent = '';
+        document.getElementById('sessionsContainer').classList.add('hidden');
+        document.getElementById('nextToDetailsBtn').classList.add('hidden');
+        await resetCalendarColors();
+        return;
+    }
+
+    selectedDate = dateStr;
+    document.getElementById('selectedDateDisplay').innerHTML =
+        `<span class="badge" data-variant="outline">Selected Date: ${formatMalaysiaDate(dateStr)}</span>`;
+
+    await resetCalendarColors();
+
+    const cells = document.querySelectorAll('#calendar button[data-date]');
+    cells.forEach(cell => {
+        if (cell.dataset.date === dateStr) {
+            setCellState(cell, 'selected');
+        }
+    });
+
+    await loadSessionsForDate(dateStr);
+}
+
+async function loadSessionsForDate(dateStr) {
+    try {
+        const { data, error } = await supabaseClient
+            .rpc('get_available_sessions_for_date', {
+                check_date: dateStr,
+                class_filter: selectedClass
+            });
+
+        if (error) throw error;
+
+        // Sort sessions: morning first, then afternoon
+        if (data) {
+            const timeOrder = { '9am-12pm': 1, '12pm-3pm': 2 };
+            const slotOrder = { 'sesi1': 1, 'sesi2': 2, 'sesi3': 3 };
+
+            data.sort((a, b) => {
+                // First by time
+                const timeDiff = (timeOrder[a.session_time] || 99) - (timeOrder[b.session_time] || 99);
+                if (timeDiff !== 0) return timeDiff;
+                // Then by slot
+                return (slotOrder[a.session_slot] || 99) - (slotOrder[b.session_slot] || 99);
+            });
+        }
+
+        availableSessionsData = data || [];
+
+        const sessionsContainer = document.getElementById('sessionsContainer');
+        const sessionsList = document.getElementById('sessionsList');
+        const nextBtn = document.getElementById('nextToDetailsBtn');
+
+        if (!data || data.length === 0) {
+            sessionsList.innerHTML = `
+                <div class="alert" data-variant="destructive">
+                    <i data-lucide="circle-alert" class="w-4 h-4"></i>
+                    <span class="text-sm">No sessions available for this date.</span>
+                </div>`;
+            sessionsContainer.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+            refreshIcons();
+            return;
+        }
+
+        let html = '';
+        data.forEach((session, index) => {
+            const available = session.max_bookings - session.current_bookings;
+            const isSelected = selectedSession === index;
+            html += `
+                <button type="button"
+                    class="w-full text-left rounded-lg border p-3 flex items-center gap-3 transition-colors ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-card hover:bg-muted/50'}"
+                    onclick="selectSession(${index})">
+                    <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                    </span>
+                    <span class="flex-1">
+                        <span class="block text-sm font-medium">${session.session_time}</span>
+                        <span class="block text-xs text-muted-foreground">${session.session_slot}</span>
+                    </span>
+                    <span class="badge" data-variant="secondary">${available} left</span>
+                </button>
+            `;
+        });
+
+        sessionsList.innerHTML = html;
+        sessionsContainer.classList.remove('hidden');
+        nextBtn.classList.add('hidden');
+        selectedSession = null;
+        refreshIcons();
+
+        showMessage('Select a session time to continue.', 'info');
+
+    } catch (error) {
+        console.error('Error loading sessions:', error);
+        showMessage('Error loading sessions. Please try again.', 'error');
+    }
+}
+
+function selectSession(index) {
+    selectedSession = index;
+    const sessionsList = document.getElementById('sessionsList');
+    const items = sessionsList.querySelectorAll('button');
+
+    items.forEach((item, i) => {
+        if (i === index) {
+            item.className = 'w-full text-left rounded-lg border p-3 flex items-center gap-3 transition-colors border-primary bg-primary/5 ring-1 ring-primary';
+        } else {
+            item.className = 'w-full text-left rounded-lg border p-3 flex items-center gap-3 transition-colors border-border bg-card hover:bg-muted/50';
+        }
+    });
+
+    document.getElementById('nextToDetailsBtn').classList.remove('hidden');
+    showMessage('Session selected. Tap "Next" to enter your details.', 'success');
+}
+
+function goToStep3() {
+    if (selectedSession === null) {
+        showMessage('Please select a session first.', 'error');
+        return;
+    }
+
+    showStep(3);
+}
+
+function goBackStep1() {
+    hasDayDuplicate = false; // NEW: Reset flag when going back
+    document.getElementById('dayDuplicateWarning').innerHTML = '';
+    showStep(1);
+}
+
+function goBackStep2() {
+    hasDayDuplicate = false; // NEW: Reset flag when going back
+    document.getElementById('dayDuplicateWarning').innerHTML = '';
+    showStep(2);
 }
 
 // ============================================
 // STEP 3: Student Details
 // ============================================
-// MODIFIED: Add validation to check for duplicates before allowing submission
-detailsForm.addEventListener('submit', async (e) => {
+detailsForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    goToStep4();
+});
+
+function goToStep4() {
+    const icno = document.getElementById('icno').value.trim();
+    const name = document.getElementById('name').value.trim();
+    const contact = document.getElementById('contact').value.trim();
+
+    if (!icno || icno.length < 8) {
+        showMessage('Please enter a valid IC or Passport number.', 'error');
+        return;
+    }
+
+    if (!name || name.length < 3) {
+        showMessage('Please enter your full name (minimum 3 characters).', 'error');
+        return;
+    }
+
+    if (!contact || contact.length < 10) {
+        showMessage('Please enter a valid contact number.', 'error');
+        return;
+    }
 
     // NEW: Check if there's a duplicate before proceeding
     if (hasDayDuplicate) {
@@ -364,12 +638,14 @@ detailsForm.addEventListener('submit', async (e) => {
         return;
     }
 
-    bookingData.icno = document.getElementById('icno').value.trim();
-    bookingData.name = document.getElementById('name').value.trim();
-    bookingData.contact = document.getElementById('contact').value.trim();
-    bookingData.class = selectedClass;
-    bookingData.date = selectedDate;
-    bookingData.session = selectedSession;
+    bookingData = {
+        icno: icno,
+        name: name,
+        contact: contact,
+        class: selectedClass,
+        date: selectedDate,
+        session: availableSessionsData[selectedSession]
+    };
 
     const summary = document.getElementById('bookingSummary');
     summary.innerHTML = buildSummaryRows([
@@ -380,39 +656,27 @@ detailsForm.addEventListener('submit', async (e) => {
         { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
         { icon: 'phone', label: 'Contact', value: bookingData.contact }
     ]);
+    refreshIcons();
 
     showStep(4);
-    refreshIcons();
-});
-
-function buildSummaryRows(items) {
-    return items.map(item => `
-        <div class="flex justify-between gap-2 items-center p-2 rounded">
-            <span class="text-sm text-muted-foreground flex items-center gap-2">
-                <i data-lucide="${item.icon}" class="w-4 h-4"></i>${item.label}
-            </span>
-            <span class="text-sm font-medium text-right">${item.value}</span>
-        </div>
-    `).join('');
 }
 
-// Go back functions
-function goBackStep1() {
-    selectedClass = '';
-    selectedDate = null;
-    selectedSession = null;
-    bookingData = {};
-    document.getElementById('dayDuplicateWarning').innerHTML = '';
-    hasDayDuplicate = false; // NEW: Reset flag
-    showStep(1);
-}
-
-function goBackStep2() {
-    selectedSession = null;
-    bookingData = {};
-    document.getElementById('dayDuplicateWarning').innerHTML = '';
-    hasDayDuplicate = false; // NEW: Reset flag
-    showStep(2);
+function buildSummaryRows(rows) {
+    return `
+        <dl class="divide-y divide-border rounded-lg border">
+            ${rows.map(r => `
+                <div class="flex items-center gap-3 p-3">
+                    <span class="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <i data-lucide="${r.icon}" class="w-4 h-4"></i>
+                    </span>
+                    <div class="flex-1 min-w-0">
+                        <dt class="text-xs text-muted-foreground">${r.label}</dt>
+                        <dd class="text-sm font-medium break-words">${r.value}</dd>
+                    </div>
+                </div>
+            `).join('')}
+        </dl>
+    `;
 }
 
 function goBackStep3() {
@@ -420,50 +684,72 @@ function goBackStep3() {
 }
 
 // ============================================
-// STEP 4: Confirmation Dialog
+// STEP 4: Submit Booking
 // ============================================
+
 function showConfirmDialog() {
-    const dialog = document.getElementById('confirmDialog');
-    if (dialog) dialog.classList.remove('hidden');
+    // Populate dialog with booking data
     document.getElementById('confirmClass').textContent = bookingData.class;
     document.getElementById('confirmDate').textContent = formatMalaysiaDate(bookingData.date);
     document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${bookingData.session.session_slot}`;
     document.getElementById('confirmName').textContent = bookingData.name;
     document.getElementById('confirmIC').textContent = bookingData.icno;
     document.getElementById('confirmContact').textContent = bookingData.contact;
+    
+    // Show dialog
+    document.getElementById('confirmDialog').classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent scrolling
+    refreshIcons();
 }
 
+// Close confirmation dialog
 function closeConfirmDialog() {
-    const dialog = document.getElementById('confirmDialog');
-    if (dialog) dialog.classList.add('hidden');
+    document.getElementById('confirmDialog').classList.add('hidden');
+    document.body.style.overflow = ''; // Restore scrolling
 }
 
 function submitBooking() {
+    // Validate that we have all required data
+    if (!bookingData || !bookingData.class || !bookingData.date || !bookingData.session || !bookingData.name) {
+        showMessage('Missing booking information. Please go back and check your details.', 'error');
+        return;
+    }
+    
+    // Show confirmation dialog
     showConfirmDialog();
 }
 
+// Confirm booking (called from dialog)
 async function confirmBooking() {
-    const confirmBtn = event.target;
+    closeConfirmDialog();
+    
+    // Disable confirm button to prevent double submission
+    const confirmBtn = document.querySelector('#step4 button[onclick="submitBooking()"]');
     const originalHTML = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Processing...';
+    confirmBtn.disabled = true;
+    refreshIcons();
 
     try {
-        confirmBtn.disabled = true;
-        confirmBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Processing...';
-        refreshIcons();
+        showMessage('Checking for duplicate bookings...', 'info');
 
-        // Check for duplicate at final submission
+        // Check for duplicates (including same day)
         const { data: duplicateCheck, error: dupError } = await supabaseClient
-            .from('bookings')
-            .select('session_id, session_time, session_slot')
-            .eq('icno', bookingData.icno)
-            .eq('booking_date', bookingData.date)
-            .eq('status', 'confirmed')
-            .single();
+            .rpc('check_duplicate_booking', {
+                p_icno: bookingData.icno,
+                p_booking_date: bookingData.date,
+                p_session_time: bookingData.session.session_time,
+                p_session_slot: bookingData.session.session_slot,
+                p_class: bookingData.class
+            });
 
-        if (duplicateCheck) {
-            closeConfirmDialog();
-            let message = '⚠️ You already have a booking on this date (Session: ' + duplicateCheck.session_time + ' - ' + duplicateCheck.session_slot + ').';
+        if (dupError) throw dupError;
 
+        // If duplicate found, show detailed message
+        if (duplicateCheck && duplicateCheck.is_duplicate) {
+            let message = duplicateCheck.message;
+
+            // Add extra guidance for same-day duplicates
             if (duplicateCheck.existing_session_time !== bookingData.session.session_time ||
                 duplicateCheck.existing_session_slot !== bookingData.session.session_slot) {
                 message += '\n\n💡 Tip: You can only have ONE booking per day. To book a different session, first cancel your existing booking using the Session ID above.';
@@ -513,7 +799,6 @@ async function confirmBooking() {
         }
 
         // Show confirmation
-        closeConfirmDialog();
         showConfirmation(booking.session_id);
 
     } catch (error) {
@@ -524,7 +809,6 @@ async function confirmBooking() {
         refreshIcons();
     }
 }
-
 // Show existing booking details when duplicate found
 function showExistingBooking(duplicateCheck) {
     const summary = document.getElementById('bookingSummary');
@@ -552,7 +836,6 @@ function showExistingBooking(duplicateCheck) {
     refreshIcons();
 }
 
-// MODIFIED: Enhanced duplicate checking with enforcement
 async function checkDayDuplicate() {
     const icno = document.getElementById('icno').value.trim();
 
@@ -572,7 +855,7 @@ async function checkDayDuplicate() {
             .single();
 
         if (data) {
-            // NEW: Set the flag to true and show blocking message
+            // NEW: Set flag to true to block form submission
             hasDayDuplicate = true;
             
             const warningContainer = document.getElementById('dayDuplicateWarning');
@@ -591,12 +874,12 @@ async function checkDayDuplicate() {
                 refreshIcons();
             }
         } else {
-            // NEW: Reset the flag when no duplicate is found
+            // NEW: Reset flag when no duplicate found
             hasDayDuplicate = false;
             document.getElementById('dayDuplicateWarning').innerHTML = '';
         }
     } catch (error) {
-        // No booking found or error - consider it safe
+        // NEW: Reset flag on error
         hasDayDuplicate = false;
         document.getElementById('dayDuplicateWarning').innerHTML = '';
         console.log('No duplicate found for this day');
@@ -678,7 +961,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (icnoInput) {
         icnoInput.addEventListener('blur', checkDayDuplicate);
         icnoInput.addEventListener('input', () => {
-            // Don't clear the warning on input, only on blur
+            document.getElementById('dayDuplicateWarning').innerHTML = '';
         });
     }
 
