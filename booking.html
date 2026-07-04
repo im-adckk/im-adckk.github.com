@@ -27,16 +27,17 @@
 
   <!-- App header / logo -->
   <header class="text-center space-y-2">
-    <div class="mx-auto w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm ring-1 ring-primary/20">
-      <i data-lucide="bike" class="w-7 h-7"></i>
+    <div class="mx-auto w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm ring-1 ring-primary/20 overflow-hidden">
+      <img src="assets/logo.png" alt="Book Motorcycle Lesson" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+      <i data-lucide="bike" class="w-7 h-7" style="display:none;"></i>
     </div>
     <div class="space-y-0.5">
       <h1 class="text-lg font-semibold tracking-tight">Book Motorcycle Lesson</h1>
       <p class="text-sm text-muted-foreground">Pick a class, date, and session in a few taps</p>
     </div>
   </header>
-
-  <!-- Manage bookings link -->
+  
+    <!-- Manage bookings link -->
   <a href="manage-booking.html" class="btn w-full justify-center gap-2" data-variant="outline">
     <i data-lucide="search" class="w-4 h-4"></i>
     Manage My Bookings
