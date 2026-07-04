@@ -1,36 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage My Bookings</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage My Bookings</title>
+
+<!-- Tailwind JIT (browser build) -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<!-- Basecoat UI (shadcn-style components for plain HTML) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@1.0.1/dist/basecoat.cdn.min.css">
+<script src="https://cdn.jsdelivr.net/npm/basecoat-css@1.0.1/dist/js/all.min.js" defer></script>
+<!-- Lucide icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+  .hidden { display:none !important; }
+</style>
 </head>
-<body>
-    <h1>Manage My Bookings</h1>
-    
-    <div>
-        <h2>Find Your Booking</h2>
-        <form id="searchForm">
-            <div>
-                <label for="searchSessionId">Session ID (e.g., 260703-1234):</label><br>
-                <input type="text" id="searchSessionId" required placeholder="Enter your Session ID">
-            </div>
-            <br>
-            <button type="submit">Find Booking</button>
-        </form>
+<body class="bg-background text-foreground min-h-screen">
+
+<div class="w-full max-w-md mx-auto px-4 py-6 space-y-5">
+
+  <!-- App header / logo -->
+  <header class="text-center space-y-2">
+    <div class="mx-auto w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm ring-1 ring-primary/20">
+      <i data-lucide="clipboard-list" class="w-7 h-7"></i>
     </div>
-
-    <div id="bookingResult" style="margin-top:20px;display:none;">
-        <h3>Your Booking Details</h3>
-        <div id="bookingDetails"></div>
+    <div class="space-y-0.5">
+      <h1 class="text-lg font-semibold tracking-tight">Manage My Bookings</h1>
+      <p class="text-sm text-muted-foreground">Look up a booking with your Session ID</p>
     </div>
+  </header>
 
-    <div id="message" style="margin-top:20px;padding:10px;border:1px solid #ccc;display:none;"></div>
-    
-    <br>
-    <a href="booking.html">← Book New Lesson</a>
+  <!-- Back to booking link -->
+  <a href="booking.html" class="btn w-full justify-center gap-2" data-variant="outline">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    Book New Lesson
+  </a>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Message / alert -->
+  <div id="message" class="alert hidden items-start gap-2" role="alert">
+    <i id="messageIcon" data-lucide="info" class="w-4 h-4 mt-0.5 shrink-0"></i>
+    <span id="messageText" class="whitespace-pre-line text-sm"></span>
+  </div>
+
+  <!-- Search card -->
+  <div class="card">
+    <header>
+      <h2 class="font-semibold">Find Your Booking</h2>
+      <p class="text-sm text-muted-foreground">Enter the Session ID from your confirmation</p>
+    </header>
+    <section>
+      <form id="searchForm" class="space-y-4">
+        <div class="grid gap-2">
+          <label for="searchSessionId" class="label">Session ID</label>
+          <div class="relative">
+            <i data-lucide="hash" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+            <input type="text" id="searchSessionId" required placeholder="e.g., 260703-1234" class="input pl-9">
+          </div>
+        </div>
+        <button type="submit" class="btn w-full justify-center gap-2">
+          <i data-lucide="search" class="w-4 h-4"></i>
+          Find Booking
+        </button>
+      </form>
+    </section>
+  </div>
+
+  <!-- Booking result -->
+  <div id="bookingResult" class="card hidden">
+    <header>
+      <h2 class="font-semibold flex items-center gap-1.5">
+        <i data-lucide="ticket" class="w-4 h-4"></i>
+        Your Booking Details
+      </h2>
+    </header>
+    <section>
+      <div id="bookingDetails"></div>
+    </section>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="bookingassets/js/manage.js"></script>
 </body>
 </html>
+
