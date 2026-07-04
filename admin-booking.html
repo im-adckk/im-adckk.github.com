@@ -539,59 +539,72 @@
 <script src="bookingassets/js/admin.js"></script>
 
 <script>
-    // Initialize Lucide icons
-    document.addEventListener('DOMContentLoaded', function() {
-        if (window.lucide) {
-            lucide.createIcons();
+    // Override showMessage to use Basecoat styling AFTER admin.js loads
+    (function() {
+        // Wait for admin.js to load and initialize
+        const originalShowMessage = window.showMessage;
+        
+        if (originalShowMessage) {
+            window.showMessage = function(text, type = 'info') {
+                const messageDiv = document.getElementById('message');
+                const messageText = document.getElementById('messageText');
+                
+                if (!messageDiv) {
+                    // Fallback if message div doesn't exist
+                    alert(text);
+                    return;
+                }
+                
+                messageDiv.classList.remove('hidden');
+                messageDiv.style.display = 'flex';
+                messageDiv.className = 'alert items-start gap-2';
+                
+                // Set icon
+                const icon = messageDiv.querySelector('i');
+                if (icon) {
+                    if (type === 'error') {
+                        icon.setAttribute('data-lucide', 'circle-alert');
+                        messageDiv.setAttribute('data-variant', 'destructive');
+                    } else if (type === 'success') {
+                        icon.setAttribute('data-lucide', 'circle-check');
+                        messageDiv.removeAttribute('data-variant');
+                        messageDiv.style.borderColor = '#34d399';
+                        messageDiv.style.backgroundColor = '#f0fdf4';
+                        messageDiv.style.color = '#065f46';
+                    } else {
+                        icon.setAttribute('data-lucide', 'info');
+                        messageDiv.removeAttribute('data-variant');
+                        messageDiv.style.borderColor = '#93c5fd';
+                        messageDiv.style.backgroundColor = '#eff6ff';
+                        messageDiv.style.color = '#1e40af';
+                    }
+                }
+                
+                messageText.textContent = text;
+                
+                if (window.lucide && typeof lucide.createIcons === 'function') {
+                    lucide.createIcons();
+                }
+            };
         }
-    });
+        
+        // Override hideMessage
+        const originalHideMessage = window.hideMessage;
+        window.hideMessage = function() {
+            const messageDiv = document.getElementById('message');
+            if (messageDiv) {
+                messageDiv.classList.add('hidden');
+                messageDiv.style.display = 'none';
+            }
+        };
+    })();
     
-    // Re-run Lucide after dynamic content updates
-    function refreshIcons() {
+    // Force refresh icons periodically
+    setInterval(function() {
         if (window.lucide && typeof lucide.createIcons === 'function') {
             lucide.createIcons();
         }
-    }
-    
-    // Override showMessage to use Basecoat styling
-    const originalShowMessage = window.showMessage;
-    window.showMessage = function(text, type = 'info') {
-        const messageDiv = document.getElementById('message');
-        const messageText = document.getElementById('messageText');
-        messageDiv.classList.remove('hidden', 'alert-destructive', 'alert-success', 'alert-info');
-        
-        // Set icon
-        const icon = messageDiv.querySelector('i');
-        if (icon) {
-            if (type === 'error') {
-                icon.setAttribute('data-lucide', 'circle-alert');
-                messageDiv.setAttribute('data-variant', 'destructive');
-            } else if (type === 'success') {
-                icon.setAttribute('data-lucide', 'circle-check');
-                messageDiv.removeAttribute('data-variant');
-                messageDiv.style.borderColor = '#34d399';
-                messageDiv.style.backgroundColor = '#f0fdf4';
-                messageDiv.style.color = '#065f46';
-            } else {
-                icon.setAttribute('data-lucide', 'info');
-                messageDiv.removeAttribute('data-variant');
-                messageDiv.style.borderColor = '#93c5fd';
-                messageDiv.style.backgroundColor = '#eff6ff';
-                messageDiv.style.color = '#1e40af';
-            }
-        }
-        
-        messageText.textContent = text;
-        messageDiv.style.display = 'flex';
-        refreshIcons();
-    };
-    
-    // Update hideMessage
-    const originalHideMessage = window.hideMessage;
-    window.hideMessage = function() {
-        document.getElementById('message').classList.add('hidden');
-        document.getElementById('message').style.display = 'none';
-    };
+    }, 1000);
 </script>
 </body>
 </html>
