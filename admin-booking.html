@@ -4,142 +4,374 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Motorcycle Booking</title>
+    
+    <!-- Tailwind JIT (browser build) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Basecoat UI (shadcn-style components for plain HTML) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@1.0.1/dist/basecoat.cdn.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/basecoat-css@1.0.1/dist/js/all.min.js" defer></script>
+    <!-- Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        body {
+            background: var(--color-background);
+            color: var(--color-foreground);
+        }
+        .container-custom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        .stat-card {
+            transition: all 0.2s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .hidden {
+            display: none !important;
+        }
+        .tab-active {
+            background: var(--color-primary) !important;
+            color: var(--color-primary-foreground) !important;
+        }
+        .tab-inactive {
+            background: var(--color-muted) !important;
+            color: var(--color-muted-foreground) !important;
+        }
+        .tab-inactive:hover {
+            background: var(--color-muted-foreground)/10 !important;
+        }
+        /* Calendar styling */
+        .admin-cal-cell {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            border: none;
+            cursor: pointer;
+            min-height: 50px;
+        }
+        .admin-cal-head {
+            text-align: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--color-muted-foreground);
+            padding: 0.25rem 0;
+        }
+        /* Modal overlay */
+        .modal-overlay {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        /* Scrollable table container */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        .table-container th {
+            background: var(--color-muted);
+            color: var(--color-foreground);
+            font-weight: 600;
+            padding: 0.75rem 0.5rem;
+            text-align: left;
+            border-bottom: 2px solid var(--color-border);
+            white-space: nowrap;
+        }
+        .table-container td {
+            padding: 0.6rem 0.5rem;
+            border-bottom: 1px solid var(--color-border);
+            vertical-align: middle;
+        }
+        .table-container tr:hover {
+            background: var(--color-muted)/30;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-confirmed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status-rescheduled {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        /* Pagination */
+        .page-btn {
+            padding: 0.25rem 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: 0.25rem;
+            background: var(--color-background);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 0.875rem;
+        }
+        .page-btn:hover:not(:disabled) {
+            background: var(--color-muted);
+        }
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .page-btn.active {
+            background: var(--color-primary);
+            color: var(--color-primary-foreground);
+            border-color: var(--color-primary);
+        }
+        /* Responsive tweaks */
+        @media (max-width: 640px) {
+            .container-custom {
+                padding: 0.75rem;
+            }
+            .table-container td,
+            .table-container th {
+                padding: 0.4rem 0.3rem;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>🏍️ Admin Dashboard</h1>
-    
-    
-    <div style="margin-bottom:20px;padding:10px;background:#f5f5f5;border-radius:4px;border:1px solid #ddd;">
-        <a href="booking.html" style="margin-right:20px;">📅 Booking Page</a>
-        <a href="manage-booking.html" style="margin-right:20px;">🔍 Manage Bookings</a>
-        <a href="admin-booking.html">⚙️ Admin Dashboard</a>
-        <span style="float:right;" id="adminStatus">🔒 Admin Access</span>
-        <button onclick="logoutAdmin()" id="logoutBtn" style="float:right;margin-right:10px;padding:5px 10px;background:#e74c3c;color:white;border:none;border-radius:3px;cursor:pointer;display:none;">Logout</button>
-    </div>
 
-    <!-- Admin Login (Simple Password) -->
-    <div id="adminLogin" style="margin:20px 0;padding:20px;border:1px solid #ddd;border-radius:4px;max-width:400px;">
-        <h3>Admin Access Required</h3>
-        <form id="loginForm">
+<div class="container-custom space-y-5">
+    
+    <!-- Header -->
+    <header class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm ring-1 ring-primary/20">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </div>
             <div>
-                <label for="adminPassword">Enter Admin Password:</label><br>
-                <input type="password" id="adminPassword" required placeholder="Enter password">
+                <h1 class="text-xl font-bold tracking-tight">Admin Dashboard</h1>
+                <p class="text-sm text-muted-foreground">Manage bookings, sessions, and reports</p>
             </div>
-            <br>
-            <button type="submit">Login</button>
-        </form>
-        <div id="loginMessage" style="margin-top:10px;color:red;display:none;"></div>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+            <span id="adminStatus" class="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                <i data-lucide="shield" class="w-4 h-4"></i>
+                Admin Access
+            </span>
+            <button onclick="logoutAdmin()" id="logoutBtn" class="btn hidden" data-variant="destructive" data-size="sm">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                Logout
+            </button>
+        </div>
+    </header>
+
+    <!-- Navigation Links -->
+    <div class="flex flex-wrap gap-2 p-3 rounded-xl border bg-card">
+        <a href="booking.html" class="btn" data-variant="ghost" data-size="sm">
+            <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+            Booking Page
+        </a>
+        <a href="manage-booking.html" class="btn" data-variant="ghost" data-size="sm">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            Manage Bookings
+        </a>
+        <a href="admin-booking.html" class="btn" data-variant="secondary" data-size="sm">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+            Admin Dashboard
+        </a>
     </div>
 
-    <!-- Admin Dashboard Content (Hidden by default) -->
-    <div id="adminContent" style="display:none;">
+    <!-- ============================================ -->
+    <!-- ADMIN LOGIN -->
+    <!-- ============================================ -->
+    <div id="adminLogin" class="card max-w-md mx-auto">
+        <header>
+            <h2 class="font-semibold flex items-center gap-2">
+                <i data-lucide="lock" class="w-5 h-5"></i>
+                Admin Access Required
+            </h2>
+            <p class="text-sm text-muted-foreground">Enter the admin password to continue</p>
+        </header>
+        <section>
+            <form id="loginForm" class="space-y-4">
+                <div class="grid gap-2">
+                    <label for="adminPassword" class="label">Password</label>
+                    <div class="relative">
+                        <i data-lucide="key" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                        <input type="password" id="adminPassword" required placeholder="Enter admin password" class="input pl-9">
+                    </div>
+                </div>
+                <button type="submit" class="btn w-full justify-center gap-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    Login
+                </button>
+                <div id="loginMessage" class="hidden text-sm text-destructive"></div>
+            </form>
+        </section>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- ADMIN CONTENT (Hidden by default) -->
+    <!-- ============================================ -->
+    <div id="adminContent" class="hidden space-y-5">
+
         <!-- Stats Cards -->
-        <div id="statsContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin:20px 0;">
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;">
-                <h3 id="totalBookings">0</h3>
-                <p style="margin:0;color:#666;">Total Bookings</p>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="card stat-card p-4 text-center">
+                <h3 id="totalBookings" class="text-2xl font-bold text-primary">0</h3>
+                <p class="text-xs text-muted-foreground mt-1">Total Bookings</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;">
-                <h3 id="todayBookings">0</h3>
-                <p style="margin:0;color:#666;">Today's Bookings</p>
+            <div class="card stat-card p-4 text-center">
+                <h3 id="todayBookings" class="text-2xl font-bold text-emerald-600">0</h3>
+                <p class="text-xs text-muted-foreground mt-1">Today's Bookings</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;">
-                <h3 id="upcomingBookings">0</h3>
-                <p style="margin:0;color:#666;">Upcoming Bookings</p>
+            <div class="card stat-card p-4 text-center">
+                <h3 id="upcomingBookings" class="text-2xl font-bold text-blue-600">0</h3>
+                <p class="text-xs text-muted-foreground mt-1">Upcoming Bookings</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;">
-                <h3 id="classBBookings">0</h3>
-                <p style="margin:0;color:#666;">Class B Bookings</p>
+            <div class="card stat-card p-4 text-center">
+                <h3 id="classBBookings" class="text-2xl font-bold text-orange-600">0</h3>
+                <p class="text-xs text-muted-foreground mt-1">Class B</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;">
-                <h3 id="classB2Bookings">0</h3>
-                <p style="margin:0;color:#666;">Class B2 Bookings</p>
+            <div class="card stat-card p-4 text-center">
+                <h3 id="classB2Bookings" class="text-2xl font-bold text-blue-600">0</h3>
+                <p class="text-xs text-muted-foreground mt-1">Class B2</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;">
-                <h3 id="cancelledBookings">0</h3>
-                <p style="margin:0;color:#666;">Cancelled Bookings</p>
+            <div class="card stat-card p-4 text-center">
+                <h3 id="cancelledBookings" class="text-2xl font-bold text-red-600">0</h3>
+                <p class="text-xs text-muted-foreground mt-1">Cancelled</p>
             </div>
         </div>
 
         <!-- Admin Controls -->
-        <div style="margin:20px 0;padding:15px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;">
-            <h3>📅 Date Management</h3>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                <div>
-                    <label for="adminDateSelect">Select Date:</label>
-                    <input type="date" id="adminDateSelect">
+        <div class="card">
+            <header>
+                <h2 class="font-semibold flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                    Date Management
+                </h2>
+                <p class="text-sm text-muted-foreground">Toggle date availability and manage closures</p>
+            </header>
+            <section>
+                <div class="flex flex-wrap gap-3 items-end">
+                    <div class="grid gap-1.5 flex-1 min-w-[150px]">
+                        <label for="adminDateSelect" class="label text-sm">Select Date</label>
+                        <input type="date" id="adminDateSelect" class="input">
+                    </div>
+                    <div class="grid gap-1.5 flex-1 min-w-[150px]">
+                        <label for="closureReason" class="label text-sm">Reason (optional)</label>
+                        <input type="text" id="closureReason" placeholder="e.g., Holiday, Maintenance" class="input">
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="toggleDateStatus()" class="btn gap-2" data-variant="secondary">
+                            <i data-lucide="toggle-left" class="w-4 h-4"></i>
+                            Toggle Active/Inactive
+                        </button>
+                        <button onclick="refreshSchedule()" class="btn gap-2" data-variant="outline">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            Refresh Schedule
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <button onclick="toggleDateStatus()" style="padding:8px 16px;background:#3498db;color:white;border:none;border-radius:4px;cursor:pointer;">
-                        Toggle Active/Inactive
-                    </button>
-                </div>
-                <div>
-                    <label for="closureReason">Reason (optional):</label>
-                    <input type="text" id="closureReason" placeholder="e.g., Holiday, Maintenance">
-                </div>
-                <div>
-                    <button onclick="refreshSchedule()" style="padding:8px 16px;background:#2ecc71;color:white;border:none;border-radius:4px;cursor:pointer;">
-                        🔄 Refresh Schedule
-                    </button>
-                </div>
-            </div>
-            <div id="dateStatusMessage" style="margin-top:10px;display:none;"></div>
+                <div id="dateStatusMessage" class="hidden mt-3 text-sm"></div>
+            </section>
         </div>
 
         <!-- Tabs -->
-        <div style="margin:20px 0;">
-            <button onclick="showTab('bookings')" id="tabBookings" style="padding:10px 20px;background:#3498db;color:white;border:none;border-radius:4px 0 0 4px;cursor:pointer;">📋 All Bookings</button>
-            <button onclick="showTab('calendar')" id="tabCalendar" style="padding:10px 20px;background:#95a5a6;color:white;border:none;border-radius:0 4px 4px 0;cursor:pointer;">📅 Calendar View</button>
-            <button onclick="showTab('report')" id="tabReport" style="padding:10px 20px;background:#95a5a6;color:white;border:none;border-radius:0 4px 4px 0;cursor:pointer;margin-left:5px;">📊 Generate Report</button>
+        <div class="flex flex-wrap gap-1">
+            <button onclick="showTab('bookings')" id="tabBookings" class="btn tab-active" data-variant="ghost">
+                <i data-lucide="list" class="w-4 h-4"></i>
+                All Bookings
+            </button>
+            <button onclick="showTab('calendar')" id="tabCalendar" class="btn tab-inactive" data-variant="ghost">
+                <i data-lucide="calendar" class="w-4 h-4"></i>
+                Calendar View
+            </button>
+            <button onclick="showTab('report')" id="tabReport" class="btn tab-inactive" data-variant="ghost">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                Generate Report
+            </button>
         </div>
 
-        <!-- Tab: All Bookings -->
+        <!-- ============================================ -->
+        <!-- TAB: ALL BOOKINGS -->
+        <!-- ============================================ -->
         <div id="tabContentBookings">
-            <div style="margin:10px 0;padding:15px;background:#f8f9fa;border-radius:4px;border:1px solid #ddd;">
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                        <div>
-                            <label for="filterDateFrom">Date From:</label>
-                            <input type="date" id="filterDateFrom">
+            <!-- Filters -->
+            <div class="card">
+                <section>
+                    <div class="flex flex-wrap gap-3 items-end">
+                        <div class="grid gap-1.5">
+                            <label for="filterDateFrom" class="label text-sm">Date From</label>
+                            <input type="date" id="filterDateFrom" class="input">
                         </div>
-                        <div>
-                            <label for="filterDateTo">Date To:</label>
-                            <input type="date" id="filterDateTo">
+                        <div class="grid gap-1.5">
+                            <label for="filterDateTo" class="label text-sm">Date To</label>
+                            <input type="date" id="filterDateTo" class="input">
                         </div>
-                        <div>
-                            <label for="filterStatus">Status:</label>
-                            <select id="filterStatus" onchange="loadAllBookings()">
+                        <div class="grid gap-1.5">
+                            <label for="filterStatus" class="label text-sm">Status</label>
+                            <select id="filterStatus" class="input" onchange="loadAllBookings()">
                                 <option value="all">All</option>
                                 <option value="confirmed">Confirmed</option>
                                 <option value="cancelled">Cancelled</option>
                                 <option value="rescheduled">Rescheduled</option>
                             </select>
                         </div>
-                        <div>
-                            <label for="filterClass">Class:</label>
-                            <select id="filterClass" onchange="loadAllBookings()">
+                        <div class="grid gap-1.5">
+                            <label for="filterClass" class="label text-sm">Class</label>
+                            <select id="filterClass" class="input" onchange="loadAllBookings()">
                                 <option value="all">All</option>
                                 <option value="B">Class B</option>
                                 <option value="B2">Class B2</option>
                             </select>
                         </div>
-                        <div>
-                            <button onclick="loadAllBookings()" style="padding:8px 16px;background:#3498db;color:white;border:none;border-radius:4px;cursor:pointer;">
-                                🔍 Search
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="loadAllBookings()" class="btn gap-2">
+                                <i data-lucide="search" class="w-4 h-4"></i>
+                                Search
                             </button>
-                            <button onclick="clearDateFilters()" style="padding:8px 16px;background:#95a5a6;color:white;border:none;border-radius:4px;cursor:pointer;">
-                                Clear Filters
+                            <button onclick="clearDateFilters()" class="btn gap-2" data-variant="outline">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                                Clear
+                            </button>
+                            <button onclick="setDateRange('today')" class="btn gap-2" data-variant="ghost" data-size="sm">
+                                Today
+                            </button>
+                            <button onclick="setDateRange('week')" class="btn gap-2" data-variant="ghost" data-size="sm">
+                                Week
+                            </button>
+                            <button onclick="setDateRange('month')" class="btn gap-2" data-variant="ghost" data-size="sm">
+                                Month
                             </button>
                         </div>
                     </div>
-                    <div style="margin-top:8px;font-size:12px;color:#666;">
+                    <div class="mt-3 text-sm text-muted-foreground">
                         <span id="resultCount">0 bookings found</span>
                     </div>
-                </div>
-            <div id="bookingsTableContainer" style="overflow-x:auto;">
-                <table id="bookingsTable" border="1" cellpadding="10" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+                </section>
+            </div>
+
+            <!-- Table -->
+            <div class="table-container card p-0 overflow-hidden">
+                <table>
                     <thead>
-                        <tr style="background:#f5f5f5;">
+                        <tr>
                             <th>Session ID</th>
                             <th>IC/Passport</th>
                             <th>Name</th>
@@ -153,111 +385,213 @@
                         </tr>
                     </thead>
                     <tbody id="bookingsTableBody">
-                        <tr><td colspan="10" style="text-align:center;">Loading bookings...</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted-foreground">Loading bookings...</td></tr>
                     </tbody>
                 </table>
             </div>
-        </div>
 
-        <!-- Pagination Controls -->
-        <div id="paginationControls" style="display:none;margin-top:15px;padding:10px;background:#f8f9fa;border-radius:4px;border:1px solid #ddd;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-                <span id="paginationInfo" style="font-size:14px;color:#666;"></span>
-                <div>
-                    <label for="rowsPerPageSelect" style="font-size:12px;color:#666;">Rows:</label>
-                    <select id="rowsPerPageSelect" onchange="changeRowsPerPage()" style="padding:3px 5px;border:1px solid #ddd;border-radius:3px;">
-                        <option value="10">10</option>
-                        <option value="20">20</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
+            <!-- Pagination -->
+            <div id="paginationControls" class="hidden flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border bg-card">
+                <div class="flex items-center gap-3 text-sm text-muted-foreground">
+                    <span id="paginationInfo"></span>
+                    <div class="flex items-center gap-1.5">
+                        <label for="rowsPerPageSelect" class="text-xs">Rows:</label>
+                        <select id="rowsPerPageSelect" class="input py-1 px-2 text-sm" onchange="changeRowsPerPage()" style="width:60px;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px;">
-                <button id="prevPageBtn" onclick="prevPage()" style="padding:5px 12px;border:1px solid #ddd;border-radius:3px;background:white;cursor:pointer;">
-                    ◀ Prev
-                </button>
-                <div id="pageNumbers" style="display:flex;align-items:center;gap:3px;"></div>
-                <button id="nextPageBtn" onclick="nextPage()" style="padding:5px 12px;border:1px solid #ddd;border-radius:3px;background:white;cursor:pointer;">
-                    Next ▶
-                </button>
-            </div>
-        </div>
-    </div>
-
-        <!-- Tab: Calendar View -->
-        <div id="tabContentCalendar" style="display:none;">
-            <div style="margin:10px 0;">
-                <button onclick="changeAdminMonth(-1)">◀ Previous</button>
-                <span id="adminMonthDisplay" style="font-weight:bold;margin:0 20px;"></span>
-                <button onclick="changeAdminMonth(1)">Next ▶</button>
-                <button onclick="goToAdminToday()" style="margin-left:20px;">Today</button>
-            </div>
-            <div id="adminCalendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:800px;margin:0 auto;"></div>
-            <div style="margin-top:10px;display:flex;gap:20px;justify-content:center;font-size:14px;">
-                <span><span style="background:#2ecc71;padding:2px 10px;border-radius:3px;"> </span> Available</span>
-                <span><span style="background:#e74c3c;padding:2px 10px;border-radius:3px;"> </span> Fully Booked</span>
-                <span><span style="background:#95a5a6;padding:2px 10px;border-radius:3px;"> </span> Inactive/Closed</span>
-                <span><span style="background:#f39c12;padding:2px 10px;border-radius:3px;"> </span> Today</span>
-            </div>
-            <div id="adminDateDetails" style="margin-top:20px;padding:15px;border:1px solid #ddd;border-radius:4px;display:none;">
-                <h4 id="adminSelectedDate"></h4>
-                <div id="adminDateSessions"></div>
+                <div class="flex items-center gap-1">
+                    <button id="prevPageBtn" class="page-btn" onclick="prevPage()">◀ Prev</button>
+                    <div id="pageNumbers" class="flex items-center gap-1"></div>
+                    <button id="nextPageBtn" class="page-btn" onclick="nextPage()">Next ▶</button>
+                </div>
             </div>
         </div>
 
-        <!-- Tab: Report Generation -->
-        <div id="tabContentReport" style="display:none;">
-            <div style="padding:20px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;max-width:600px;">
-                <h3>📊 Generate PDF Report</h3>
-                <p>Generate a comprehensive report of all bookings in PDF format.</p>
-                
-                <div style="margin:15px 0;">
-                    <label for="reportDateFrom">Date From:</label>
-                    <input type="date" id="reportDateFrom">
-                </div>
-                <div style="margin:15px 0;">
-                    <label for="reportDateTo">Date To:</label>
-                    <input type="date" id="reportDateTo">
-                </div>
-                <div style="margin:15px 0;">
-                    <label for="reportClass">Class:</label>
-                    <select id="reportClass">
-                        <option value="all">All Classes</option>
-                        <option value="B">Class B</option>
-                        <option value="B2">Class B2</option>
-                    </select>
-                </div>
-                <div style="margin:15px 0;">
-                    <label for="reportStatus">Status:</label>
-                    <select id="reportStatus">
-                        <option value="all">All Status</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="rescheduled">Rescheduled</option>
-                    </select>
-                </div>
-                
-                <button onclick="generatePDFReport()" style="padding:10px 20px;background:#e74c3c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:16px;">
-                    📄 Generate PDF Report
-                </button>
-                <button onclick="generateDailyReport()" style="margin-left:10px;padding:10px 20px;background:#2ecc71;color:white;border:none;border-radius:4px;cursor:pointer;font-size:16px;">
-                    📅 Today's Report
-                </button>
-            </div>
-            <div id="reportProgress" style="margin-top:20px;display:none;padding:15px;border:1px solid #ddd;border-radius:4px;">
-                <p>Generating report... Please wait.</p>
+        <!-- ============================================ -->
+        <!-- TAB: CALENDAR VIEW -->
+        <!-- ============================================ -->
+        <div id="tabContentCalendar" class="hidden">
+            <div class="card">
+                <header>
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeAdminMonth(-1)" class="btn" data-variant="outline" data-size="icon">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+                            <span id="adminMonthDisplay" class="font-semibold text-base"></span>
+                            <button onclick="changeAdminMonth(1)" class="btn" data-variant="outline" data-size="icon">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <button onclick="goToAdminToday()" class="btn gap-2" data-variant="outline" data-size="sm">
+                            <i data-lucide="calendar-search" class="w-4 h-4"></i>
+                            Today
+                        </button>
+                    </div>
+                </header>
+                <section>
+                    <div id="adminCalendar" class="grid grid-cols-7 gap-1.5"></div>
+                    
+                    <!-- Legend -->
+                    <div class="flex flex-wrap gap-3 justify-center mt-4 text-xs text-muted-foreground">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span>Available</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500"></span>Fully Booked</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-gray-400"></span>Inactive/Closed</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-amber-500"></span>Today</span>
+                    </div>
+                    
+                    <!-- Date Details -->
+                    <div id="adminDateDetails" class="hidden mt-4 p-4 rounded-xl border bg-card">
+                        <h4 id="adminSelectedDate" class="font-semibold text-base"></h4>
+                        <div id="adminDateSessions" class="mt-3"></div>
+                    </div>
+                </section>
             </div>
         </div>
+
+        <!-- ============================================ -->
+        <!-- TAB: REPORT GENERATION -->
+        <!-- ============================================ -->
+        <div id="tabContentReport" class="hidden">
+            <div class="card max-w-lg">
+                <header>
+                    <h2 class="font-semibold flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                        Generate PDF Report
+                    </h2>
+                    <p class="text-sm text-muted-foreground">Generate a comprehensive report of all bookings</p>
+                </header>
+                <section>
+                    <form id="reportForm" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="grid gap-1.5">
+                                <label for="reportDateFrom" class="label text-sm">Date From</label>
+                                <input type="date" id="reportDateFrom" class="input">
+                            </div>
+                            <div class="grid gap-1.5">
+                                <label for="reportDateTo" class="label text-sm">Date To</label>
+                                <input type="date" id="reportDateTo" class="input">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="grid gap-1.5">
+                                <label for="reportClass" class="label text-sm">Class</label>
+                                <select id="reportClass" class="input">
+                                    <option value="all">All Classes</option>
+                                    <option value="B">Class B</option>
+                                    <option value="B2">Class B2</option>
+                                </select>
+                            </div>
+                            <div class="grid gap-1.5">
+                                <label for="reportStatus" class="label text-sm">Status</label>
+                                <select id="reportStatus" class="input">
+                                    <option value="all">All Status</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                    <option value="rescheduled">Rescheduled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3 pt-2">
+                            <button type="button" onclick="generatePDFReport()" class="btn gap-2" style="background:#e74c3c;color:white;">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
+                                Generate PDF Report
+                            </button>
+                            <button type="button" onclick="generateDailyReport()" class="btn gap-2" data-variant="secondary">
+                                <i data-lucide="calendar" class="w-4 h-4"></i>
+                                Today's Report
+                            </button>
+                        </div>
+                    </form>
+                    <div id="reportProgress" class="hidden mt-4 p-4 rounded-xl border bg-muted/30">
+                        <p class="text-sm text-muted-foreground flex items-center gap-2">
+                            <i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i>
+                            Generating report... Please wait.
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </div>
+
     </div>
 
     <!-- Message Display -->
-    <div id="message" style="margin-top:20px;padding:10px;border:1px solid #ccc;display:none;"></div>
+    <div id="message" class="hidden alert" role="alert">
+        <i data-lucide="info" class="w-4 h-4 mt-0.5 shrink-0"></i>
+        <span id="messageText" class="whitespace-pre-line text-sm"></span>
+    </div>
 
-    <!-- Include html2pdf library for PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- html2pdf for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- Lucide icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- Admin JavaScript -->
+<script src="bookingassets/js/admin.js"></script>
+
+<script>
+    // Initialize Lucide icons
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    });
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="bookingassets/js/admin.js"></script>
+    // Re-run Lucide after dynamic content updates
+    function refreshIcons() {
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+            lucide.createIcons();
+        }
+    }
+    
+    // Override showMessage to use Basecoat styling
+    const originalShowMessage = window.showMessage;
+    window.showMessage = function(text, type = 'info') {
+        const messageDiv = document.getElementById('message');
+        const messageText = document.getElementById('messageText');
+        messageDiv.classList.remove('hidden', 'alert-destructive', 'alert-success', 'alert-info');
+        
+        // Set icon
+        const icon = messageDiv.querySelector('i');
+        if (icon) {
+            if (type === 'error') {
+                icon.setAttribute('data-lucide', 'circle-alert');
+                messageDiv.setAttribute('data-variant', 'destructive');
+            } else if (type === 'success') {
+                icon.setAttribute('data-lucide', 'circle-check');
+                messageDiv.removeAttribute('data-variant');
+                messageDiv.style.borderColor = '#34d399';
+                messageDiv.style.backgroundColor = '#f0fdf4';
+                messageDiv.style.color = '#065f46';
+            } else {
+                icon.setAttribute('data-lucide', 'info');
+                messageDiv.removeAttribute('data-variant');
+                messageDiv.style.borderColor = '#93c5fd';
+                messageDiv.style.backgroundColor = '#eff6ff';
+                messageDiv.style.color = '#1e40af';
+            }
+        }
+        
+        messageText.textContent = text;
+        messageDiv.style.display = 'flex';
+        refreshIcons();
+    };
+    
+    // Update hideMessage
+    const originalHideMessage = window.hideMessage;
+    window.hideMessage = function() {
+        document.getElementById('message').classList.add('hidden');
+        document.getElementById('message').style.display = 'none';
+    };
+</script>
 </body>
 </html>
