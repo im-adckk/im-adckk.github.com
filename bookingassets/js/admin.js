@@ -8,7 +8,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const ADMIN_PASSWORD = 'admin123';
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const ADMIN_LOGIN_TIME_KEY = 'admin_login_time';
-
+ 
 // State
 let adminMonth = new Date().getMonth();
 let adminYear = new Date().getFullYear();
