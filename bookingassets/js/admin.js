@@ -485,84 +485,26 @@ function renderBookingsTable(bookings, isLoading = false) {
 // PDF REPORT GENERATION
 // ============================================
 
-async function generatePDFReport() {
-    const dateFrom = document.getElementById('reportDateFrom').value;
-    const dateTo = document.getElementById('reportDateTo').value;
-    const classFilter = document.getElementById('reportClass').value;
-    const statusFilter = document.getElementById('reportStatus').value;
-    
-    if (!dateFrom || !dateTo) {
-        showMessage('Please select both From and To dates.', 'error');
-        return;
-    }
-    
-    if (dateFrom > dateTo) {
-        showMessage('"From" date must be before "To" date.', 'error');
-        return;
-    }
-    
-    const progressDiv = document.getElementById('reportProgress');
-    progressDiv.style.display = 'block';
-    
-    try {
-        // Fetch filtered bookings
-        let query = supabaseClient
-            .from('bookings')
-            .select('*')
-            .gte('booking_date', dateFrom)
-            .lte('booking_date', dateTo)
-            .order('booking_date', { ascending: true });
-        
-        if (classFilter !== 'all') {
-            query = query.eq('class', classFilter);
-        }
-        if (statusFilter !== 'all') {
-            query = query.eq('status', statusFilter);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-            showMessage('No bookings found for the selected criteria.', 'error');
-            progressDiv.style.display = 'none';
-            return;
-        }
-        
-        // Generate PDF
-        await generatePDF(data, dateFrom, dateTo, classFilter, statusFilter);
-        
-        progressDiv.style.display = 'none';
-        showMessage('PDF report generated successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Error generating report:', error);
-        showMessage('Error generating report: ' + error.message, 'error');
-        progressDiv.style.display = 'none';
-    }
-}
-
-async function generateDailyReport() {
-    const today = getMalaysiaToday();
-    document.getElementById('reportDateFrom').value = today;
-    document.getElementById('reportDateTo').value = today;
-    await generatePDFReport();
-}
-
 async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
-    // Create report content
+    // Create report content with inline styles that avoid oklch colors
     const reportContent = document.createElement('div');
     reportContent.id = 'reportContent';
-    reportContent.style.cssText = 'padding:40px;font-family:Arial,sans-serif;background:white;';
+    // Use simple CSS that doesn't rely on oklch or modern color functions
+    reportContent.style.cssText = `
+        padding: 40px; 
+        font-family: Arial, sans-serif; 
+        background: #ffffff; 
+        color: #000000;
+        max-width: 100%;
+    `;
     
     // Header
     const classLabel = classFilter === 'all' ? 'All Classes' : 'Class ' + classFilter;
     const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
     
     reportContent.innerHTML = `
-        <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:20px;margin-bottom:20px;">
-            <h1 style="margin:0;color:#2c3e50;">🏍️ Motorcycle Booking Report</h1>
+        <div style="text-align:center;border-bottom:2px solid #333333;padding-bottom:20px;margin-bottom:20px;">
+            <h1 style="margin:0;color:#2c3e50;font-size:24px;">🏍️ Motorcycle Booking Report</h1>
             <p style="margin:5px 0;color:#7f8c8d;font-size:14px;">
                 Period: ${formatMalaysiaDate(dateFrom)} to ${formatMalaysiaDate(dateTo)}
             </p>
@@ -575,24 +517,28 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
         </div>
         
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:30px;">
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                <h3 style="margin:0;color:#2c3e50;">${data.length}</h3>
+            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#f8f9fa;">
+                <h3 style="margin:0;color:#2c3e50;font-size:20px;">${data.length}</h3>
                 <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Total Bookings</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                <h3 style="margin:0;color:#27ae60;">${data.filter(b => b.status === 'confirmed').length}</h3>
+            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#f0fdf4;">
+                <h3 style="margin:0;color:#27ae60;font-size:20px;">${data.filter(b => b.status === 'confirmed').length}</h3>
                 <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Confirmed</p>
             </div>
-            <div style="padding:15px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                <h3 style="margin:0;color:#e74c3c;">${data.filter(b => b.status === 'cancelled').length}</h3>
+            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#fef2f2;">
+                <h3 style="margin:0;color:#e74c3c;font-size:20px;">${data.filter(b => b.status === 'cancelled').length}</h3>
                 <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Cancelled</p>
+            </div>
+            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#fffbeb;">
+                <h3 style="margin:0;color:#f39c12;font-size:20px;">${data.filter(b => b.status === 'rescheduled').length}</h3>
+                <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Rescheduled</p>
             </div>
         </div>
         
-        <h3 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:10px;">Booking Details</h3>
+        <h3 style="color:#2c3e50;border-bottom:1px solid #dddddd;padding-bottom:10px;font-size:16px;">Booking Details</h3>
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
             <thead>
-                <tr style="background:#34495e;color:white;">
+                <tr style="background:#34495e;color:#ffffff;">
                     <th style="padding:8px;text-align:left;border:1px solid #34495e;">Session ID</th>
                     <th style="padding:8px;text-align:left;border:1px solid #34495e;">Name</th>
                     <th style="padding:8px;text-align:left;border:1px solid #34495e;">Class</th>
@@ -604,14 +550,14 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
             </thead>
             <tbody>
                 ${data.map((b, index) => `
-                    <tr style="${index % 2 === 0 ? 'background:#f8f9fa;' : ''}">
-                        <td style="padding:6px;border:1px solid #ddd;">${b.session_id}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.name}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.class}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${formatMalaysiaDate(b.booking_date)}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.session_time}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.session_slot}</td>
-                        <td style="padding:6px;border:1px solid #ddd;color:${b.status === 'confirmed' ? 'green' : b.status === 'cancelled' ? 'red' : 'orange'};">
+                    <tr style="${index % 2 === 0 ? 'background:#f8f9fa;' : 'background:#ffffff;'}">
+                        <td style="padding:6px;border:1px solid #dddddd;">${b.session_id}</td>
+                        <td style="padding:6px;border:1px solid #dddddd;">${b.name}</td>
+                        <td style="padding:6px;border:1px solid #dddddd;">${b.class}</td>
+                        <td style="padding:6px;border:1px solid #dddddd;">${formatMalaysiaDate(b.booking_date)}</td>
+                        <td style="padding:6px;border:1px solid #dddddd;">${b.session_time}</td>
+                        <td style="padding:6px;border:1px solid #dddddd;">${b.session_slot}</td>
+                        <td style="padding:6px;border:1px solid #dddddd;color:${b.status === 'confirmed' ? '#27ae60' : b.status === 'cancelled' ? '#e74c3c' : '#f39c12'};font-weight:bold;">
                             ${b.status.toUpperCase()}
                         </td>
                     </tr>
@@ -619,7 +565,7 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
             </tbody>
         </table>
         
-        <div style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;font-size:11px;color:#95a5a6;text-align:center;">
+        <div style="margin-top:30px;padding-top:20px;border-top:1px solid #dddddd;font-size:11px;color:#95a5a6;text-align:center;">
             <p>This report is auto-generated by the Motorcycle Booking System.</p>
             <p>© ${new Date().getFullYear()} - All rights reserved.</p>
         </div>
@@ -628,20 +574,38 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
     // Add to body temporarily
     document.body.appendChild(reportContent);
     
-    // Generate PDF
+    // Generate PDF with simplified options
     const opt = {
         margin: [10, 10, 10, 10],
         filename: `booking_report_${dateFrom}_to_${dateTo}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'landscape' 
+        },
+        pagebreak: { 
+            mode: ['avoid-all', 'css', 'legacy'] 
+        }
     };
     
-    await html2pdf().set(opt).from(reportContent).save();
-    
-    // Clean up
-    document.body.removeChild(reportContent);
+    try {
+        await html2pdf().set(opt).from(reportContent).save();
+    } catch (error) {
+        console.error('PDF generation error:', error);
+        throw new Error('Failed to generate PDF: ' + error.message);
+    } finally {
+        // Clean up
+        if (reportContent.parentNode) {
+            document.body.removeChild(reportContent);
+        }
+    }
 }
 
 // ============================================
