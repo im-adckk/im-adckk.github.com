@@ -14,6 +14,11 @@ let adminMonth = new Date().getMonth();
 let adminYear = new Date().getFullYear();
 let selectedAdminDate = null;
 let allBookingsData = [];
+let currentPage = 1;
+let rowsPerPage = 10;
+let totalPages = 1;
+let filteredBookings = [];
+let totalDBCount = 0;
 
 // DOM Elements
 const adminLogin = document.getElementById('adminLogin');
@@ -119,7 +124,10 @@ async function initializeAdmin() {
     await loadStats();
     await loadAllBookings();
     renderAdminCalendar();
-    loadAdminCalendarData();
+    // Wait for calendar to render then load data
+    setTimeout(() => {
+        loadAdminCalendarData();
+    }, 100);
 }
 
 // ============================================
@@ -279,20 +287,6 @@ async function loadAllBookings() {
 // ============================================
 
 // Pagination state
-let currentPage = 1;
-let rowsPerPage = 10;
-let totalPages = 1;
-let filteredBookings = [];
-
-updatePaginationServerSide
-
-// Get current page data
-function getCurrentPageData() {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    return filteredBookings.slice(startIndex, endIndex);
-}
-
 function updatePaginationServerSide() {
     totalPages = Math.ceil(totalDBCount / rowsPerPage) || 1;
     
@@ -593,10 +587,6 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
                 <h3 style="margin:0;color:#e74c3c;">${data.filter(b => b.status === 'cancelled').length}</h3>
                 <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Cancelled</p>
             </div>
-            // <div style="padding:15px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-            //     <h3 style="margin:0;color:#f39c12;">${data.filter(b => b.status === 'rescheduled').length}</h3>
-            //     <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Rescheduled</p>
-            // </div>
         </div>
         
         <h3 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:10px;">Booking Details</h3>
@@ -851,6 +841,7 @@ async function loadAdminCalendarData() {
                 bgColor = '#f39c12';
                 textColor = 'white';
                 cursor = 'pointer';
+                // Keep the day number and add a location marker
                 cell.textContent = new Date(dateStr).getDate() + ' 📍';
             } else if (!isActive) {
                 bgColor = '#95a5a6';
@@ -864,18 +855,33 @@ async function loadAdminCalendarData() {
                 bgColor = '#e74c3c';
                 textColor = 'white';
                 cursor = 'pointer';
+            } else {
+                // No sessions but date is in future
+                bgColor = '#f5f5f5';
+                textColor = '#999';
+                cursor = 'default';
             }
             
+            // Store session data back to the cell for click handler
+            cell.dataset.sessions = JSON.stringify(sessions);
+            cell.dataset.status = JSON.stringify(status);
+            
+            // Apply styles
             cell.style.backgroundColor = bgColor;
             cell.style.color = textColor;
             cell.style.cursor = cursor;
             
-            cell.dataset.sessions = JSON.stringify(sessions);
-            cell.dataset.status = JSON.stringify(status);
+            // Add a small indicator dot for available sessions
+            if (hasAvailable && dateStr >= today) {
+                const dot = document.createElement('span');
+                dot.style.cssText = 'position:absolute;bottom:4px;right:6px;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);';
+                cell.appendChild(dot);
+            }
         });
         
     } catch (error) {
         console.error('Error loading calendar data:', error);
+        showMessage('Error loading calendar data: ' + error.message, 'error');
     }
 }
 
@@ -895,7 +901,10 @@ function changeAdminMonth(delta) {
     if(document.getElementById('calendarFallbackPrompt')) document.getElementById('calendarFallbackPrompt').classList.remove('hidden');
     
     renderAdminCalendar();
-    loadAdminCalendarData();
+    // Use setTimeout to ensure DOM is updated
+    setTimeout(() => {
+        loadAdminCalendarData();
+    }, 50);
 }
 
 function goToAdminToday() {
@@ -910,7 +919,9 @@ function goToAdminToday() {
     if(document.getElementById('calendarFallbackPrompt')) document.getElementById('calendarFallbackPrompt').classList.remove('hidden');
     
     renderAdminCalendar();
-    loadAdminCalendarData();
+    setTimeout(() => {
+        loadAdminCalendarData();
+    }, 50);
 }
 
 async function onAdminDateClick(dateStr) {
@@ -925,66 +936,22 @@ async function onAdminDateClick(dateStr) {
     document.getElementById('adminSelectedDate').textContent = `📅 ${formatMalaysiaDate(dateStr)}`;
     
     try {
-        // First try to get data from the calendar cells
-        const cells = document.querySelectorAll('#adminCalendar div[data-date]');
-        let sessionData = null;
-        let statusData = null;
+        // Get session data directly from Supabase instead of relying on DOM
+        const { data: sessionData, error: sessionError } = await supabaseClient
+            .from('available_sessions')
+            .select('*')
+            .eq('session_date', dateStr);
         
-        // Find the clicked cell and get its data
-        cells.forEach(cell => {
-            if (cell.dataset.date === dateStr) {
-                try {
-                    const sessions = cell.dataset.sessions;
-                    if (sessions && sessions !== 'undefined') {
-                        sessionData = JSON.parse(sessions);
-                    }
-                } catch (e) {
-                    console.error('Error parsing sessions data:', e);
-                }
-                try {
-                    const status = cell.dataset.status;
-                    if (status && status !== 'undefined') {
-                        statusData = JSON.parse(status);
-                    }
-                } catch (e) {
-                    console.error('Error parsing status data:', e);
-                }
-            }
-        });
+        if (sessionError) throw sessionError;
         
-        // If no data in cell, try RPC as fallback
-        if (!sessionData) {
-            try {
-                const { data, error } = await supabaseClient
-                    .rpc('get_available_sessions_for_date', {
-                        check_date: dateStr,
-                        class_filter: null
-                    });
-                
-                if (error) throw error;
-                sessionData = data || [];
-            } catch (rpcError) {
-                console.warn('RPC fallback failed, using empty data:', rpcError);
-                sessionData = [];
-            }
-        }
+        // Get status data
+        const { data: statusData, error: statusError } = await supabaseClient
+            .from('date_status')
+            .select('*')
+            .eq('target_date', dateStr)
+            .single();
         
-        // Get status if not already loaded
-        if (!statusData) {
-            try {
-                const { data: status, error: statusError } = await supabaseClient
-                    .from('date_status')
-                    .select('*')
-                    .eq('target_date', dateStr)
-                    .single();
-                
-                if (statusError && statusError.code !== 'PGRST116') throw statusError;
-                statusData = status || null;
-            } catch (statusError) {
-                console.warn('Status fetch failed:', statusError);
-                statusData = null;
-            }
-        }
+        if (statusError && statusError.code !== 'PGRST116') throw statusError;
         
         const detailsDiv = document.getElementById('adminDateSessions');
         const detailsContainer = document.getElementById('adminDateDetails');
@@ -1132,6 +1099,9 @@ function showTab(tabId) {
     // Handle initializations upon rendering specific tabs
     if (tabId === 'calendar') {
         renderAdminCalendar();
+        setTimeout(() => {
+            loadAdminCalendarData();
+        }, 50);
     }
 }
 
@@ -1188,25 +1158,41 @@ function formatDateTime(dateString) {
 
 function showMessage(text, type = 'info') {
     const messageDiv = document.getElementById('message');
-    messageDiv.style.display = 'block';
-    messageDiv.textContent = text;
-    messageDiv.style.border = '1px solid #ccc';
-    
-    if (type === 'error') {
-        messageDiv.style.color = 'red';
-        messageDiv.style.borderColor = 'red';
-        messageDiv.style.backgroundColor = '#ffeeee';
-    } else if (type === 'success') {
-        messageDiv.style.color = 'green';
-        messageDiv.style.borderColor = 'green';
-        messageDiv.style.backgroundColor = '#eeffee';
-    } else {
-        messageDiv.style.color = '#333';
-        messageDiv.style.borderColor = '#ccc';
-        messageDiv.style.backgroundColor = '#f5f5f5';
+    const messageText = document.getElementById('messageText');
+    if (!messageDiv) { 
+        alert(text); 
+        return; 
     }
+    
+    messageDiv.classList.remove('hidden');
+    messageDiv.style.display = 'flex';
+    messageDiv.className = 'alert items-start gap-2.5 p-3.5 border rounded-xl';
+    
+    const icon = messageDiv.querySelector('i');
+    if (icon) {
+        if (type === 'error') {
+            icon.setAttribute('data-lucide', 'circle-alert');
+            messageDiv.setAttribute('data-variant', 'destructive');
+        } else if (type === 'success') {
+            icon.setAttribute('data-lucide', 'circle-check');
+            messageDiv.removeAttribute('data-variant');
+            messageDiv.style.borderColor = 'var(--color-ring)';
+            messageDiv.style.backgroundColor = 'var(--color-muted)';
+            messageDiv.style.color = 'var(--color-foreground)';
+        } else {
+            icon.setAttribute('data-lucide', 'info');
+            messageDiv.removeAttribute('data-variant');
+        }
+    }
+    
+    if (messageText) {
+        messageText.textContent = text;
+    } else {
+        messageDiv.textContent = text;
+    }
+    
+    if (window.lucide) lucide.createIcons();
 }
-
 
 // ============================================
 // INITIALIZE
