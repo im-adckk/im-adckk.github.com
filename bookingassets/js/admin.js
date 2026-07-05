@@ -20,13 +20,102 @@ let totalPages = 1;
 let filteredBookings = [];
 let totalDBCount = 0;
 
-
-
 // DOM Elements
 const adminLogin = document.getElementById('adminLogin');
 const adminContent = document.getElementById('adminContent');
 const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
+
+// ============================================
+// UTILITIES (Define first so they're available)
+// ============================================
+
+function getMalaysiaDate(dateInput) {
+    const date = new Date(dateInput);
+    const malaysiaOffset = 8 * 60;
+    const localOffset = date.getTimezoneOffset();
+    const malaysiaTime = date.getTime() + (localOffset + malaysiaOffset) * 60 * 1000;
+    return new Date(malaysiaTime);
+}
+
+function getMalaysiaToday() {
+    const now = new Date();
+    const malaysiaDate = getMalaysiaDate(now);
+    const year = malaysiaDate.getFullYear();
+    const month = String(malaysiaDate.getMonth() + 1).padStart(2, '0');
+    const day = String(malaysiaDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function toMalaysiaDateStr(dateObj) {
+    const malaysiaDate = getMalaysiaDate(dateObj);
+    const year = malaysiaDate.getFullYear();
+    const month = String(malaysiaDate.getMonth() + 1).padStart(2, '0');
+    const day = String(malaysiaDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatMalaysiaDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString + 'T00:00:00');
+    const malaysiaDate = getMalaysiaDate(date);
+    const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric'
+    };
+    return malaysiaDate.toLocaleDateString('en-MY', options);
+}
+
+function formatDateTime(dateString) {
+    if (!dateString) return 'N/A';
+    const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+    return new Date(dateString).toLocaleDateString('en-MY', options);
+}
+
+function showMessage(text, type = 'info') {
+    const messageDiv = document.getElementById('message');
+    const messageText = document.getElementById('messageText');
+    if (!messageDiv) { 
+        alert(text); 
+        return; 
+    }
+    
+    messageDiv.classList.remove('hidden');
+    messageDiv.style.display = 'flex';
+    messageDiv.className = 'alert items-start gap-2.5 p-3.5 border rounded-xl';
+    
+    const icon = messageDiv.querySelector('i');
+    if (icon) {
+        if (type === 'error') {
+            icon.setAttribute('data-lucide', 'circle-alert');
+            messageDiv.setAttribute('data-variant', 'destructive');
+        } else if (type === 'success') {
+            icon.setAttribute('data-lucide', 'circle-check');
+            messageDiv.removeAttribute('data-variant');
+            messageDiv.style.borderColor = 'var(--color-ring)';
+            messageDiv.style.backgroundColor = 'var(--color-muted)';
+            messageDiv.style.color = 'var(--color-foreground)';
+        } else {
+            icon.setAttribute('data-lucide', 'info');
+            messageDiv.removeAttribute('data-variant');
+        }
+    }
+    
+    if (messageText) {
+        messageText.textContent = text;
+    } else {
+        messageDiv.textContent = text;
+    }
+    
+    if (window.lucide) lucide.createIcons();
+}
 
 // ============================================
 // ADMIN SESSION MANAGEMENT
@@ -38,14 +127,12 @@ function checkAdminSession() {
     const loginTime = sessionStorage.getItem(ADMIN_LOGIN_TIME_KEY);
     
     if (isLoggedIn === 'true' && loginTime) {
-        // Optional: Session timeout after 24 hours (86400000 ms)
         const sessionAge = Date.now() - parseInt(loginTime);
         const maxSessionAge = 24 * 60 * 60 * 1000; // 24 hours
         
         if (sessionAge < maxSessionAge) {
             return true;
         } else {
-            // Session expired, clear it
             clearAdminSession();
             return false;
         }
@@ -53,19 +140,16 @@ function checkAdminSession() {
     return false;
 }
 
-// Create admin session
 function createAdminSession() {
     sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
     sessionStorage.setItem(ADMIN_LOGIN_TIME_KEY, Date.now().toString());
 }
 
-// Clear admin session (logout)
 function clearAdminSession() {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_LOGIN_TIME_KEY);
 }
 
-// Logout function
 function logoutAdmin() {
     clearAdminSession();
     adminContent.classList.add('hidden');
@@ -102,7 +186,6 @@ loginForm.addEventListener('submit', (e) => {
     }
 });
 
-// Also allow Enter key to submit
 document.getElementById('adminPassword').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         loginForm.dispatchEvent(new Event('submit'));
@@ -110,54 +193,7 @@ document.getElementById('adminPassword').addEventListener('keypress', (e) => {
 });
 
 // ============================================
-// ADMIN INITIALIZATION
-// ============================================
-
-async function initializeAdmin() {
-    // Set default dates for report
-    const today = getMalaysiaToday();
-    const firstDayOfMonth = new Date();
-    firstDayOfMonth.setDate(1);
-    const firstDayStr = toMalaysiaDateStr(firstDayOfMonth);
-    document.getElementById('logoutBtn').style.display = 'inline-block';
-    document.getElementById('reportDateFrom').value = firstDayStr;
-    document.getElementById('reportDateTo').value = today;
-    
-    await loadStats();
-    await loadAllBookings();
-    renderAdminCalendar();
-    // Wait for calendar to render then load data
-    setTimeout(() => {
-        loadAdminCalendarData();
-    }, 100);
-}
-
-// ============================================
-// INITIALIZE PAGE - Check Session on Load
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('adminDateSelect').value = getMalaysiaToday();
-    
-    // Check if admin session exists
-    if (checkAdminSession()) {
-        // Auto-login
-        adminLogin.classList.add('hidden');
-        adminContent.classList.remove('hidden');
-        document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
-        document.getElementById('adminStatus').style.color = 'green';
-        initializeAdmin();
-    } else {
-        // Show login
-        adminLogin.classList.remove('hidden');
-        adminContent.classList.add('hidden');
-        // Auto-focus password field
-        document.getElementById('adminPassword').focus();
-    }
-});
-
-// ============================================
-// STATS (same as before)
+// STATS
 // ============================================
 
 async function loadStats() {
@@ -222,214 +258,6 @@ async function loadStats() {
 // ============================================
 // ALL BOOKINGS TABLE
 // ============================================
-async function loadAllBookings() {
-    renderBookingsTable([], true); // Show loading spinner
-    
-    try {
-        // 1. Get filter input values
-        const dateFrom = document.getElementById('filterDateFrom').value;
-        const dateTo = document.getElementById('filterDateTo').value;
-        const status = document.getElementById('filterStatus').value;
-        const classType = document.getElementById('filterClass').value;
-        
-        // 2. Begin building the Supabase Query with exact row counting
-        let query = supabaseClient
-            .from('bookings')
-            .select('*', { count: 'exact' });
-            
-        // 3. Apply server-side filters
-        if (dateFrom) {
-            query = query.gte('booking_date', dateFrom);
-        }
-        if (dateTo) {
-            query = query.lte('booking_date', dateTo);
-        }
-        if (status && status !== 'all') {
-            query = query.eq('status', status);
-        }
-        if (classType && classType !== 'all') {
-            query = query.eq('class', classType);
-        }
-        
-        // 4. Calculate Server-side limits based on current page
-        const fromRow = (currentPage - 1) * rowsPerPage;
-        const toRow = fromRow + rowsPerPage - 1;
-        
-        // 5. Apply pagination range and sorting order
-        query = query
-            .order('booking_date', { ascending: false })
-            .order('session_time', { ascending: true })
-            .range(fromRow, toRow);
-            
-        // 6. Execute remote query
-        const { data, error, count } = await query;
-        
-        if (error) throw error;
-        
-        // 7. Store state locally
-        allBookingsData = data || [];
-        totalDBCount = count || 0;
-        
-        // Update total counter text on screen
-        document.getElementById('resultCount').textContent = `${totalDBCount} bookings found`;
-        
-        // 8. Render the limited page block and update controls
-        renderBookingsTable(allBookingsData);
-        updatePaginationServerSide();
-        
-    } catch (error) {
-        console.error('Error loading server bookings:', error);
-        showMessage('Failed to load bookings from database.', 'error');
-        renderBookingsTable([]);
-    }
-}
-
-// ============================================
-// ALL BOOKINGS TABLE WITH DATE FILTERS
-// ============================================
-
-// Pagination state
-function updatePaginationServerSide() {
-    totalPages = Math.ceil(totalDBCount / rowsPerPage) || 1;
-    
-    if (currentPage > totalPages) {
-        currentPage = totalPages;
-    }
-    
-    const paginationDiv = document.getElementById('paginationControls');
-    if (!paginationDiv) return;
-    
-    // Always show controls container so the layout doesn't jump around
-    paginationDiv.classList.remove('hidden');
-    
-    const startItem = totalDBCount === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
-    const endItem = Math.min(currentPage * rowsPerPage, totalDBCount);
-    
-    document.getElementById('paginationInfo').textContent = 
-        `Showing ${startItem} - ${endItem} of ${totalDBCount}`;
-    
-    // Toggle action button states
-    document.getElementById('prevPageBtn').disabled = currentPage === 1;
-    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
-    
-    const pageNumbers = document.getElementById('pageNumbers');
-    pageNumbers.innerHTML = '';
-    
-    if (totalPages <= 1) return; // No number links needed if it fits on 1 page
-    
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, currentPage + 2);
-    
-    if (startPage > 1) {
-        pageNumbers.appendChild(createServerPageBtn(1));
-        if (startPage > 2) {
-            const span = document.createElement('span');
-            span.textContent = '...';
-            span.style.margin = '0 5px';
-            pageNumbers.appendChild(span);
-        }
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const btn = createServerPageBtn(i);
-        if (i === currentPage) {
-            btn.classList.add('active');
-            btn.style.background = 'var(--color-primary, #3498db)';
-            btn.style.color = 'white';
-        }
-        pageNumbers.appendChild(btn);
-    }
-    
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            const span = document.createElement('span');
-            span.textContent = '...';
-            span.style.margin = '0 5px';
-            pageNumbers.appendChild(span);
-        }
-        pageNumbers.appendChild(createServerPageBtn(totalPages));
-    }
-}
-
-function createServerPageBtn(pageNum) {
-    const btn = document.createElement('button');
-    btn.className = 'page-btn';
-    btn.textContent = pageNum;
-    btn.onclick = () => goToPageServer(pageNum);
-    return btn;
-}
-
-// Actions fetch records from DB when navigation changes
-async function goToPageServer(pageNum) {
-    if (pageNum < 1 || pageNum > totalPages) return;
-    currentPage = pageNum;
-    await loadAllBookings(); // Triggers range request to database
-    
-    const container = document.getElementById('bookingsTableContainer');
-    if (container) {
-        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
-
-async function prevPage() {
-    if (currentPage > 1) {
-        await goToPageServer(currentPage - 1);
-    }
-}
-
-async function nextPage() {
-    if (currentPage < totalPages) {
-        await goToPageServer(currentPage + 1);
-    }
-}
-
-async function changeRowsPerPage() {
-    rowsPerPage = parseInt(document.getElementById('rowsPerPageSelect').value) || 10;
-    currentPage = 1; // Reset to page 1 to prevent indexing errors
-    await loadAllBookings();
-}
-
-// Clear all filters and reload
-function clearDateFilters() {
-    document.getElementById('filterDateFrom').value = '';
-    document.getElementById('filterDateTo').value = '';
-    document.getElementById('filterStatus').value = 'all';
-    document.getElementById('filterClass').value = 'all';
-    currentPage = 1;
-    loadAllBookings();
-}
-
-// Quick date range presets
-function setDateRange(range) {
-    const today = getMalaysiaToday();
-    const dateFrom = document.getElementById('filterDateFrom');
-    const dateTo = document.getElementById('filterDateTo');
-    
-    dateTo.value = today;
-    
-    switch(range) {
-        case 'today':
-            dateFrom.value = today;
-            break;
-        case 'week':
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            dateFrom.value = toMalaysiaDateStr(weekAgo);
-            break;
-        case 'month':
-            const monthAgo = new Date();
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            dateFrom.value = toMalaysiaDateStr(monthAgo);
-            break;
-        case 'all':
-            dateFrom.value = '';
-            dateTo.value = '';
-            break;
-    }
-    currentPage = 1;
-    loadAllBookings();
-}
-
 
 function renderBookingsTable(bookings, isLoading = false) {
     const tbody = document.getElementById('bookingsTableBody');
@@ -448,8 +276,6 @@ function renderBookingsTable(bookings, isLoading = false) {
     
     let html = '';
     bookings.forEach(booking => {
-        // Map status strings to clean Tailwind & Basecoat UI pill attributes
-        let badgeVariant = 'data-variant="outline"';
         let customColors = 'bg-slate-100 text-slate-800 border-slate-200';
         
         if (booking.status === 'confirmed') {
@@ -483,15 +309,266 @@ function renderBookingsTable(bookings, isLoading = false) {
     tbody.innerHTML = html;
     if (window.lucide) lucide.createIcons();
 }
+
+async function loadAllBookings() {
+    renderBookingsTable([], true);
+    
+    try {
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        const status = document.getElementById('filterStatus').value;
+        const classType = document.getElementById('filterClass').value;
+        
+        let query = supabaseClient
+            .from('bookings')
+            .select('*', { count: 'exact' });
+            
+        if (dateFrom) {
+            query = query.gte('booking_date', dateFrom);
+        }
+        if (dateTo) {
+            query = query.lte('booking_date', dateTo);
+        }
+        if (status && status !== 'all') {
+            query = query.eq('status', status);
+        }
+        if (classType && classType !== 'all') {
+            query = query.eq('class', classType);
+        }
+        
+        const fromRow = (currentPage - 1) * rowsPerPage;
+        const toRow = fromRow + rowsPerPage - 1;
+        
+        query = query
+            .order('booking_date', { ascending: false })
+            .order('session_time', { ascending: true })
+            .range(fromRow, toRow);
+            
+        const { data, error, count } = await query;
+        
+        if (error) throw error;
+        
+        allBookingsData = data || [];
+        totalDBCount = count || 0;
+        
+        document.getElementById('resultCount').textContent = `${totalDBCount} bookings found`;
+        
+        renderBookingsTable(allBookingsData);
+        updatePaginationServerSide();
+        
+    } catch (error) {
+        console.error('Error loading server bookings:', error);
+        showMessage('Failed to load bookings from database.', 'error');
+        renderBookingsTable([]);
+    }
+}
+
+function updatePaginationServerSide() {
+    totalPages = Math.ceil(totalDBCount / rowsPerPage) || 1;
+    
+    if (currentPage > totalPages) {
+        currentPage = totalPages;
+    }
+    
+    const paginationDiv = document.getElementById('paginationControls');
+    if (!paginationDiv) return;
+    
+    paginationDiv.classList.remove('hidden');
+    
+    const startItem = totalDBCount === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+    const endItem = Math.min(currentPage * rowsPerPage, totalDBCount);
+    
+    document.getElementById('paginationInfo').textContent = 
+        `Showing ${startItem} - ${endItem} of ${totalDBCount}`;
+    
+    document.getElementById('prevPageBtn').disabled = currentPage === 1;
+    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+    
+    const pageNumbers = document.getElementById('pageNumbers');
+    pageNumbers.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+    
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        pageNumbers.appendChild(createServerPageBtn(1));
+        if (startPage > 2) {
+            const span = document.createElement('span');
+            span.textContent = '...';
+            span.style.margin = '0 5px';
+            pageNumbers.appendChild(span);
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = createServerPageBtn(i);
+        if (i === currentPage) {
+            btn.classList.add('active');
+            btn.style.background = '#3498db';
+            btn.style.color = 'white';
+        }
+        pageNumbers.appendChild(btn);
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const span = document.createElement('span');
+            span.textContent = '...';
+            span.style.margin = '0 5px';
+            pageNumbers.appendChild(span);
+        }
+        pageNumbers.appendChild(createServerPageBtn(totalPages));
+    }
+}
+
+function createServerPageBtn(pageNum) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn';
+    btn.textContent = pageNum;
+    btn.onclick = () => goToPageServer(pageNum);
+    return btn;
+}
+
+async function goToPageServer(pageNum) {
+    if (pageNum < 1 || pageNum > totalPages) return;
+    currentPage = pageNum;
+    await loadAllBookings();
+    
+    const container = document.getElementById('bookingsTableContainer');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+async function prevPage() {
+    if (currentPage > 1) {
+        await goToPageServer(currentPage - 1);
+    }
+}
+
+async function nextPage() {
+    if (currentPage < totalPages) {
+        await goToPageServer(currentPage + 1);
+    }
+}
+
+async function changeRowsPerPage() {
+    rowsPerPage = parseInt(document.getElementById('rowsPerPageSelect').value) || 10;
+    currentPage = 1;
+    await loadAllBookings();
+}
+
+function clearDateFilters() {
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterStatus').value = 'all';
+    document.getElementById('filterClass').value = 'all';
+    currentPage = 1;
+    loadAllBookings();
+}
+
+function setDateRange(range) {
+    const today = getMalaysiaToday();
+    const dateFrom = document.getElementById('filterDateFrom');
+    const dateTo = document.getElementById('filterDateTo');
+    
+    dateTo.value = today;
+    
+    switch(range) {
+        case 'today':
+            dateFrom.value = today;
+            break;
+        case 'week':
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            dateFrom.value = toMalaysiaDateStr(weekAgo);
+            break;
+        case 'month':
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            dateFrom.value = toMalaysiaDateStr(monthAgo);
+            break;
+        case 'all':
+            dateFrom.value = '';
+            dateTo.value = '';
+            break;
+    }
+    currentPage = 1;
+    loadAllBookings();
+}
+
 // ============================================
 // PDF REPORT GENERATION
 // ============================================
 
+async function generatePDFReport() {
+    const dateFrom = document.getElementById('reportDateFrom').value;
+    const dateTo = document.getElementById('reportDateTo').value;
+    const classFilter = document.getElementById('reportClass').value;
+    const statusFilter = document.getElementById('reportStatus').value;
+    
+    if (!dateFrom || !dateTo) {
+        showMessage('Please select both From and To dates.', 'error');
+        return;
+    }
+    
+    if (dateFrom > dateTo) {
+        showMessage('"From" date must be before "To" date.', 'error');
+        return;
+    }
+    
+    const progressDiv = document.getElementById('reportProgress');
+    progressDiv.style.display = 'block';
+    
+    try {
+        let query = supabaseClient
+            .from('bookings')
+            .select('*')
+            .gte('booking_date', dateFrom)
+            .lte('booking_date', dateTo)
+            .order('booking_date', { ascending: true });
+        
+        if (classFilter !== 'all') {
+            query = query.eq('class', classFilter);
+        }
+        if (statusFilter !== 'all') {
+            query = query.eq('status', statusFilter);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            showMessage('No bookings found for the selected criteria.', 'error');
+            progressDiv.style.display = 'none';
+            return;
+        }
+        
+        await generatePDF(data, dateFrom, dateTo, classFilter, statusFilter);
+        
+        progressDiv.style.display = 'none';
+        showMessage('PDF report generated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error generating report:', error);
+        showMessage('Error generating report: ' + error.message, 'error');
+        progressDiv.style.display = 'none';
+    }
+}
+
+async function generateDailyReport() {
+    const today = getMalaysiaToday();
+    document.getElementById('reportDateFrom').value = today;
+    document.getElementById('reportDateTo').value = today;
+    await generatePDFReport();
+}
+
 async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
-    // Create report content with inline styles that avoid oklch colors
     const reportContent = document.createElement('div');
     reportContent.id = 'reportContent';
-    // Use simple CSS that doesn't rely on oklch or modern color functions
     reportContent.style.cssText = `
         padding: 40px; 
         font-family: Arial, sans-serif; 
@@ -500,7 +577,6 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
         max-width: 100%;
     `;
     
-    // Header
     const classLabel = classFilter === 'all' ? 'All Classes' : 'Class ' + classFilter;
     const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
     
@@ -573,10 +649,8 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
         </div>
     `;
     
-    // Add to body temporarily
     document.body.appendChild(reportContent);
     
-    // Generate PDF with simplified options
     const opt = {
         margin: [10, 10, 10, 10],
         filename: `booking_report_${dateFrom}_to_${dateTo}.pdf`,
@@ -603,7 +677,6 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
         console.error('PDF generation error:', error);
         throw new Error('Failed to generate PDF: ' + error.message);
     } finally {
-        // Clean up
         if (reportContent.parentNode) {
             document.body.removeChild(reportContent);
         }
@@ -706,6 +779,8 @@ function renderAdminCalendar() {
     const calendar = document.getElementById('adminCalendar');
     const monthDisplay = document.getElementById('adminMonthDisplay');
     
+    if (!calendar) return;
+    
     const firstDay = new Date(adminYear, adminMonth, 1).getDay();
     const daysInMonth = new Date(adminYear, adminMonth + 1, 0).getDate();
     
@@ -739,11 +814,8 @@ function renderAdminCalendar() {
         div.dataset.date = dateStr;
         div.style.backgroundColor = '#f5f5f5';
         div.style.color = '#999';
-        
-        // Initialize with empty data
         div.dataset.sessions = '[]';
         div.dataset.status = 'null';
-        
         div.addEventListener('click', () => onAdminDateClick(dateStr));
         calendar.appendChild(div);
     }
@@ -807,7 +879,6 @@ async function loadAdminCalendarData() {
                 bgColor = '#f39c12';
                 textColor = 'white';
                 cursor = 'pointer';
-                // Keep the day number and add a location marker
                 cell.textContent = new Date(dateStr).getDate() + ' 📍';
             } else if (!isActive) {
                 bgColor = '#95a5a6';
@@ -822,24 +893,24 @@ async function loadAdminCalendarData() {
                 textColor = 'white';
                 cursor = 'pointer';
             } else {
-                // No sessions but date is in future
                 bgColor = '#f5f5f5';
                 textColor = '#999';
                 cursor = 'default';
             }
             
-            // Store session data back to the cell for click handler
             cell.dataset.sessions = JSON.stringify(sessions);
             cell.dataset.status = JSON.stringify(status);
-            
-            // Apply styles
             cell.style.backgroundColor = bgColor;
             cell.style.color = textColor;
             cell.style.cursor = cursor;
             
-            // Add a small indicator dot for available sessions
+            // Remove existing dots
+            const existingDot = cell.querySelector('.availability-dot');
+            if (existingDot) existingDot.remove();
+            
             if (hasAvailable && dateStr >= today) {
                 const dot = document.createElement('span');
+                dot.className = 'availability-dot';
                 dot.style.cssText = 'position:absolute;bottom:4px;right:6px;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);';
                 cell.appendChild(dot);
             }
@@ -862,12 +933,12 @@ function changeAdminMonth(delta) {
     }
     selectedAdminDate = null;
     
-    // UI state clean up
-    if(document.getElementById('adminDateDetails')) document.getElementById('adminDateDetails').classList.add('hidden');
-    if(document.getElementById('calendarFallbackPrompt')) document.getElementById('calendarFallbackPrompt').classList.remove('hidden');
+    const details = document.getElementById('adminDateDetails');
+    const prompt = document.getElementById('calendarFallbackPrompt');
+    if (details) details.classList.add('hidden');
+    if (prompt) prompt.classList.remove('hidden');
     
     renderAdminCalendar();
-    // Use setTimeout to ensure DOM is updated
     setTimeout(() => {
         loadAdminCalendarData();
     }, 50);
@@ -880,9 +951,10 @@ function goToAdminToday() {
     adminYear = date.getFullYear();
     selectedAdminDate = null;
     
-    // UI state clean up
-    if(document.getElementById('adminDateDetails')) document.getElementById('adminDateDetails').classList.add('hidden');
-    if(document.getElementById('calendarFallbackPrompt')) document.getElementById('calendarFallbackPrompt').classList.remove('hidden');
+    const details = document.getElementById('adminDateDetails');
+    const prompt = document.getElementById('calendarFallbackPrompt');
+    if (details) details.classList.add('hidden');
+    if (prompt) prompt.classList.remove('hidden');
     
     renderAdminCalendar();
     setTimeout(() => {
@@ -902,7 +974,6 @@ async function onAdminDateClick(dateStr) {
     document.getElementById('adminSelectedDate').textContent = `📅 ${formatMalaysiaDate(dateStr)}`;
     
     try {
-        // Get session data directly from Supabase instead of relying on DOM
         const { data: sessionData, error: sessionError } = await supabaseClient
             .from('available_sessions')
             .select('*')
@@ -910,7 +981,6 @@ async function onAdminDateClick(dateStr) {
         
         if (sessionError) throw sessionError;
         
-        // Get status data
         const { data: statusData, error: statusError } = await supabaseClient
             .from('date_status')
             .select('*')
@@ -923,7 +993,6 @@ async function onAdminDateClick(dateStr) {
         const detailsContainer = document.getElementById('adminDateDetails');
         const fallbackPrompt = document.getElementById('calendarFallbackPrompt');
         
-        // Split data into B and B2
         const classBData = sessionData ? sessionData.filter(s => s.class === 'B') : [];
         const classB2Data = sessionData ? sessionData.filter(s => s.class === 'B2') : [];
         
@@ -935,7 +1004,6 @@ async function onAdminDateClick(dateStr) {
             </div>
         `;
         
-        // Class B Table
         html += `
             <div class="space-y-2">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
@@ -970,7 +1038,6 @@ async function onAdminDateClick(dateStr) {
             </div>
         `;
         
-        // Class B2 Table
         html += `
             <div class="space-y-2 mt-4">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
@@ -1005,7 +1072,6 @@ async function onAdminDateClick(dateStr) {
             </div>
         `;
         
-        // Summary Card
         const totalB = classBData.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
         const totalB2 = classB2Data.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
         const totalAvailable = totalB + totalB2;
@@ -1020,7 +1086,6 @@ async function onAdminDateClick(dateStr) {
         
         detailsDiv.innerHTML = html;
         
-        // Toggle Visibility Classes safely
         if (fallbackPrompt) fallbackPrompt.classList.add('hidden');
         if (detailsContainer) {
             detailsContainer.style.display = 'block';
@@ -1040,7 +1105,6 @@ async function onAdminDateClick(dateStr) {
 // ============================================
 
 function showTab(tabId) {
-    // Tab contents array list mapping
     const tabs = ['bookings', 'calendar', 'report'];
     
     tabs.forEach(t => {
@@ -1050,19 +1114,16 @@ function showTab(tabId) {
         if (contentDiv && tabBtn) {
             if (t === tabId) {
                 contentDiv.classList.remove('hidden');
-                // Set the active component configuration using Basecoat semantics
                 tabBtn.setAttribute('data-variant', 'secondary');
                 tabBtn.classList.remove('text-muted-foreground');
             } else {
                 contentDiv.classList.add('hidden');
-                // Set inactive element state variables
                 tabBtn.setAttribute('data-variant', 'ghost');
                 tabBtn.classList.add('text-muted-foreground');
             }
         }
     });
 
-    // Handle initializations upon rendering specific tabs
     if (tabId === 'calendar') {
         renderAdminCalendar();
         setTimeout(() => {
@@ -1072,99 +1133,30 @@ function showTab(tabId) {
 }
 
 // ============================================
-// UTILITIES
+// ADMIN INITIALIZATION
 // ============================================
 
-function getMalaysiaDate(dateInput) {
-    const date = new Date(dateInput);
-    const malaysiaOffset = 8 * 60;
-    const localOffset = date.getTimezoneOffset();
-    const malaysiaTime = date.getTime() + (localOffset + malaysiaOffset) * 60 * 1000;
-    return new Date(malaysiaTime);
-}
-
-function getMalaysiaToday() {
-    const now = new Date();
-    const malaysiaDate = getMalaysiaDate(now);
-    const year = malaysiaDate.getFullYear();
-    const month = String(malaysiaDate.getMonth() + 1).padStart(2, '0');
-    const day = String(malaysiaDate.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function toMalaysiaDateStr(dateObj) {
-    const malaysiaDate = getMalaysiaDate(dateObj);
-    const year = malaysiaDate.getFullYear();
-    const month = String(malaysiaDate.getMonth() + 1).padStart(2, '0');
-    const day = String(malaysiaDate.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function formatMalaysiaDate(dateString) {
-    const date = new Date(dateString + 'T00:00:00');
-    const malaysiaDate = getMalaysiaDate(date);
-    const options = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric'
-    };
-    return malaysiaDate.toLocaleDateString('en-MY', options);
-}
-
-function formatDateTime(dateString) {
-    const options = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    };
-    return new Date(dateString).toLocaleDateString('en-MY', options);
-}
-
-function showMessage(text, type = 'info') {
-    const messageDiv = document.getElementById('message');
-    const messageText = document.getElementById('messageText');
-    if (!messageDiv) { 
-        alert(text); 
-        return; 
-    }
+async function initializeAdmin() {
+    const today = getMalaysiaToday();
+    const firstDayOfMonth = new Date();
+    firstDayOfMonth.setDate(1);
+    const firstDayStr = toMalaysiaDateStr(firstDayOfMonth);
+    document.getElementById('logoutBtn').style.display = 'inline-block';
+    document.getElementById('reportDateFrom').value = firstDayStr;
+    document.getElementById('reportDateTo').value = today;
     
-    messageDiv.classList.remove('hidden');
-    messageDiv.style.display = 'flex';
-    messageDiv.className = 'alert items-start gap-2.5 p-3.5 border rounded-xl';
-    
-    const icon = messageDiv.querySelector('i');
-    if (icon) {
-        if (type === 'error') {
-            icon.setAttribute('data-lucide', 'circle-alert');
-            messageDiv.setAttribute('data-variant', 'destructive');
-        } else if (type === 'success') {
-            icon.setAttribute('data-lucide', 'circle-check');
-            messageDiv.removeAttribute('data-variant');
-            messageDiv.style.borderColor = 'var(--color-ring)';
-            messageDiv.style.backgroundColor = 'var(--color-muted)';
-            messageDiv.style.color = 'var(--color-foreground)';
-        } else {
-            icon.setAttribute('data-lucide', 'info');
-            messageDiv.removeAttribute('data-variant');
-        }
-    }
-    
-    if (messageText) {
-        messageText.textContent = text;
-    } else {
-        messageDiv.textContent = text;
-    }
-    
-    if (window.lucide) lucide.createIcons();
+    await loadStats();
+    await loadAllBookings();
+    renderAdminCalendar();
+    setTimeout(() => {
+        loadAdminCalendarData();
+    }, 100);
 }
 
 // ============================================
 // EXPOSE FUNCTIONS TO GLOBAL SCOPE
 // ============================================
 
-// Make sure these functions are available globally
 window.generatePDFReport = generatePDFReport;
 window.generateDailyReport = generateDailyReport;
 window.generatePDF = generatePDF;
@@ -1184,16 +1176,13 @@ window.goToAdminToday = goToAdminToday;
 window.onAdminDateClick = onAdminDateClick;
 
 // ============================================
-// INITIALIZE
+// INITIALIZE PAGE
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Set default date
     document.getElementById('adminDateSelect').value = getMalaysiaToday();
     
-    // Check if admin session exists
     if (checkAdminSession()) {
-        // Auto-login
         adminLogin.classList.add('hidden');
         adminContent.classList.remove('hidden');
         document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
@@ -1201,10 +1190,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('logoutBtn').style.display = 'inline-block';
         initializeAdmin();
     } else {
-        // Show login
         adminLogin.classList.remove('hidden');
         adminContent.classList.add('hidden');
-        // Auto-focus password field
         document.getElementById('adminPassword').focus();
     }
 });
