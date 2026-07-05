@@ -20,6 +20,29 @@ let totalPages = 1;
 let filteredBookings = [];
 let totalDBCount = 0;
 
+// ============================================
+// EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// ============================================
+
+// Make sure these functions are available globally
+window.generatePDFReport = generatePDFReport;
+window.generateDailyReport = generateDailyReport;
+window.generatePDF = generatePDF;
+window.logoutAdmin = logoutAdmin;
+window.showTab = showTab;
+window.toggleDateStatus = toggleDateStatus;
+window.refreshSchedule = refreshSchedule;
+window.loadAllBookings = loadAllBookings;
+window.clearDateFilters = clearDateFilters;
+window.setDateRange = setDateRange;
+window.changeRowsPerPage = changeRowsPerPage;
+window.prevPage = prevPage;
+window.nextPage = nextPage;
+window.goToPageServer = goToPageServer;
+window.changeAdminMonth = changeAdminMonth;
+window.goToAdminToday = goToAdminToday;
+window.onAdminDateClick = onAdminDateClick;
+
 // DOM Elements
 const adminLogin = document.getElementById('adminLogin');
 const adminContent = document.getElementById('adminContent');
