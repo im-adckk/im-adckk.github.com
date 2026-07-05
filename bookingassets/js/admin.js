@@ -503,6 +503,10 @@ function setDateRange(range) {
 // PDF REPORT GENERATION
 // ============================================
 
+// ============================================
+// PDF REPORT GENERATION - COMPLETE FIX
+// ============================================
+
 async function generatePDFReport() {
     const dateFrom = document.getElementById('reportDateFrom').value;
     const dateTo = document.getElementById('reportDateTo').value;
@@ -520,7 +524,7 @@ async function generatePDFReport() {
     }
     
     const progressDiv = document.getElementById('reportProgress');
-    progressDiv.style.display = 'block';
+    if (progressDiv) progressDiv.style.display = 'block';
     
     try {
         let query = supabaseClient
@@ -543,19 +547,19 @@ async function generatePDFReport() {
         
         if (!data || data.length === 0) {
             showMessage('No bookings found for the selected criteria.', 'error');
-            progressDiv.style.display = 'none';
+            if (progressDiv) progressDiv.style.display = 'none';
             return;
         }
         
         await generatePDF(data, dateFrom, dateTo, classFilter, statusFilter);
         
-        progressDiv.style.display = 'none';
+        if (progressDiv) progressDiv.style.display = 'none';
         showMessage('PDF report generated successfully!', 'success');
         
     } catch (error) {
         console.error('Error generating report:', error);
         showMessage('Error generating report: ' + error.message, 'error');
-        progressDiv.style.display = 'none';
+        if (progressDiv) progressDiv.style.display = 'none';
     }
 }
 
@@ -567,90 +571,207 @@ async function generateDailyReport() {
 }
 
 async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
-    const reportContent = document.createElement('div');
-    reportContent.id = 'reportContent';
-    reportContent.style.cssText = `
-        padding: 40px; 
-        font-family: Arial, sans-serif; 
-        background: #ffffff; 
-        color: #000000;
-        max-width: 100%;
-    `;
+    // Create a completely isolated iframe for PDF generation
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;border:none;';
+    document.body.appendChild(iframe);
     
+    // Get the iframe's document
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    
+    // Write the report HTML into the iframe with NO external CSS
     const classLabel = classFilter === 'all' ? 'All Classes' : 'Class ' + classFilter;
     const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
     
-    reportContent.innerHTML = `
-        <div style="text-align:center;border-bottom:2px solid #333333;padding-bottom:20px;margin-bottom:20px;">
-            <h1 style="margin:0;color:#2c3e50;font-size:24px;">🏍️ Motorcycle Booking Report</h1>
-            <p style="margin:5px 0;color:#7f8c8d;font-size:14px;">
-                Period: ${formatMalaysiaDate(dateFrom)} to ${formatMalaysiaDate(dateTo)}
-            </p>
-            <p style="margin:5px 0;color:#7f8c8d;font-size:14px;">
-                Class: ${classLabel} | Status: ${statusLabel}
-            </p>
-            <p style="margin:5px 0;color:#7f8c8d;font-size:12px;">
-                Generated: ${formatDateTime(new Date().toISOString())}
-            </p>
+    // Build the report HTML with inline styles only
+    let reportHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Report</title>
+    <style>
+        /* Reset all styles to avoid conflicts */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #ffffff;
+            color: #000000;
+            padding: 40px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .report-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333333;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            padding: 15px;
+            border: 1px solid #dddddd;
+            border-radius: 4px;
+            text-align: center;
+            background: #f8f9fa;
+        }
+        .stat-card h3 {
+            margin: 0;
+            font-size: 20px;
+        }
+        .stat-card p {
+            margin: 5px 0 0;
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        .stat-card.green { background: #f0fdf4; }
+        .stat-card.green h3 { color: #27ae60; }
+        .stat-card.red { background: #fef2f2; }
+        .stat-card.red h3 { color: #e74c3c; }
+        .stat-card.amber { background: #fffbeb; }
+        .stat-card.amber h3 { color: #f39c12; }
+        
+        .section-title {
+            color: #2c3e50;
+            border-bottom: 1px solid #dddddd;
+            padding-bottom: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        thead th {
+            background: #34495e;
+            color: #ffffff;
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #34495e;
+        }
+        tbody td {
+            padding: 6px;
+            border: 1px solid #dddddd;
+        }
+        tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+        .status-confirmed { color: #27ae60; font-weight: bold; }
+        .status-cancelled { color: #e74c3c; font-weight: bold; }
+        .status-rescheduled { color: #f39c12; font-weight: bold; }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dddddd;
+            font-size: 11px;
+            color: #95a5a6;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="header">
+            <h1>🏍️ Motorcycle Booking Report</h1>
+            <p>Period: ${formatMalaysiaDate(dateFrom)} to ${formatMalaysiaDate(dateTo)}</p>
+            <p>Class: ${classLabel} | Status: ${statusLabel}</p>
+            <p>Generated: ${formatDateTime(new Date().toISOString())}</p>
         </div>
         
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:30px;">
-            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#f8f9fa;">
-                <h3 style="margin:0;color:#2c3e50;font-size:20px;">${data.length}</h3>
-                <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Total Bookings</p>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>${data.length}</h3>
+                <p>Total Bookings</p>
             </div>
-            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#f0fdf4;">
-                <h3 style="margin:0;color:#27ae60;font-size:20px;">${data.filter(b => b.status === 'confirmed').length}</h3>
-                <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Confirmed</p>
+            <div class="stat-card green">
+                <h3>${data.filter(b => b.status === 'confirmed').length}</h3>
+                <p>Confirmed</p>
             </div>
-            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#fef2f2;">
-                <h3 style="margin:0;color:#e74c3c;font-size:20px;">${data.filter(b => b.status === 'cancelled').length}</h3>
-                <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Cancelled</p>
+            <div class="stat-card red">
+                <h3>${data.filter(b => b.status === 'cancelled').length}</h3>
+                <p>Cancelled</p>
             </div>
-            <div style="padding:15px;border:1px solid #dddddd;border-radius:4px;text-align:center;background:#fffbeb;">
-                <h3 style="margin:0;color:#f39c12;font-size:20px;">${data.filter(b => b.status === 'rescheduled').length}</h3>
-                <p style="margin:5px 0 0;color:#7f8c8d;font-size:12px;">Rescheduled</p>
+            <div class="stat-card amber">
+                <h3>${data.filter(b => b.status === 'rescheduled').length}</h3>
+                <p>Rescheduled</p>
             </div>
         </div>
         
-        <h3 style="color:#2c3e50;border-bottom:1px solid #dddddd;padding-bottom:10px;font-size:16px;">Booking Details</h3>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <h3 class="section-title">Booking Details</h3>
+        <table>
             <thead>
-                <tr style="background:#34495e;color:#ffffff;">
-                    <th style="padding:8px;text-align:left;border:1px solid #34495e;">Session ID</th>
-                    <th style="padding:8px;text-align:left;border:1px solid #34495e;">Name</th>
-                    <th style="padding:8px;text-align:left;border:1px solid #34495e;">Class</th>
-                    <th style="padding:8px;text-align:left;border:1px solid #34495e;">Date</th>
-                    <th style="padding:8px;text-align:left;border:1px solid #34495e;">Time</th>
-                    <th style="padding:8px;text-align:left;border:1px solid #34495e;">Slot</th>
-                    <th style="padding:8px;text-align:left;border:1px solid #34495e;">Status</th>
+                <tr>
+                    <th>Session ID</th>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Slot</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                ${data.map((b, index) => `
-                    <tr style="${index % 2 === 0 ? 'background:#f8f9fa;' : 'background:#ffffff;'}">
-                        <td style="padding:6px;border:1px solid #dddddd;">${b.session_id}</td>
-                        <td style="padding:6px;border:1px solid #dddddd;">${b.name}</td>
-                        <td style="padding:6px;border:1px solid #dddddd;">${b.class}</td>
-                        <td style="padding:6px;border:1px solid #dddddd;">${formatMalaysiaDate(b.booking_date)}</td>
-                        <td style="padding:6px;border:1px solid #dddddd;">${b.session_time}</td>
-                        <td style="padding:6px;border:1px solid #dddddd;">${b.session_slot}</td>
-                        <td style="padding:6px;border:1px solid #dddddd;color:${b.status === 'confirmed' ? '#27ae60' : b.status === 'cancelled' ? '#e74c3c' : '#f39c12'};font-weight:bold;">
-                            ${b.status.toUpperCase()}
-                        </td>
+                ${data.map((b) => `
+                    <tr>
+                        <td>${b.session_id || ''}</td>
+                        <td>${b.name || ''}</td>
+                        <td>${b.class || ''}</td>
+                        <td>${formatMalaysiaDate(b.booking_date)}</td>
+                        <td>${b.session_time || ''}</td>
+                        <td>${b.session_slot || ''}</td>
+                        <td class="status-${b.status || ''}">${(b.status || '').toUpperCase()}</td>
                     </tr>
                 `).join('')}
             </tbody>
         </table>
         
-        <div style="margin-top:30px;padding-top:20px;border-top:1px solid #dddddd;font-size:11px;color:#95a5a6;text-align:center;">
+        <div class="footer">
             <p>This report is auto-generated by the Motorcycle Booking System.</p>
             <p>© ${new Date().getFullYear()} - All rights reserved.</p>
         </div>
-    `;
+    </div>
+</body>
+</html>`;
     
-    document.body.appendChild(reportContent);
+    // Write to iframe
+    iframeDoc.open();
+    iframeDoc.write(reportHTML);
+    iframeDoc.close();
     
+    // Wait for iframe to load
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Get the iframe's body element
+    const iframeBody = iframeDoc.body;
+    
+    // Generate PDF from iframe content
     const opt = {
         margin: [10, 10, 10, 10],
         filename: `booking_report_${dateFrom}_to_${dateTo}.pdf`,
@@ -659,7 +780,10 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
             scale: 2, 
             useCORS: true, 
             logging: false,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            // Don't try to parse external CSS
+            allowTaint: true,
+            useCORS: true
         },
         jsPDF: { 
             unit: 'mm', 
@@ -672,13 +796,14 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
     };
     
     try {
-        await html2pdf().set(opt).from(reportContent).save();
+        await html2pdf().set(opt).from(iframeBody).save();
     } catch (error) {
         console.error('PDF generation error:', error);
         throw new Error('Failed to generate PDF: ' + error.message);
     } finally {
-        if (reportContent.parentNode) {
-            document.body.removeChild(reportContent);
+        // Clean up iframe
+        if (iframe.parentNode) {
+            document.body.removeChild(iframe);
         }
     }
 }
