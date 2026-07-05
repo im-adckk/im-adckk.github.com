@@ -1,7 +1,7 @@
 // Supabase Configuration
 const SUPABASE_URL = 'https://yrrinzreyafiowehhhon.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
- 
+
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
    
 // Admin password (simple - you can change this)
@@ -500,15 +500,7 @@ function setDateRange(range) {
 }
 
 // ============================================
-// PDF REPORT GENERATION
-// ============================================
-
-// ============================================
 // PDF REPORT GENERATION - COMPLETE FIX
-// ============================================
-
-// ============================================
-// PDF REPORT GENERATION - Opens in new tab
 // ============================================
 
 function buildReportHTML(data) {
@@ -518,7 +510,7 @@ function buildReportHTML(data) {
         return d.toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
     }
     
-    function formatDateTime(dateString) {
+    function formatDateTimeLocal(dateString) {
         if (!dateString) return 'N/A';
         const d = new Date(dateString);
         return d.toLocaleDateString('en-MY', { 
@@ -651,7 +643,7 @@ function buildReportHTML(data) {
             <h1>🏍️ Motorcycle Booking Report</h1>
             <p>Period: ${formatDate(dateFrom)} to ${formatDate(dateTo)}</p>
             <p>Class: ${classLabel} | Status: ${statusLabel}</p>
-            <p>Generated: ${formatDateTime(new Date().toISOString())}</p>
+            <p>Generated: ${formatDateTimeLocal(new Date().toISOString())}</p>
         </div>
         
         <div class="stats-grid">
@@ -792,6 +784,69 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
             // Ignore errors
         }
     }, 10000);
+}
+
+async function generatePDFReport() {
+    const dateFrom = document.getElementById('reportDateFrom').value;
+    const dateTo = document.getElementById('reportDateTo').value;
+    const classFilter = document.getElementById('reportClass').value;
+    const statusFilter = document.getElementById('reportStatus').value;
+    
+    if (!dateFrom || !dateTo) {
+        showMessage('Please select both From and To dates.', 'error');
+        return;
+    }
+    
+    if (dateFrom > dateTo) {
+        showMessage('"From" date must be before "To" date.', 'error');
+        return;
+    }
+    
+    const progressDiv = document.getElementById('reportProgress');
+    if (progressDiv) progressDiv.style.display = 'block';
+    
+    try {
+        let query = supabaseClient
+            .from('bookings')
+            .select('*')
+            .gte('booking_date', dateFrom)
+            .lte('booking_date', dateTo)
+            .order('booking_date', { ascending: true });
+        
+        if (classFilter !== 'all') {
+            query = query.eq('class', classFilter);
+        }
+        if (statusFilter !== 'all') {
+            query = query.eq('status', statusFilter);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            showMessage('No bookings found for the selected criteria.', 'error');
+            if (progressDiv) progressDiv.style.display = 'none';
+            return;
+        }
+        
+        await generatePDF(data, dateFrom, dateTo, classFilter, statusFilter);
+        
+        if (progressDiv) progressDiv.style.display = 'none';
+        showMessage('PDF report generated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error generating report:', error);
+        showMessage('Error generating report: ' + error.message, 'error');
+        if (progressDiv) progressDiv.style.display = 'none';
+    }
+}
+
+async function generateDailyReport() {
+    const today = getMalaysiaToday();
+    document.getElementById('reportDateFrom').value = today;
+    document.getElementById('reportDateTo').value = today;
+    await generatePDFReport();
 }
 
 // ============================================
