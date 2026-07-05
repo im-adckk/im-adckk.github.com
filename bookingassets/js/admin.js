@@ -889,7 +889,11 @@ function changeAdminMonth(delta) {
         adminYear--;
     }
     selectedAdminDate = null;
-    document.getElementById('adminDateDetails').style.display = 'none';
+    
+    // UI state clean up
+    if(document.getElementById('adminDateDetails')) document.getElementById('adminDateDetails').classList.add('hidden');
+    if(document.getElementById('calendarFallbackPrompt')) document.getElementById('calendarFallbackPrompt').classList.remove('hidden');
+    
     renderAdminCalendar();
     loadAdminCalendarData();
 }
@@ -900,7 +904,11 @@ function goToAdminToday() {
     adminMonth = date.getMonth();
     adminYear = date.getFullYear();
     selectedAdminDate = null;
-    document.getElementById('adminDateDetails').style.display = 'none';
+    
+    // UI state clean up
+    if(document.getElementById('adminDateDetails')) document.getElementById('adminDateDetails').classList.add('hidden');
+    if(document.getElementById('calendarFallbackPrompt')) document.getElementById('calendarFallbackPrompt').classList.remove('hidden');
+    
     renderAdminCalendar();
     loadAdminCalendarData();
 }
@@ -980,104 +988,111 @@ async function onAdminDateClick(dateStr) {
         
         const detailsDiv = document.getElementById('adminDateSessions');
         const detailsContainer = document.getElementById('adminDateDetails');
+        const fallbackPrompt = document.getElementById('calendarFallbackPrompt');
         
         // Split data into B and B2
         const classBData = sessionData ? sessionData.filter(s => s.class === 'B') : [];
         const classB2Data = sessionData ? sessionData.filter(s => s.class === 'B2') : [];
         
         let html = `
-            <div style="margin:10px 0;padding:10px;background:#f8f9fa;border-radius:4px;">
-                <p><strong>Status:</strong> ${statusData ? (statusData.is_active ? '🟢 Active' : '🔴 Inactive') : '🟢 Active (default)'}</p>
-                ${statusData && statusData.reason ? `<p><strong>Reason:</strong> ${statusData.reason}</p>` : ''}
-                ${statusData && !statusData.is_active ? `<p style="color:red;">⚠️ This date is closed for bookings.</p>` : ''}
+            <div class="p-3 bg-muted rounded-lg border text-sm mb-4">
+                <p class="font-medium"><strong>Status:</strong> ${statusData ? (statusData.is_active ? '🟢 Active' : '🔴 Inactive') : '🟢 Active (default)'}</p>
+                ${statusData && statusData.reason ? `<p class="mt-1 text-xs text-muted-foreground"><strong>Reason:</strong> ${statusData.reason}</p>` : ''}
+                ${statusData && !statusData.is_active ? `<p class="mt-1 text-xs text-destructive font-semibold">⚠️ This date is closed for bookings.</p>` : ''}
             </div>
         `;
         
         // Class B Table
         html += `
-            <div style="margin:15px 0;">
-                <h4 style="color:#2c3e50;border-bottom:2px solid #3498db;padding-bottom:5px;">🏍️ Class B (Quota: 5)</h4>
+            <div class="space-y-2">
+                <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
+                    <span>🏍️ Class B</span> <span class="text-xs text-muted-foreground font-normal">Quota: 5</span>
+                </h4>
                 ${classBData.length > 0 ? `
-                    <table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:5px;font-size:13px;">
-                        <thead>
-                            <tr style="background:#3498db;color:white;">
-                                <th>Time</th>
-                                <th>Slot</th>
-                                <th>Booked</th>
-                                <th>Capacity</th>
-                                <th>Available</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${classBData.map(s => `
-                                <tr>
-                                    <td><strong>${s.session_time || 'N/A'}</strong></td>
-                                    <td>${s.session_slot || 'N/A'}</td>
-                                    <td>${s.current_bookings || 0}</td>
-                                    <td>${s.max_bookings || 5}</td>
-                                    <td style="color:${(s.current_bookings < s.max_bookings) ? 'green' : 'red'};font-weight:bold;">
-                                        ${(s.current_bookings < s.max_bookings) ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
-                                    </td>
+                    <div class="border rounded-lg overflow-hidden bg-card text-xs">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-muted text-muted-foreground font-semibold border-b">
+                                    <th class="p-2">Time</th>
+                                    <th class="p-2">Slot</th>
+                                    <th class="p-2">Booked</th>
+                                    <th class="p-2">Available</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                ` : '<p style="color:#999;font-style:italic;">No Class B sessions available for this date.</p>'}
+                            </thead>
+                            <tbody class="divide-y">
+                                ${classBData.map(s => `
+                                    <tr>
+                                        <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
+                                        <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
+                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || 5}</td>
+                                        <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
+                                            ${s.current_bookings < s.max_bookings ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '<p class="text-xs text-muted-foreground italic p-2">No Class B sessions available.</p>'}
             </div>
         `;
         
         // Class B2 Table
         html += `
-            <div style="margin:15px 0;">
-                <h4 style="color:#2c3e50;border-bottom:2px solid #e67e22;padding-bottom:5px;">🏍️ Class B2 (Quota: 15)</h4>
+            <div class="space-y-2 mt-4">
+                <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
+                    <span>🏍️ Class B2</span> <span class="text-xs text-muted-foreground font-normal">Quota: 15</span>
+                </h4>
                 ${classB2Data.length > 0 ? `
-                    <table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:5px;font-size:13px;">
-                        <thead>
-                            <tr style="background:#e67e22;color:white;">
-                                <th>Time</th>
-                                <th>Slot</th>
-                                <th>Booked</th>
-                                <th>Capacity</th>
-                                <th>Available</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${classB2Data.map(s => `
-                                <tr>
-                                    <td><strong>${s.session_time || 'N/A'}</strong></td>
-                                    <td>${s.session_slot || 'N/A'}</td>
-                                    <td>${s.current_bookings || 0}</td>
-                                    <td>${s.max_bookings || 15}</td>
-                                    <td style="color:${(s.current_bookings < s.max_bookings) ? 'green' : 'red'};font-weight:bold;">
-                                        ${(s.current_bookings < s.max_bookings) ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
-                                    </td>
+                    <div class="border rounded-lg overflow-hidden bg-card text-xs">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-muted text-muted-foreground font-semibold border-b">
+                                    <th class="p-2">Time</th>
+                                    <th class="p-2">Slot</th>
+                                    <th class="p-2">Booked</th>
+                                    <th class="p-2">Available</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                ` : '<p style="color:#999;font-style:italic;">No Class B2 sessions available for this date.</p>'}
+                            </thead>
+                            <tbody class="divide-y">
+                                ${classB2Data.map(s => `
+                                    <tr>
+                                        <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
+                                        <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
+                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || 15}</td>
+                                        <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
+                                            ${s.current_bookings < s.max_bookings ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '<p class="text-xs text-muted-foreground italic p-2">No Class B2 sessions available.</p>'}
             </div>
         `;
         
-        // Summary
+        // Summary Card
         const totalB = classBData.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
         const totalB2 = classB2Data.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
         const totalAvailable = totalB + totalB2;
         
         html += `
-            <div style="margin-top:15px;padding:10px;background:#f8f9fa;border-radius:4px;border:1px solid #ddd;">
-                <p style="margin:0;">
-                    <strong>Summary:</strong> 
-                    Class B: ${totalB > 0 ? '✅ ' + totalB + ' slots available' : '❌ Fully Booked'} | 
-                    Class B2: ${totalB2 > 0 ? '✅ ' + totalB2 + ' slots available' : '❌ Fully Booked'} | 
-                    <strong>Total Available: ${totalAvailable}</strong>
-                </p>
+            <div class="mt-4 p-3 bg-card border rounded-lg text-xs font-medium space-y-1">
+                <p class="text-muted-foreground">Class B Available: <span class="${totalB > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB > 0 ? totalB : '0'} slots</span></p>
+                <p class="text-muted-foreground">Class B2 Available: <span class="${totalB2 > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB2 > 0 ? totalB2 : '0'} slots</span></p>
+                <p class="border-t pt-1 font-bold text-foreground flex justify-between text-sm"><span>Total Remaining:</span> <span>${totalAvailable} slots</span></p>
             </div>
         `;
         
         detailsDiv.innerHTML = html;
-        detailsContainer.style.display = 'block';
-        detailsContainer.classList.remove('hidden');
+        
+        // Toggle Visibility Classes safely
+        if (fallbackPrompt) fallbackPrompt.classList.add('hidden');
+        if (detailsContainer) {
+            detailsContainer.style.display = 'block';
+            detailsContainer.classList.remove('hidden');
+        }
         
         document.getElementById('adminDateSelect').value = dateStr;
         
