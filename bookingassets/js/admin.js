@@ -437,40 +437,55 @@ function setDateRange(range) {
 
 function renderBookingsTable(bookings, isLoading = false) {
     const tbody = document.getElementById('bookingsTableBody');
+    if (!tbody) return;
     
     if (isLoading) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">Loading bookings...</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center p-8 text-muted-foreground"><i data-lucide="refresh-cw" class="w-5 h-5 animate-spin mx-auto mb-2"></i>Loading bookings data...</td></tr>`;
+        if (window.lucide) lucide.createIcons();
         return;
     }
     
     if (!bookings || bookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No bookings found.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center p-12 text-muted-foreground font-medium">No bookings match the selected filtration query.</td></tr>`;
         return;
     }
     
     let html = '';
     bookings.forEach(booking => {
-        // Match the status badge styles defined in your HTML CSS definitions
-        const statusClass = booking.status === 'confirmed' ? 'status-confirmed' : 
-                            booking.status === 'cancelled' ? 'status-cancelled' : 'status-rescheduled';
+        // Map status strings to clean Tailwind & Basecoat UI pill attributes
+        let badgeVariant = 'data-variant="outline"';
+        let customColors = 'bg-slate-100 text-slate-800 border-slate-200';
+        
+        if (booking.status === 'confirmed') {
+            customColors = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        } else if (booking.status === 'cancelled') {
+            customColors = 'bg-red-50 text-red-700 border-red-200';
+        } else if (booking.status === 'rescheduled') {
+            customColors = 'bg-amber-50 text-amber-700 border-amber-200';
+        }
         
         html += `
-            <tr>
-                <td><strong>${booking.session_id || ''}</strong></td>
-                <td>${booking.icno || ''}</td>
-                <td>${booking.name || ''}</td>
-                <td>${booking.contact_no || ''}</td>
-                <td><span class="font-bold">${booking.class || ''}</span></td>
-                <td>${formatMalaysiaDate(booking.booking_date)}</td>
-                <td>${booking.session_time || ''}</td>
-                <td>${booking.session_slot || ''}</td>
-                <td><span class="status-badge ${statusClass}">${booking.status.toUpperCase()}</span></td>
-                <td>${formatDateTime(booking.created_at)}</td>
+            <tr class="hover:bg-muted/40 transition-colors border-b border-border">
+                <td class="p-3.5 font-mono text-xs text-foreground font-bold">${booking.session_id || ''}</td>
+                <td class="p-3.5 text-muted-foreground">${booking.icno || ''}</td>
+                <td class="p-3.5 font-medium text-foreground">${booking.name || ''}</td>
+                <td class="p-3.5 text-muted-foreground">${booking.contact_no || ''}</td>
+                <td class="p-3.5 text-center"><span class="inline-block px-2 py-0.5 rounded bg-muted text-muted-foreground text-xs font-bold">${booking.class || ''}</span></td>
+                <td class="p-3.5 text-foreground">${formatMalaysiaDate(booking.booking_date)}</td>
+                <td class="p-3.5 text-muted-foreground">${booking.session_time || ''}</td>
+                <td class="p-3.5 text-muted-foreground font-medium">${booking.session_slot || ''}</td>
+                <td class="p-3.5">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${customColors}">
+                        ${booking.status.toUpperCase()}
+                    </span>
+                </td>
+                <td class="p-3.5 text-xs text-muted-foreground">${formatDateTime(booking.created_at)}</td>
             </tr>
         `;
     });
     
     tbody.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
 }
 // ============================================
 // PDF REPORT GENERATION
@@ -1076,37 +1091,32 @@ async function onAdminDateClick(dateStr) {
 // TABS
 // ============================================
 
-function showTab(tab) {
-    const tabBookings = document.getElementById('tabBookings');
-    const tabCalendar = document.getElementById('tabCalendar');
-    const tabReport = document.getElementById('tabReport');
-    const contentBookings = document.getElementById('tabContentBookings');
-    const contentCalendar = document.getElementById('tabContentCalendar');
-    const contentReport = document.getElementById('tabContentReport');
-    
-    // Reset all tabs
-    const tabs = [tabBookings, tabCalendar, tabReport];
-    const contents = [contentBookings, contentCalendar, contentReport];
+function showTab(tabId) {
+    // Tab contents array list mapping
+    const tabs = ['bookings', 'calendar', 'report'];
     
     tabs.forEach(t => {
-        t.style.background = '#95a5a6';
-        t.style.color = 'white';
+        const contentDiv = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const tabBtn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        
+        if (contentDiv && tabBtn) {
+            if (t === tabId) {
+                contentDiv.classList.remove('hidden');
+                // Set the active component configuration using Basecoat semantics
+                tabBtn.setAttribute('data-variant', 'secondary');
+                tabBtn.classList.remove('text-muted-foreground');
+            } else {
+                contentDiv.classList.add('hidden');
+                // Set inactive element state variables
+                tabBtn.setAttribute('data-variant', 'ghost');
+                tabBtn.classList.add('text-muted-foreground');
+            }
+        }
     });
-    contents.forEach(c => c.classList.add('hidden'));
-    
-    // Show selected tab
-    if (tab === 'bookings') {
-        tabBookings.style.background = '#3498db';
-        contentBookings.classList.remove('hidden');
-        loadAllBookings();
-    } else if (tab === 'calendar') {
-        tabCalendar.style.background = '#3498db';
-        contentCalendar.classList.remove('hidden');
+
+    // Handle initializations upon rendering specific tabs
+    if (tabId === 'calendar') {
         renderAdminCalendar();
-        loadAdminCalendarData();
-    } else if (tab === 'report') {
-        tabReport.style.background = '#3498db';
-        contentReport.classList.remove('hidden');
     }
 }
 
