@@ -507,124 +507,61 @@ function setDateRange(range) {
 // PDF REPORT GENERATION - COMPLETE FIX
 // ============================================
 
-async function generatePDFReport() {
-    const dateFrom = document.getElementById('reportDateFrom').value;
-    const dateTo = document.getElementById('reportDateTo').value;
-    const classFilter = document.getElementById('reportClass').value;
-    const statusFilter = document.getElementById('reportStatus').value;
-    
-    if (!dateFrom || !dateTo) {
-        showMessage('Please select both From and To dates.', 'error');
-        return;
-    }
-    
-    if (dateFrom > dateTo) {
-        showMessage('"From" date must be before "To" date.', 'error');
-        return;
-    }
-    
-    const progressDiv = document.getElementById('reportProgress');
-    if (progressDiv) progressDiv.style.display = 'block';
-    
-    try {
-        let query = supabaseClient
-            .from('bookings')
-            .select('*')
-            .gte('booking_date', dateFrom)
-            .lte('booking_date', dateTo)
-            .order('booking_date', { ascending: true });
-        
-        if (classFilter !== 'all') {
-            query = query.eq('class', classFilter);
-        }
-        if (statusFilter !== 'all') {
-            query = query.eq('status', statusFilter);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-            showMessage('No bookings found for the selected criteria.', 'error');
-            if (progressDiv) progressDiv.style.display = 'none';
-            return;
-        }
-        
-        await generatePDF(data, dateFrom, dateTo, classFilter, statusFilter);
-        
-        if (progressDiv) progressDiv.style.display = 'none';
-        showMessage('PDF report generated successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Error generating report:', error);
-        showMessage('Error generating report: ' + error.message, 'error');
-        if (progressDiv) progressDiv.style.display = 'none';
-    }
-}
+// ============================================
+// PDF REPORT GENERATION - Opens in new tab
+// ============================================
 
-async function generateDailyReport() {
-    const today = getMalaysiaToday();
-    document.getElementById('reportDateFrom').value = today;
-    document.getElementById('reportDateTo').value = today;
-    await generatePDFReport();
-}
-
-async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
-    // Create a completely isolated iframe for PDF generation
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;border:none;';
-    document.body.appendChild(iframe);
+function buildReportHTML(data) {
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const d = new Date(dateString + 'T00:00:00');
+        return d.toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
     
-    // Get the iframe's document
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    function formatDateTime(dateString) {
+        if (!dateString) return 'N/A';
+        const d = new Date(dateString);
+        return d.toLocaleDateString('en-MY', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
     
-    // Write the report HTML into the iframe with NO external CSS
-    const classLabel = classFilter === 'all' ? 'All Classes' : 'Class ' + classFilter;
-    const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
+    const bookings = data.bookings;
+    const dateFrom = data.dateFrom;
+    const dateTo = data.dateTo;
+    const classLabel = data.classLabel;
+    const statusLabel = data.statusLabel;
+    const filename = `booking_report_${dateFrom}_to_${dateTo}`;
     
-    // Build the report HTML with inline styles only
-    let reportHTML = `
+    return `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>Booking Report</title>
     <style>
-        /* Reset all styles to avoid conflicts */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: Arial, sans-serif;
             background: #ffffff;
             color: #000000;
             padding: 40px;
             font-size: 12px;
             line-height: 1.5;
         }
-        .report-container {
-            max-width: 100%;
-            margin: 0 auto;
-        }
+        .report-container { max-width: 100%; margin: 0 auto; }
         .header {
             text-align: center;
-            border-bottom: 2px solid #333333;
+            border-bottom: 2px solid #333;
             padding-bottom: 20px;
             margin-bottom: 20px;
         }
-        .header h1 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 24px;
-        }
-        .header p {
-            margin: 5px 0;
-            color: #7f8c8d;
-            font-size: 14px;
-        }
+        .header h1 { margin: 0; color: #2c3e50; font-size: 24px; }
+        .header p { margin: 5px 0; color: #7f8c8d; font-size: 14px; }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -633,30 +570,22 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
         }
         .stat-card {
             padding: 15px;
-            border: 1px solid #dddddd;
+            border: 1px solid #ddd;
             border-radius: 4px;
             text-align: center;
             background: #f8f9fa;
         }
-        .stat-card h3 {
-            margin: 0;
-            font-size: 20px;
-        }
-        .stat-card p {
-            margin: 5px 0 0;
-            color: #7f8c8d;
-            font-size: 12px;
-        }
+        .stat-card h3 { margin: 0; font-size: 20px; }
+        .stat-card p { margin: 5px 0 0; color: #7f8c8d; font-size: 12px; }
         .stat-card.green { background: #f0fdf4; }
         .stat-card.green h3 { color: #27ae60; }
         .stat-card.red { background: #fef2f2; }
         .stat-card.red h3 { color: #e74c3c; }
         .stat-card.amber { background: #fffbeb; }
         .stat-card.amber h3 { color: #f39c12; }
-        
         .section-title {
             color: #2c3e50;
-            border-bottom: 1px solid #dddddd;
+            border-bottom: 1px solid #ddd;
             padding-bottom: 10px;
             font-size: 16px;
             margin-bottom: 15px;
@@ -668,58 +597,78 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
         }
         thead th {
             background: #34495e;
-            color: #ffffff;
+            color: #fff;
             padding: 8px;
             text-align: left;
             border: 1px solid #34495e;
         }
         tbody td {
             padding: 6px;
-            border: 1px solid #dddddd;
+            border: 1px solid #ddd;
         }
-        tbody tr:nth-child(even) {
-            background: #f8f9fa;
-        }
-        tbody tr:nth-child(odd) {
-            background: #ffffff;
-        }
+        tbody tr:nth-child(even) { background: #f8f9fa; }
+        tbody tr:nth-child(odd) { background: #ffffff; }
         .status-confirmed { color: #27ae60; font-weight: bold; }
         .status-cancelled { color: #e74c3c; font-weight: bold; }
         .status-rescheduled { color: #f39c12; font-weight: bold; }
         .footer {
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid #dddddd;
+            border-top: 1px solid #ddd;
             font-size: 11px;
             color: #95a5a6;
             text-align: center;
         }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 16px;
+            color: #666;
+        }
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-    <div class="report-container">
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px;">Generating PDF report...</p>
+    </div>
+    
+    <div id="reportContent" class="report-container" style="display:none;">
         <div class="header">
             <h1>🏍️ Motorcycle Booking Report</h1>
-            <p>Period: ${formatMalaysiaDate(dateFrom)} to ${formatMalaysiaDate(dateTo)}</p>
+            <p>Period: ${formatDate(dateFrom)} to ${formatDate(dateTo)}</p>
             <p>Class: ${classLabel} | Status: ${statusLabel}</p>
             <p>Generated: ${formatDateTime(new Date().toISOString())}</p>
         </div>
         
         <div class="stats-grid">
             <div class="stat-card">
-                <h3>${data.length}</h3>
+                <h3>${bookings.length}</h3>
                 <p>Total Bookings</p>
             </div>
             <div class="stat-card green">
-                <h3>${data.filter(b => b.status === 'confirmed').length}</h3>
+                <h3>${bookings.filter(b => b.status === 'confirmed').length}</h3>
                 <p>Confirmed</p>
             </div>
             <div class="stat-card red">
-                <h3>${data.filter(b => b.status === 'cancelled').length}</h3>
+                <h3>${bookings.filter(b => b.status === 'cancelled').length}</h3>
                 <p>Cancelled</p>
             </div>
             <div class="stat-card amber">
-                <h3>${data.filter(b => b.status === 'rescheduled').length}</h3>
+                <h3>${bookings.filter(b => b.status === 'rescheduled').length}</h3>
                 <p>Rescheduled</p>
             </div>
         </div>
@@ -738,12 +687,12 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
                 </tr>
             </thead>
             <tbody>
-                ${data.map((b) => `
+                ${bookings.map(b => `
                     <tr>
                         <td>${b.session_id || ''}</td>
                         <td>${b.name || ''}</td>
                         <td>${b.class || ''}</td>
-                        <td>${formatMalaysiaDate(b.booking_date)}</td>
+                        <td>${formatDate(b.booking_date)}</td>
                         <td>${b.session_time || ''}</td>
                         <td>${b.session_slot || ''}</td>
                         <td class="status-${b.status || ''}">${(b.status || '').toUpperCase()}</td>
@@ -757,55 +706,92 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
             <p>© ${new Date().getFullYear()} - All rights reserved.</p>
         </div>
     </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+    <script>
+        (function() {
+            // Show the report content after a brief delay
+            setTimeout(function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('reportContent').style.display = 'block';
+                
+                // Generate PDF
+                const element = document.getElementById('reportContent');
+                const opt = {
+                    margin: [10, 10, 10, 10],
+                    filename: '${filename}.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { 
+                        scale: 2, 
+                        useCORS: true, 
+                        logging: false,
+                        backgroundColor: '#ffffff',
+                        allowTaint: true
+                    },
+                    jsPDF: { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'landscape' 
+                    }
+                };
+                
+                html2pdf().set(opt).from(element).save().then(function() {
+                    // Close the tab after a short delay
+                    setTimeout(function() {
+                        window.close();
+                    }, 1000);
+                }).catch(function(err) {
+                    console.error('PDF generation error:', err);
+                    document.body.innerHTML += 
+                        '<p style="color:red;margin-top:20px;text-align:center;font-size:14px;">' +
+                        '❌ Error generating PDF. Please use Print (Ctrl+P) to save as PDF.' +
+                        '</p>' +
+                        '<p style="text-align:center;margin-top:10px;">' +
+                        '<button onclick="window.print()" style="padding:10px 20px;font-size:14px;cursor:pointer;">Print / Save as PDF</button>' +
+                        '</p>';
+                });
+            }, 500);
+        })();
+    <\/script>
 </body>
 </html>`;
+}
+
+async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
+    // Prepare data for the report
+    const classLabel = classFilter === 'all' ? 'All Classes' : 'Class ' + classFilter;
+    const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
     
-    // Write to iframe
-    iframeDoc.open();
-    iframeDoc.write(reportHTML);
-    iframeDoc.close();
-    
-    // Wait for iframe to load
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Get the iframe's body element
-    const iframeBody = iframeDoc.body;
-    
-    // Generate PDF from iframe content
-    const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `booking_report_${dateFrom}_to_${dateTo}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            backgroundColor: '#ffffff',
-            // Don't try to parse external CSS
-            allowTaint: true,
-            useCORS: true
-        },
-        jsPDF: { 
-            unit: 'mm', 
-            format: 'a4', 
-            orientation: 'landscape' 
-        },
-        pagebreak: { 
-            mode: ['avoid-all', 'css', 'legacy'] 
-        }
+    const reportData = {
+        bookings: data,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+        classLabel: classLabel,
+        statusLabel: statusLabel
     };
     
-    try {
-        await html2pdf().set(opt).from(iframeBody).save();
-    } catch (error) {
-        console.error('PDF generation error:', error);
-        throw new Error('Failed to generate PDF: ' + error.message);
-    } finally {
-        // Clean up iframe
-        if (iframe.parentNode) {
-            document.body.removeChild(iframe);
-        }
+    // Build the complete HTML
+    const htmlContent = buildReportHTML(reportData);
+    
+    // Create a Blob URL
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    // Open in new tab
+    const newTab = window.open(url, '_blank');
+    
+    if (!newTab) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
     }
+    
+    // Clean up the URL after a delay (give time for the tab to load)
+    setTimeout(() => {
+        try {
+            URL.revokeObjectURL(url);
+        } catch(e) {
+            // Ignore errors
+        }
+    }, 10000);
 }
 
 // ============================================
