@@ -44,67 +44,129 @@
         .tab-inactive:hover {
             background: var(--color-muted-foreground)/10 !important;
         }
-        /* Calendar styling */
+        
+        /* ===== CALENDAR STYLING ===== */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
         .admin-cal-cell {
             aspect-ratio: 1 / 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 0.5rem;
-            font-size: 0.8rem;
-            font-weight: 500;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
             transition: all 0.15s ease;
             border: none;
             cursor: pointer;
-            min-height: 50px;
+            min-height: 40px;
+            max-height: 50px;
+            padding: 2px;
+            position: relative;
         }
+        
+        .admin-cal-cell:hover:not(.past-date) {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1;
+        }
+        
+        .admin-cal-cell .date-number {
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        
+        .admin-cal-cell .date-indicator {
+            position: absolute;
+            top: 2px;
+            right: 3px;
+            font-size: 0.5rem;
+        }
+        
         .admin-cal-head {
             text-align: center;
-            font-size: 0.7rem;
-            font-weight: 600;
+            font-size: 0.65rem;
+            font-weight: 700;
             color: var(--color-muted-foreground);
             padding: 0.25rem 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        /* Modal overlay */
-        .modal-overlay {
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+        
+        /* Calendar legend */
+        .legend-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 4px;
         }
-        /* Scrollable table container */
+        
+        /* ===== TABLE STYLING ===== */
         .table-container {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            border-radius: 0.5rem;
+            border: 1px solid var(--color-border);
         }
+        
         .table-container table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
         }
-        .table-container th {
+        
+        .table-container thead {
             background: var(--color-muted);
+        }
+        
+        .table-container th {
             color: var(--color-foreground);
-            font-weight: 600;
-            padding: 0.75rem 0.5rem;
+            font-weight: 700;
+            padding: 0.6rem 0.75rem;
             text-align: left;
             border-bottom: 2px solid var(--color-border);
             white-space: nowrap;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
+        
         .table-container td {
-            padding: 0.6rem 0.5rem;
+            padding: 0.5rem 0.75rem;
             border-bottom: 1px solid var(--color-border);
             vertical-align: middle;
         }
-        .table-container tr:hover {
-            background: var(--color-muted)/30;
+        
+        /* Alternating row colors */
+        .table-container tbody tr:nth-child(even) {
+            background-color: #f8fafc;
         }
+        
+        .table-container tbody tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+        
+        .table-container tbody tr:hover {
+            background-color: #eef2ff !important;
+            transition: background-color 0.15s ease;
+        }
+        
+        /* Status badges */
         .status-badge {
             display: inline-block;
             padding: 0.15rem 0.6rem;
             border-radius: 9999px;
-            font-size: 0.7rem;
-            font-weight: 600;
+            font-size: 0.65rem;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
         .status-confirmed {
             background: #d1fae5;
@@ -118,6 +180,7 @@
             background: #fef3c7;
             color: #92400e;
         }
+        
         /* Pagination */
         .page-btn {
             padding: 0.25rem 0.75rem;
@@ -126,7 +189,8 @@
             background: var(--color-background);
             cursor: pointer;
             transition: all 0.15s ease;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
+            font-weight: 500;
         }
         .page-btn:hover:not(:disabled) {
             background: var(--color-muted);
@@ -140,6 +204,7 @@
             color: var(--color-primary-foreground);
             border-color: var(--color-primary);
         }
+        
         /* Responsive tweaks */
         @media (max-width: 640px) {
             .container-custom {
@@ -147,9 +212,64 @@
             }
             .table-container td,
             .table-container th {
-                padding: 0.4rem 0.3rem;
-                font-size: 0.75rem;
+                padding: 0.35rem 0.4rem;
+                font-size: 0.7rem;
             }
+            .admin-cal-cell {
+                min-height: 32px;
+                font-size: 0.65rem;
+            }
+            .admin-cal-cell .date-number {
+                font-size: 0.7rem;
+            }
+            .calendar-grid {
+                gap: 3px;
+                max-width: 100%;
+            }
+        }
+        
+        @media (min-width: 641px) and (max-width: 768px) {
+            .calendar-grid {
+                max-width: 500px;
+            }
+        }
+        
+        /* Modal overlay */
+        .modal-overlay {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        
+        /* Session details tables in calendar */
+        .session-detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            border-radius: 0.375rem;
+            overflow: hidden;
+        }
+        
+        .session-detail-table thead {
+            background: var(--color-muted);
+        }
+        
+        .session-detail-table th {
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        .session-detail-table td {
+            padding: 0.35rem 0.6rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+        
+        .session-detail-table tbody tr:nth-child(even) {
+            background-color: #f8fafc;
         }
     </style>
 </head>
@@ -368,7 +488,7 @@
             </div>
 
             <!-- Table -->
-            <div id="bookingsTableContainer" class="table-container card p-0 overflow-hidden">
+            <div id="bookingsTableContainer" class="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -385,7 +505,7 @@
                         </tr>
                     </thead>
                     <tbody id="bookingsTableBody">
-                        <tr><td colspan="10" class="text-center text-muted-foreground">Loading bookings...</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted-foreground py-4">Loading bookings...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -423,7 +543,7 @@
                             <button onclick="changeAdminMonth(-1)" class="btn" data-variant="outline" data-size="icon">
                                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
                             </button>
-                            <span id="adminMonthDisplay" class="font-semibold text-base"></span>
+                            <span id="adminMonthDisplay" class="font-semibold text-base min-w-[150px] text-center"></span>
                             <button onclick="changeAdminMonth(1)" class="btn" data-variant="outline" data-size="icon">
                                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
                             </button>
@@ -435,20 +555,32 @@
                     </div>
                 </header>
                 <section>
-                    <div id="adminCalendar" class="grid grid-cols-7 gap-1.5"></div>
+                    <!-- Calendar Grid -->
+                    <div id="adminCalendar" class="calendar-grid"></div>
                     
                     <!-- Legend -->
-                    <div class="flex flex-wrap gap-3 justify-center mt-4 text-xs text-muted-foreground">
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span>Available</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500"></span>Fully Booked</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-gray-400"></span>Inactive/Closed</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-amber-500"></span>Today</span>
+                    <div class="flex flex-wrap gap-4 justify-center mt-4 text-xs text-muted-foreground">
+                        <span class="flex items-center gap-1">
+                            <span class="legend-dot" style="background:#2ecc71;"></span>Available
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="legend-dot" style="background:#e74c3c;"></span>Fully Booked
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="legend-dot" style="background:#95a5a6;"></span>Inactive/Closed
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="legend-dot" style="background:#f39c12;"></span>Today
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="legend-dot" style="background:#f5f5f5;border:1px solid #ddd;"></span>Past Date
+                        </span>
                     </div>
                     
                     <!-- Date Details -->
                     <div id="adminDateDetails" class="hidden mt-4 p-4 rounded-xl border bg-card">
-                        <h4 id="adminSelectedDate" class="font-semibold text-base"></h4>
-                        <div id="adminDateSessions" class="mt-3"></div>
+                        <h4 id="adminSelectedDate" class="font-semibold text-base mb-2"></h4>
+                        <div id="adminDateSessions" class="mt-2"></div>
                     </div>
                 </section>
             </div>
@@ -541,7 +673,6 @@
 <script>
     // Override showMessage to use Basecoat styling AFTER admin.js loads
     (function() {
-        // Wait for admin.js to load and initialize
         const originalShowMessage = window.showMessage;
         
         if (originalShowMessage) {
@@ -550,7 +681,6 @@
                 const messageText = document.getElementById('messageText');
                 
                 if (!messageDiv) {
-                    // Fallback if message div doesn't exist
                     alert(text);
                     return;
                 }
@@ -559,7 +689,6 @@
                 messageDiv.style.display = 'flex';
                 messageDiv.className = 'alert items-start gap-2';
                 
-                // Set icon
                 const icon = messageDiv.querySelector('i');
                 if (icon) {
                     if (type === 'error') {
@@ -588,8 +717,6 @@
             };
         }
         
-        // Override hideMessage
-        const originalHideMessage = window.hideMessage;
         window.hideMessage = function() {
             const messageDiv = document.getElementById('message');
             if (messageDiv) {
