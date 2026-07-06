@@ -147,6 +147,51 @@
           transform: scale(1) translateY(0);
       }
   }
+
+  /* Today indicator animation */
+    @keyframes pulse-dot {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.5;
+            transform: scale(0.8);
+        }
+    }
+    
+    .animate-pulse-dot {
+        animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+    
+    /* Today cell highlight */
+    .cal-cell.today {
+        background: #fbbf24 !important;
+        color: #1a1a1a !important;
+        font-weight: 700 !important;
+        border: 2px solid #f59e0b !important;
+        position: relative;
+    }
+    
+    .cal-cell.today::after {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 0.5rem;
+        border: 2px solid #f59e0b;
+        animation: pulse-ring 2s ease-out infinite;
+    }
+    
+    @keyframes pulse-ring {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(1.1);
+            opacity: 0;
+        }
+    }
 </style>
 </head>
 <body class="bg-background text-foreground min-h-screen">
@@ -286,17 +331,24 @@
 
       <!-- Calendar navigation -->
       <div class="flex items-center justify-between gap-2">
-        <button type="button" class="btn" data-variant="outline" data-size="icon" onclick="changeMonth(-1)" aria-label="Previous month">
-          <i data-lucide="chevron-left" class="w-4 h-4"></i>
-        </button>
-        <span id="currentMonthDisplay" class="font-semibold text-sm text-center"></span>
-        <button type="button" class="btn" data-variant="outline" data-size="icon" onclick="changeMonth(1)" aria-label="Next month">
-          <i data-lucide="chevron-right" class="w-4 h-4"></i>
-        </button>
+          <button type="button" class="btn" data-variant="outline" data-size="icon" onclick="changeMonth(-1)" aria-label="Previous month">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          <span id="currentMonthDisplay" class="font-semibold text-sm text-center"></span>
+          <button type="button" class="btn" data-variant="outline" data-size="icon" onclick="changeMonth(1)" aria-label="Next month">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
       </div>
+      
+      <!-- Today indicator -->
+      <div id="todayIndicator" class="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded-full px-3 py-1 mx-auto w-fit">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+          Today: <span id="todayDateDisplay" class="font-medium text-foreground"></span>
+      </div>
+      
       <button type="button" class="btn w-full justify-center gap-2" data-variant="outline" data-size="sm" onclick="goToToday()">
-        <i data-lucide="calendar-search" class="w-4 h-4"></i>
-        Jump to Today
+          <i data-lucide="calendar-search" class="w-4 h-4"></i>
+          Jump to Today
       </button>
 
       <!-- Calendar grid -->
