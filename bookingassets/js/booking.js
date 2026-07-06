@@ -951,48 +951,70 @@ function hideMessage() {
 }
 
 // ============================================
-// GUIDE MODAL FUNCTIONS
+// GUIDE MODAL FUNCTIONS - MOST ROBUST
 // ============================================
 
-function openGuideModal() {
-    console.log('Opening guide modal...'); // Debug log
+let isGuideModalOpen = false;
+
+function openGuideModal(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    console.log('Opening guide modal...');
     const modal = document.getElementById('guideModal');
     if (modal) {
         modal.classList.remove('hidden');
-        modal.style.display = 'flex'; // Ensure it's visible
-        document.body.style.overflow = 'hidden'; // Prevent scrolling
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        isGuideModalOpen = true;
         refreshIcons();
-        console.log('Modal opened successfully'); // Debug log
-    } else {
-        console.error('Guide modal element not found!');
+        console.log('Modal opened successfully');
     }
 }
 
-function closeGuideModal() {
-    console.log('Closing guide modal...'); // Debug log
+function closeGuideModal(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    console.log('Closing guide modal...');
     const modal = document.getElementById('guideModal');
     if (modal) {
         modal.classList.add('hidden');
         modal.style.display = 'none';
-        document.body.style.overflow = ''; // Restore scrolling
-        console.log('Modal closed successfully'); // Debug log
+        document.body.style.overflow = '';
+        isGuideModalOpen = false;
+        console.log('Modal closed successfully');
     }
 }
 
-// Close modal when clicking outside the content
+// Close modal when clicking outside
 document.addEventListener('click', function(event) {
+    if (!isGuideModalOpen) return;
+    
     const modal = document.getElementById('guideModal');
-    if (modal && !modal.classList.contains('hidden')) {
-        const modalContent = modal.querySelector('div');
-        if (modalContent && !modalContent.contains(event.target)) {
-            closeGuideModal();
+    if (!modal || modal.classList.contains('hidden')) return;
+    
+    const modalContent = modal.querySelector('div');
+    if (!modalContent) return;
+    
+    // Check if click is inside the modal content
+    if (!modalContent.contains(event.target)) {
+        // Check if click is on the guide button or its children
+        const guideButton = document.getElementById('guideButton');
+        if (guideButton && guideButton.contains(event.target)) {
+            return;
         }
+        closeGuideModal();
     }
 });
 
 // Close modal with Escape key
 document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && isGuideModalOpen) {
         closeGuideModal();
     }
 });
