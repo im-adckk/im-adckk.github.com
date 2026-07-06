@@ -1273,7 +1273,7 @@ function renderHistoryRecommendation(bookings) {
 function getLessonOptions(type) {
     const options = {
         'KPP02': ['1st KPP02', '2nd KPP02', '3rd KPP02', '4th KPP02', '5th KPP02'],
-        'KPP03': ['1st KPP03', '2nd KPP03', '3rd KPP03', '4th KPP03', '5th KPP03'],
+        'KPP03': ['1st KPP03', '2nd KPP03', '3rd KPP03'],
         'TM': ['TM 1JAM', 'TM 2JAM']
     };
     return options[type] || [];
