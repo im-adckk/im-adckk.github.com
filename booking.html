@@ -276,13 +276,19 @@
       <div id="dayDuplicateWarning"></div>
       <form id="detailsForm" class="space-y-4">
         <div class="grid gap-2">
-          <label for="icno" class="label">IC Number (12 digits) or Passport No</label>
+          <div class="flex items-center justify-between">
+            <label for="icno" class="label">IC Number (12 digits) or Passport No</label>
+            <button type="button" onclick="openGuideModal()" class="text-xs text-primary hover:text-primary/80 flex items-center gap-1 font-medium" style="background:none;border:none;cursor:pointer;">
+              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+              Guide
+            </button>
+          </div>
           <div class="relative">
             <i data-lucide="id-card" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012" class="input pl-9">
+            <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012 or A12345678" class="input pl-9">
           </div>
         </div>
-
+  
         <div class="grid gap-2">
           <label for="name" class="label">Full Name</label>
           <div class="relative">
@@ -290,7 +296,7 @@
             <input type="text" id="name" name="name" required placeholder="e.g., Ahmad bin Abdullah" class="input pl-9">
           </div>
         </div>
-
+  
         <div class="grid gap-2">
           <label for="contact" class="label">Contact Number</label>
           <div class="relative">
@@ -298,7 +304,7 @@
             <input type="text" id="contact" name="contact" required placeholder="e.g., 0123456789" class="input pl-9">
           </div>
         </div>
-
+  
         <div class="flex gap-2 pt-2">
           <button type="button" class="btn flex-1 justify-center gap-2" data-variant="outline" onclick="goBackStep2()">
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
@@ -311,6 +317,66 @@
         </div>
       </form>
     </section>
+  </div>
+  
+  <!-- ============================================ -->
+  <!-- GUIDE MODAL (Pop-up) -->
+  <!-- ============================================ -->
+  <div id="guideModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" style="background: #ffffff; color: #111827; max-height: 90vh; overflow-y: auto;">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <i data-lucide="help-circle" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-lg" style="color: #111827;">IC / Passport Number Guide</h3>
+            <p class="text-sm" style="color: #6b7280;">How to enter your identification number</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeGuideModal()" class="text-gray-400 hover:text-gray-600 transition-colors" style="background:none;border:none;cursor:pointer;font-size:24px;line-height:1;">
+          ✕
+        </button>
+      </div>
+      
+      <!-- Image -->
+      <div class="rounded-xl overflow-hidden border border-gray-200" style="background: #f8f9fa;">
+        <img src="bookingassets/guide.webp" alt="IC / Passport Number Guide" class="w-full h-auto object-contain" style="display:block;max-height:300px;margin:0 auto;">
+      </div>
+      
+      <!-- Guide Text -->
+      <div class="space-y-2 text-sm" style="color: #374151;">
+        <p class="font-medium text-gray-700">📌 How to enter correctly:</p>
+        <ul class="list-disc list-inside space-y-1 text-gray-600" style="padding-left: 0.5rem;">
+          <li><strong>Malaysian IC:</strong> 12 digits (e.g., <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs">123456789012</span>)</li>
+          <li><strong>Passport:</strong> Letter + digits (e.g., <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs">A12345678</span>)</li>
+          <li>No spaces or special characters</li>
+          <li>Maximum 20 characters</li>
+        </ul>
+      </div>
+      
+      <!-- Examples -->
+      <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 text-xs" style="background: #f3f4f6; color: #4b5563;">
+        <p class="font-medium text-gray-700 mb-1">✅ Examples:</p>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <span class="text-gray-500">IC:</span>
+            <span class="font-mono bg-white px-2 py-0.5 rounded border border-gray-200 block mt-0.5">123456789012</span>
+          </div>
+          <div>
+            <span class="text-gray-500">Passport:</span>
+            <span class="font-mono bg-white px-2 py-0.5 rounded border border-gray-200 block mt-0.5">A12345678</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Close Button -->
+      <button type="button" onclick="closeGuideModal()" class="btn w-full justify-center gap-2 mt-2" style="background: #2563eb; color: white; font-weight: 600;">
+        <i data-lucide="check" class="w-4 h-4"></i>
+        Got it
+      </button>
+    </div>
   </div>
 
   <!-- ============================================ -->
