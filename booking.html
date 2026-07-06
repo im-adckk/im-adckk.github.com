@@ -397,6 +397,36 @@
     <section>
       <div id="dayDuplicateWarning"></div>
       <form id="detailsForm" class="space-y-4">
+         <!-- Lesson Type Selection -->
+      <div class="grid gap-2">
+        <label class="label">Lesson Type</label>
+        <div class="grid grid-cols-3 gap-2">
+          <label for="lessonKPP02" class="group relative flex flex-col items-center gap-1 rounded-lg border-2 border-muted p-2 cursor-pointer transition-all hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:shadow-sm">
+            <input type="radio" id="lessonKPP02" name="lesson_type" value="KPP02" class="sr-only peer" required onchange="updateLessonSubOptions()">
+            <span class="text-xs font-semibold">KPP02</span>
+            <span class="text-[10px] text-muted-foreground">Circuit</span>
+          </label>
+          <label for="lessonKPP03" class="group relative flex flex-col items-center gap-1 rounded-lg border-2 border-muted p-2 cursor-pointer transition-all hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:shadow-sm">
+            <input type="radio" id="lessonKPP03" name="lesson_type" value="KPP03" class="sr-only peer" required onchange="updateLessonSubOptions()">
+            <span class="text-xs font-semibold">KPP03</span>
+            <span class="text-[10px] text-muted-foreground">Road</span>
+          </label>
+          <label for="lessonTM" class="group relative flex flex-col items-center gap-1 rounded-lg border-2 border-muted p-2 cursor-pointer transition-all hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:shadow-sm">
+            <input type="radio" id="lessonTM" name="lesson_type" value="TM" class="sr-only peer" required onchange="updateLessonSubOptions()">
+            <span class="text-xs font-semibold">TM</span>
+            <span class="text-[10px] text-muted-foreground">Theory</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Lesson Sub-Option (Dynamic based on selection) -->
+      <div id="lessonSubContainer" class="grid gap-2 hidden">
+        <label for="lessonSub" class="label">Select Lesson</label>
+        <select id="lessonSub" name="lesson_sub" class="input" required>
+          <option value="">-- Select a lesson --</option>
+        </select>
+      </div>
+        <!-- IC/Passport -->
         <div class="grid gap-2">
           <div class="flex items-center justify-between">
             <label for="icno" class="label">IC Number (12 digits) or Passport No</label>
@@ -553,6 +583,10 @@
         <div class="flex justify-between gap-2">
           <span class="text-muted-foreground">Date:</span>
           <span class="font-medium" id="confirmDate">-</span>
+        </div>
+        <div class="flex justify-between gap-2">
+          <span class="text-muted-foreground">Lesson:</span>
+          <span class="font-medium" id="confirmLesson">-</span>
         </div>
         <div class="flex justify-between gap-2">
           <span class="text-muted-foreground">Session:</span>
