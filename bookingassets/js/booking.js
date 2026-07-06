@@ -204,13 +204,22 @@ function renderCalendar() {
         const dateStr = toMalaysiaDateStr(dateObj);
         const cell = document.createElement('button');
         cell.type = 'button';
-        cell.textContent = day;
         cell.dataset.date = dateStr;
+        
+        // Check if this is today
+        if (dateStr === todayStr) {
+            // Add a small indicator for today
+            cell.innerHTML = `${day} <span class="text-[8px] font-bold text-amber-500 ml-0.5">●</span>`;
+            cell.title = 'Today';
+        } else {
+            cell.textContent = day;
+        }
 
         if (dateStr < todayStr) {
             setCellState(cell, 'past');
+            cell.title = dateStr === todayStr ? 'Today - cannot book' : '';
         } else if (dateStr === todayStr) {
-            // Today: rendered the same as an unavailable day, no special label/highlight.
+            // Today: rendered with a small dot indicator
             setCellState(cell, 'past');
             cell.title = 'Today - cannot book';
         } else {
@@ -223,6 +232,76 @@ function renderCalendar() {
 
     refreshIcons();
 }
+
+// ============================================
+// UPDATE TODAY INDICATOR
+// ============================================
+
+function updateTodayIndicator() {
+    const todayDisplay = document.getElementById('todayDateDisplay');
+    if (todayDisplay) {
+        const today = new Date();
+        const options = { 
+            weekday: 'short', 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        };
+        todayDisplay.textContent = today.toLocaleDateString('en-MY', options);
+    }
+}
+
+// Call this on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initMonthYear();
+    showStep(1);
+    updateTodayIndicator(); // Add this line
+
+    const icnoInput = document.getElementById('icno');
+    if (icnoInput) {
+        icnoInput.addEventListener('blur', checkDayDuplicate);
+        icnoInput.addEventListener('input', () => {
+            document.getElementById('dayDuplicateWarning').innerHTML = '';
+        });
+    }
+
+    refreshIcons();
+});
+
+// ============================================
+// UPDATE TODAY INDICATOR
+// ============================================
+
+function updateTodayIndicator() {
+    const todayDisplay = document.getElementById('todayDateDisplay');
+    if (todayDisplay) {
+        const today = new Date();
+        const options = { 
+            weekday: 'short', 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        };
+        todayDisplay.textContent = today.toLocaleDateString('en-MY', options);
+    }
+}
+
+// Call this on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initMonthYear();
+    showStep(1);
+    updateTodayIndicator(); // Add this line
+
+    const icnoInput = document.getElementById('icno');
+    if (icnoInput) {
+        icnoInput.addEventListener('blur', checkDayDuplicate);
+        icnoInput.addEventListener('input', () => {
+            document.getElementById('dayDuplicateWarning').innerHTML = '';
+        });
+    }
+
+    refreshIcons();
+});
 
 async function checkAvailabilityForMonth() {
     const year = currentYear;
