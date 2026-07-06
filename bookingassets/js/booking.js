@@ -695,6 +695,11 @@ function goToStep4() {
     const icno = document.getElementById('icno').value.trim();
     const name = document.getElementById('name').value.trim();
     const contact = document.getElementById('contact').value.trim();
+    
+    // Validate lesson selection
+    if (!validateLesson()) {
+        return;
+    }
 
     if (!icno || icno.length < 8) {
         showMessage('Please enter a valid IC or Passport number.', 'error');
@@ -711,11 +716,13 @@ function goToStep4() {
         return;
     }
 
-    // NEW: Check if there's a duplicate before proceeding
+    // Check if there's a duplicate before proceeding
     if (hasDayDuplicate) {
         showMessage('⚠️ You cannot proceed with a duplicate booking. Please cancel your existing booking first.', 'error');
         return;
     }
+
+    const fullLesson = getFullLesson();
 
     bookingData = {
         icno: icno,
@@ -723,7 +730,8 @@ function goToStep4() {
         contact: contact,
         class: selectedClass,
         date: selectedDate,
-        session: availableSessionsData[selectedSession]
+        session: availableSessionsData[selectedSession],
+        lesson: fullLesson  // Add the lesson
     };
 
     const summary = document.getElementById('bookingSummary');
@@ -731,6 +739,7 @@ function goToStep4() {
         { icon: 'bike', label: 'Class', value: bookingData.class },
         { icon: 'calendar', label: 'Date', value: formatMalaysiaDate(bookingData.date) },
         { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${bookingData.session.session_slot}` },
+        { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },  // Add lesson
         { icon: 'user', label: 'Name', value: bookingData.name },
         { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
         { icon: 'phone', label: 'Contact', value: bookingData.contact }
@@ -771,6 +780,7 @@ function showConfirmDialog() {
     document.getElementById('confirmClass').textContent = bookingData.class;
     document.getElementById('confirmDate').textContent = formatMalaysiaDate(bookingData.date);
     document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${bookingData.session.session_slot}`;
+    document.getElementById('confirmLesson').textContent = bookingData.lesson; 
     document.getElementById('confirmName').textContent = bookingData.name;
     document.getElementById('confirmIC').textContent = bookingData.icno;
     document.getElementById('confirmContact').textContent = bookingData.contact;
@@ -860,6 +870,7 @@ async function confirmBooking() {
                 booking_date: bookingData.date,
                 session_time: bookingData.session.session_time,
                 session_slot: bookingData.session.session_slot,
+                lesson: bookingData.lesson,
                 status: 'confirmed'
             }])
             .select('session_id')
@@ -971,6 +982,7 @@ function showConfirmation(sessionId) {
         { icon: 'bike', label: 'Class', value: bookingData.class },
         { icon: 'calendar', label: 'Date', value: formatMalaysiaDate(bookingData.date) },
         { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${bookingData.session.session_slot}` },
+        { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },
         { icon: 'user', label: 'Name', value: bookingData.name },
         { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
         { icon: 'phone', label: 'Contact', value: bookingData.contact }
@@ -1097,6 +1109,94 @@ document.addEventListener('keydown', function(event) {
         closeGuideModal();
     }
 });
+
+// ============================================
+// LESSON TYPE AND SUB-OPTIONS
+// ============================================
+
+// Lesson options mapping
+const LESSON_OPTIONS = {
+    'KPP02': [
+        '1st KPP02',
+        '2nd KPP02',
+        '3rd KPP02',
+        '4th KPP02',
+        '5th KPP02'
+    ],
+    'KPP03': [
+        '1st KPP03',
+        '2nd KPP03',
+        '3rd KPP03',
+        '4th KPP03',
+        '5th KPP03'
+    ],
+    'TM': [
+        'TM 1JAM',
+        'TM 2JAM'
+    ]
+};
+
+// Update lesson sub-options based on selected lesson type
+function updateLessonSubOptions() {
+    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
+    const subContainer = document.getElementById('lessonSubContainer');
+    const subSelect = document.getElementById('lessonSub');
+    
+    if (!selectedType) {
+        subContainer.classList.add('hidden');
+        return;
+    }
+    
+    const type = selectedType.value;
+    const options = LESSON_OPTIONS[type] || [];
+    
+    if (options.length > 0) {
+        subContainer.classList.remove('hidden');
+        subSelect.innerHTML = '<option value="">-- Select a lesson --</option>';
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            subSelect.appendChild(option);
+        });
+        refreshIcons();
+    } else {
+        subContainer.classList.add('hidden');
+    }
+}
+
+// Get the full lesson value (type + sub)
+function getFullLesson() {
+    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
+    const subSelect = document.getElementById('lessonSub');
+    
+    if (!selectedType) return null;
+    
+    const type = selectedType.value;
+    const sub = subSelect.value;
+    
+    if (!sub) return null;
+    
+    return `${type} - ${sub}`;
+}
+
+// Validate lesson selection
+function validateLesson() {
+    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
+    const subSelect = document.getElementById('lessonSub');
+    
+    if (!selectedType) {
+        showMessage('Please select a lesson type.', 'error');
+        return false;
+    }
+    
+    if (!subSelect.value) {
+        showMessage('Please select a specific lesson.', 'error');
+        return false;
+    }
+    
+    return true;
+}
 
 // ============================================
 // Initialize
