@@ -192,6 +192,60 @@
             opacity: 0;
         }
     }
+
+  /* History Modal Styles */
+  #historyModal {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  
+  #historyModal > div {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+  
+  #historyModal .text-muted-foreground {
+    color: #6b7280 !important;
+  }
+  
+  #historyModal .font-medium {
+    color: #111827 !important;
+  }
+  
+  #historyModal h3 {
+    color: #111827 !important;
+  }
+  
+  #historyModal p {
+    color: #6b7280 !important;
+  }
+  
+  #historyModal .history-item {
+    transition: all 0.2s ease;
+  }
+  
+  #historyModal .history-item:hover {
+    background: #f3f4f6;
+  }
+  
+  #historyModal .lesson-progress {
+    height: 4px;
+    border-radius: 9999px;
+    background: #e5e7eb;
+    overflow: hidden;
+  }
+  
+  #historyModal .lesson-progress-bar {
+    height: 100%;
+    border-radius: 9999px;
+    background: #2563eb;
+    transition: width 0.5s ease;
+  }
+  
+  #historyModal .lesson-progress-bar.completed {
+    background: #22c55e;
+  }
 </style>
 </head>
 <body class="bg-background text-foreground min-h-screen">
@@ -430,16 +484,25 @@
         <div class="grid gap-2">
           <div class="flex items-center justify-between">
             <label for="icno" class="label">IC Number (12 digits) or Passport No</label>
-            <button type="button" id="guideButton" onclick="openGuideModal(event)" class="text-xs text-primary hover:text-primary/80 flex items-center gap-1 font-medium" style="background:none;border:none;cursor:pointer;">
-              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
-              Guide
-            </button>
+
+            <div class="flex items-center gap-2">
+                <!-- History Indicator -->
+                <button type="button" id="historyIndicator" onclick="openHistoryModal()" class="hidden text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium transition-colors" style="border:none;cursor:pointer;">
+                  <i data-lucide="book-open" class="w-3 h-3"></i>
+                  <span id="historyCount">0</span> lesson<span id="historyPlural">s</span>
+                </button>
+                <button type="button" onclick="openGuideModal()" class="text-xs text-primary hover:text-primary/80 flex items-center gap-1 font-medium" style="background:none;border:none;cursor:pointer;">
+                  <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                  Guide
+                </button>
+              </div>
+            </div>
+            <div class="relative">
+              <i data-lucide="id-card" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+              <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012 or A1234567ABC" class="input pl-9">
+            </div>
           </div>
-          <div class="relative">
-            <i data-lucide="id-card" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <input type="text" id="icno" name="icno" required maxlength="20" placeholder="e.g., 123456789012 or A1234567ABC" class="input pl-9">
-          </div>
-        </div>
+            
   
         <div class="grid gap-2">
           <label for="name" class="label">Full Name</label>
@@ -620,6 +683,44 @@
           Confirm Booking
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- LESSON HISTORY MODAL (Pop-up) -->
+  <!-- ============================================ -->
+  <div id="historyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" style="background: #ffffff; color: #111827; max-height: 90vh; overflow-y: auto;">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <i data-lucide="book-open" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-lg" style="color: #111827;">My Lesson History</h3>
+            <p class="text-sm" style="color: #6b7280;">Your past and upcoming lessons</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeHistoryModal()" class="text-gray-400 hover:text-gray-600 transition-colors" style="background:none;border:none;cursor:pointer;font-size:24px;line-height:1;">
+          ✕
+        </button>
+      </div>
+      
+      <!-- Progress Summary -->
+      <div id="historyProgressSummary" class="space-y-2"></div>
+      
+      <!-- Booking List -->
+      <div id="historyBookingsList" class="space-y-2 max-h-60 overflow-y-auto"></div>
+      
+      <!-- Recommended Next Lesson -->
+      <div id="historyRecommendation" class="hidden bg-blue-50 rounded-lg p-3 border border-blue-200"></div>
+      
+      <!-- Close Button -->
+      <button type="button" onclick="closeHistoryModal()" class="btn w-full justify-center gap-2 mt-2" style="background: #2563eb; color: white; font-weight: 600;">
+        <i data-lucide="check" class="w-4 h-4"></i>
+        Got it
+      </button>
     </div>
   </div>
 
