@@ -955,19 +955,27 @@ function hideMessage() {
 // ============================================
 
 function openGuideModal() {
+    console.log('Opening guide modal...'); // Debug log
     const modal = document.getElementById('guideModal');
     if (modal) {
         modal.classList.remove('hidden');
+        modal.style.display = 'flex'; // Ensure it's visible
         document.body.style.overflow = 'hidden'; // Prevent scrolling
         refreshIcons();
+        console.log('Modal opened successfully'); // Debug log
+    } else {
+        console.error('Guide modal element not found!');
     }
 }
 
 function closeGuideModal() {
+    console.log('Closing guide modal...'); // Debug log
     const modal = document.getElementById('guideModal');
     if (modal) {
         modal.classList.add('hidden');
+        modal.style.display = 'none';
         document.body.style.overflow = ''; // Restore scrolling
+        console.log('Modal closed successfully'); // Debug log
     }
 }
 
