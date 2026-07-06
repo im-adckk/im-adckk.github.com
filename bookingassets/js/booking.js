@@ -931,11 +931,12 @@ async function checkDayDuplicate() {
 
     if (!icno || icno.length < 8) {
         document.getElementById('dayDuplicateWarning').innerHTML = '';
-        hasDayDuplicate = false; // NEW: Reset flag
+        hasDayDuplicate = false;
         return;
     }
 
     try {
+        // Check for duplicate booking
         const { data, error } = await supabaseClient
             .from('bookings')
             .select('session_id, session_time, session_slot, booking_date')
@@ -945,7 +946,6 @@ async function checkDayDuplicate() {
             .single();
 
         if (data) {
-            // NEW: Set flag to true to block form submission
             hasDayDuplicate = true;
             
             const warningContainer = document.getElementById('dayDuplicateWarning');
@@ -964,16 +964,319 @@ async function checkDayDuplicate() {
                 refreshIcons();
             }
         } else {
-            // NEW: Reset flag when no duplicate found
             hasDayDuplicate = false;
             document.getElementById('dayDuplicateWarning').innerHTML = '';
         }
+        
+        // NEW: Load lesson history after duplicate check
+        await loadLessonHistory(icno);
+
     } catch (error) {
-        // NEW: Reset flag on error
         hasDayDuplicate = false;
         document.getElementById('dayDuplicateWarning').innerHTML = '';
         console.log('No duplicate found for this day');
+        
+        // Still load history even if no duplicate
+        await loadLessonHistory(icno);
     }
+}
+
+// ============================================
+// LESSON HISTORY FUNCTIONS
+// ============================================
+
+// Parse lesson string to get type and number
+function parseLesson(lessonStr) {
+    if (!lessonStr) return null;
+    
+    // Example: "KPP02 - 1st KPP02"
+    const parts = lessonStr.split(' - ');
+    if (parts.length === 2) {
+        const type = parts[0];
+        const sub = parts[1];
+        // Extract number from "1st KPP02"
+        const match = sub.match(/(\d+)/);
+        const number = match ? parseInt(match[0]) : 0;
+        return { type, sub, number };
+    }
+    return null;
+}
+
+// Get lesson type from string
+function getLessonType(lessonStr) {
+    if (!lessonStr) return null;
+    const parts = lessonStr.split(' - ');
+    return parts.length === 2 ? parts[0] : null;
+}
+
+// Lesson type definitions
+const LESSON_TYPES = {
+    'KPP02': {
+        label: 'KPP02 (Circuit)',
+        totalLessons: 5,
+        color: '#2563eb'
+    },
+    'KPP03': {
+        label: 'KPP03 (Road)',
+        totalLessons: 5,
+        color: '#16a34a'
+    },
+    'TM': {
+        label: 'TM (Theory)',
+        totalLessons: 2,
+        color: '#9333ea'
+    }
+};
+
+// Load lesson history for a student
+async function loadLessonHistory(icno) {
+    try {
+        const { data: bookings, error } = await supabaseClient
+            .from('bookings')
+            .select('*')
+            .eq('icno', icno)
+            .order('booking_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!bookings || bookings.length === 0) {
+            // No bookings found - hide the history indicator
+            document.getElementById('historyIndicator').classList.add('hidden');
+            return;
+        }
+        
+        // Show the history indicator with count
+        const historyIndicator = document.getElementById('historyIndicator');
+        historyIndicator.classList.remove('hidden');
+        document.getElementById('historyCount').textContent = bookings.length;
+        
+        // Store bookings for modal display
+        window._lessonHistory = bookings;
+        
+    } catch (error) {
+        console.error('Error loading lesson history:', error);
+    }
+}
+
+// Open the history modal
+function openHistoryModal() {
+    const bookings = window._lessonHistory || [];
+    const modal = document.getElementById('historyModal');
+    
+    if (!modal) return;
+    
+    // Render progress summary
+    renderHistoryProgress(bookings);
+    
+    // Render bookings list
+    renderHistoryBookings(bookings);
+    
+    // Render recommendations
+    renderHistoryRecommendation(bookings);
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    refreshIcons();
+}
+
+// Close history modal
+function closeHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+// Render progress summary in history modal
+function renderHistoryProgress(bookings) {
+    const summaryDiv = document.getElementById('historyProgressSummary');
+    
+    // Group by lesson type
+    const completedLessons = {};
+    
+    bookings.forEach(booking => {
+        if (booking.status !== 'confirmed') return;
+        const lessonType = getLessonType(booking.lesson);
+        if (!lessonType) return;
+        if (!completedLessons[lessonType]) {
+            completedLessons[lessonType] = new Set();
+        }
+        completedLessons[lessonType].add(booking.lesson);
+    });
+    
+    let html = '<div class="space-y-2">';
+    
+    for (const [type, config] of Object.entries(LESSON_TYPES)) {
+        const completed = completedLessons[type] ? completedLessons[type].size : 0;
+        const total = config.totalLessons;
+        const percentage = Math.min(100, Math.round((completed / total) * 100));
+        const isComplete = completed >= total;
+        
+        html += `
+            <div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-medium" style="color: #374151;">${config.label}</span>
+                    <span style="color: #6b7280;">${completed}/${total}</span>
+                </div>
+                <div class="lesson-progress mt-0.5">
+                    <div class="lesson-progress-bar ${isComplete ? 'completed' : ''}" 
+                         style="width: ${percentage}%; background-color: ${isComplete ? '#22c55e' : config.color};">
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Overall progress
+    const totalLessons = Object.values(LESSON_TYPES).reduce((sum, t) => sum + t.totalLessons, 0);
+    let totalCompleted = 0;
+    for (const type of Object.keys(LESSON_TYPES)) {
+        totalCompleted += completedLessons[type] ? completedLessons[type].size : 0;
+    }
+    const overallPercentage = Math.min(100, Math.round((totalCompleted / totalLessons) * 100));
+    
+    html += `
+        <div class="pt-2 border-t" style="border-color: #e5e7eb;">
+            <div class="flex justify-between items-center text-xs">
+                <span class="font-semibold" style="color: #374151;">Overall Progress</span>
+                <span style="color: #6b7280;">${totalCompleted}/${totalLessons}</span>
+            </div>
+            <div class="lesson-progress mt-0.5">
+                <div class="lesson-progress-bar ${overallPercentage >= 100 ? 'completed' : ''}" 
+                     style="width: ${overallPercentage}%; ${overallPercentage >= 100 ? 'background-color: #22c55e;' : ''}">
+                </div>
+            </div>
+            ${overallPercentage >= 100 ? '<span class="text-xs text-emerald-600 font-medium">🎉 All lessons completed!</span>' : ''}
+        </div>
+    `;
+    
+    html += '</div>';
+    summaryDiv.innerHTML = html;
+}
+
+// Render bookings list in history modal
+function renderHistoryBookings(bookings) {
+    const listDiv = document.getElementById('historyBookingsList');
+    
+    if (!bookings || bookings.length === 0) {
+        listDiv.innerHTML = '<p class="text-sm text-muted-foreground">No bookings found.</p>';
+        return;
+    }
+    
+    // Show only the 10 most recent bookings
+    const recentBookings = bookings.slice(0, 10);
+    
+    let html = '';
+    recentBookings.forEach(booking => {
+        const isPast = booking.booking_date < getMalaysiaToday();
+        const dateObj = new Date(booking.booking_date + 'T00:00:00');
+        const dateStr = dateObj.toLocaleDateString('en-MY', { 
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric'
+        });
+        
+        html += `
+            <div class="history-item p-2 rounded-lg border" style="border-color: #e5e7eb; ${isPast ? 'background: #f9fafb;' : 'background: #ffffff;'}">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-sm font-medium" style="color: #111827;">${booking.lesson || 'N/A'}</span>
+                        <span class="text-xs ml-2" style="color: #6b7280;">${dateStr}</span>
+                    </div>
+                    <span class="text-xs ${booking.status === 'confirmed' ? 'text-emerald-600' : 'text-red-500'}">
+                        ${booking.status === 'confirmed' ? '✅' : '❌'}
+                    </span>
+                </div>
+            </div>
+        `;
+    });
+    
+    if (bookings.length > 10) {
+        html += `
+            <p class="text-xs text-center" style="color: #6b7280;">
+                + ${bookings.length - 10} more bookings
+            </p>
+        `;
+    }
+    
+    listDiv.innerHTML = html;
+}
+
+// Render recommended next lesson
+function renderHistoryRecommendation(bookings) {
+    const recDiv = document.getElementById('historyRecommendation');
+    
+    // Get completed lessons
+    const completed = {};
+    bookings.forEach(booking => {
+        if (booking.status !== 'confirmed') return;
+        const lessonType = getLessonType(booking.lesson);
+        if (!lessonType) return;
+        if (!completed[lessonType]) {
+            completed[lessonType] = new Set();
+        }
+        completed[lessonType].add(booking.lesson);
+    });
+    
+    // Find next lessons
+    const nextLessons = [];
+    for (const [type, config] of Object.entries(LESSON_TYPES)) {
+        const done = completed[type] || new Set();
+        const options = getLessonOptions(type);
+        const next = options.find(opt => !done.has(`${type} - ${opt}`));
+        if (next) {
+            nextLessons.push(`${type} - ${next}`);
+        }
+    }
+    
+    // Check if all completed
+    const allComplete = Object.values(LESSON_TYPES).every((config, index) => {
+        const type = Object.keys(LESSON_TYPES)[index];
+        const done = completed[type] || new Set();
+        return done.size >= config.totalLessons;
+    });
+    
+    if (allComplete) {
+        recDiv.classList.remove('hidden');
+        recDiv.innerHTML = `
+            <div class="text-center">
+                <p class="text-sm font-medium text-emerald-600">🎉 All lessons completed!</p>
+                <p class="text-xs text-muted-foreground mt-0.5">You're ready for your license test!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (nextLessons.length === 0) {
+        recDiv.classList.add('hidden');
+        return;
+    }
+    
+    recDiv.classList.remove('hidden');
+    recDiv.innerHTML = `
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-blue-700">📖 Next Lesson</p>
+                <p class="text-sm font-semibold" style="color: #111827;">${nextLessons[0]}</p>
+            </div>
+            <a href="booking.html" class="btn" data-size="sm" style="background: #2563eb; color: white; font-weight: 500; padding: 4px 12px; font-size: 12px; border-radius: 6px;">
+                Book Now
+            </a>
+        </div>
+    `;
+    refreshIcons();
+}
+
+// Get lesson options for a type
+function getLessonOptions(type) {
+    const options = {
+        'KPP02': ['1st KPP02', '2nd KPP02', '3rd KPP02', '4th KPP02', '5th KPP02'],
+        'KPP03': ['1st KPP03', '2nd KPP03', '3rd KPP03', '4th KPP03', '5th KPP03'],
+        'TM': ['TM 1JAM', 'TM 2JAM']
+    };
+    return options[type] || [];
 }
 
 function showConfirmation(sessionId) {
@@ -1210,6 +1513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         icnoInput.addEventListener('blur', checkDayDuplicate);
         icnoInput.addEventListener('input', () => {
             document.getElementById('dayDuplicateWarning').innerHTML = '';
+            document.getElementById('historyIndicator').classList.add('hidden');
         });
     }
 
