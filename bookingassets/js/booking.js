@@ -951,6 +951,45 @@ function hideMessage() {
 }
 
 // ============================================
+// GUIDE MODAL FUNCTIONS
+// ============================================
+
+function openGuideModal() {
+    const modal = document.getElementById('guideModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+        refreshIcons();
+    }
+}
+
+function closeGuideModal() {
+    const modal = document.getElementById('guideModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = ''; // Restore scrolling
+    }
+}
+
+// Close modal when clicking outside the content
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('guideModal');
+    if (modal && !modal.classList.contains('hidden')) {
+        const modalContent = modal.querySelector('div');
+        if (modalContent && !modalContent.contains(event.target)) {
+            closeGuideModal();
+        }
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeGuideModal();
+    }
+});
+
+// ============================================
 // Initialize
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
