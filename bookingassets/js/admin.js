@@ -857,24 +857,35 @@ async function toggleDateStatus() {
     const date = document.getElementById('adminDateSelect').value;
     const reason = document.getElementById('closureReason').value.trim();
     const messageDiv = document.getElementById('dateStatusMessage');
+    const statusDisplay = document.getElementById('currentDateStatus');
     
     if (!date) {
-        showMessage('Please select a date first.', 'error');
+        showNotification('Please select a date first.', 'error', messageDiv);
         return;
     }
     
+    // Show loading state
+    showNotification('⏳ Processing...', 'info', messageDiv);
+    
     try {
+        // Check current status
         const { data: existing, error: checkError } = await supabaseClient
             .from('date_status')
-            .select('is_active')
+            .select('is_active, reason')
             .eq('target_date', date)
-            .single();
+            .maybeSingle();
         
         if (checkError && checkError.code !== 'PGRST116') throw checkError;
         
-        const newStatus = existing ? !existing.is_active : false;
+        const currentStatus = existing ? existing.is_active : true;
+        const newStatus = !currentStatus;
+        const statusText = newStatus ? '🟢 ACTIVE' : '🔴 INACTIVE';
+        const statusColor = newStatus ? 'text-green-700' : 'text-red-700';
+        const bgColor = newStatus ? 'bg-green-50' : 'bg-red-50';
+        const borderColor = newStatus ? 'border-green-300' : 'border-red-300';
         
         if (existing) {
+            // Update existing record
             const { error: updateError } = await supabaseClient
                 .from('date_status')
                 .update({
@@ -886,33 +897,180 @@ async function toggleDateStatus() {
             
             if (updateError) throw updateError;
         } else {
+            // Insert new record
             const { error: insertError } = await supabaseClient
                 .from('date_status')
                 .insert([{
                     target_date: date,
-                    is_active: false,
+                    is_active: newStatus,
                     reason: reason || null
                 }]);
             
             if (insertError) throw insertError;
         }
         
-        messageDiv.style.display = 'block';
-        messageDiv.style.color = 'green';
-        messageDiv.textContent = `✅ Date ${date} is now ${newStatus ? 'ACTIVE' : 'INACTIVE'}${reason ? ' (Reason: ' + reason + ')' : ''}`;
+        // Show success notification
+        const icon = newStatus ? '✅' : '❌';
+        const actionText = newStatus ? 'enabled' : 'disabled';
+        const reasonText = reason ? ` (Reason: ${reason})` : '';
         
-        loadAdminCalendarData();
-        loadStats();
+        showNotification(
+            `${icon} Date ${date} is now ${actionText.toUpperCase()}${reasonText}`,
+            'success',
+            messageDiv
+        );
         
+        // Show current status badge
+        statusDisplay.innerHTML = `
+            <div class="flex items-center gap-3 p-3 rounded-lg border ${borderColor} ${bgColor}">
+                <span class="font-semibold ${statusColor}">${statusText}</span>
+                <span class="text-gray-600 text-sm">Date: ${formatMalaysiaDate(date)}</span>
+                ${reason ? `<span class="text-gray-500 text-sm">Reason: ${reason}</span>` : ''}
+                <span class="text-xs text-gray-400 ml-auto">
+                    ${newStatus ? 'Bookings allowed' : 'Bookings closed'}
+                </span>
+            </div>
+        `;
+        
+        // Refresh calendar data
+        await loadAdminCalendarData();
+        await loadStats();
+        
+        // Clear reason input
         document.getElementById('closureReason').value = '';
+        
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => {
+            if (!messageDiv.classList.contains('hidden')) {
+                messageDiv.classList.add('hidden');
+            }
+        }, 5000);
         
     } catch (error) {
         console.error('Error toggling date status:', error);
-        messageDiv.style.display = 'block';
-        messageDiv.style.color = 'red';
-        messageDiv.textContent = '❌ Error: ' + error.message;
+        showNotification('❌ Error: ' + error.message, 'error', messageDiv);
     }
 }
+
+// ============================================
+// NOTIFICATION HELPER
+// ============================================
+
+function showNotification(message, type = 'info', messageDiv) {
+    if (!messageDiv) {
+        messageDiv = document.getElementById('dateStatusMessage');
+    }
+    
+    messageDiv.classList.remove('hidden');
+    messageDiv.className = 'mt-3 p-3 rounded-lg border';
+    
+    // Clear previous classes
+    messageDiv.classList.remove(
+        'bg-green-50', 'border-green-300', 'text-green-700',
+        'bg-red-50', 'border-red-300', 'text-red-700',
+        'bg-blue-50', 'border-blue-300', 'text-blue-700',
+        'bg-yellow-50', 'border-yellow-300', 'text-yellow-700'
+    );
+    
+    // Apply appropriate styles
+    switch(type) {
+        case 'success':
+            messageDiv.classList.add('bg-green-50', 'border-green-300', 'text-green-700');
+            break;
+        case 'error':
+            messageDiv.classList.add('bg-red-50', 'border-red-300', 'text-red-700');
+            break;
+        case 'warning':
+            messageDiv.classList.add('bg-yellow-50', 'border-yellow-300', 'text-yellow-700');
+            break;
+        default: // info
+            messageDiv.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-700');
+            break;
+    }
+    
+    messageDiv.innerHTML = `
+        <div class="flex items-start gap-2">
+            <span class="text-sm">${message}</span>
+            <button onclick="this.parentElement.parentElement.classList.add('hidden')" 
+                    class="ml-auto text-gray-400 hover:text-gray-600" 
+                    style="background:none;border:none;cursor:pointer;font-size:16px;">
+                ✕
+            </button>
+        </div>
+    `;
+}
+
+// ============================================
+// LOAD CURRENT DATE STATUS ON DATE SELECT
+// ============================================
+
+// Add event listener for date selection
+document.addEventListener('DOMContentLoaded', function() {
+    const dateSelect = document.getElementById('adminDateSelect');
+    if (dateSelect) {
+        dateSelect.addEventListener('change', function() {
+            loadDateStatus(this.value);
+        });
+        
+        // Load status for initial date
+        if (dateSelect.value) {
+            loadDateStatus(dateSelect.value);
+        }
+    }
+});
+
+async function loadDateStatus(date) {
+    if (!date) return;
+    
+    const statusDisplay = document.getElementById('currentDateStatus');
+    
+    try {
+        const { data: status, error } = await supabaseClient
+            .from('date_status')
+            .select('is_active, reason')
+            .eq('target_date', date)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        if (status) {
+            const isActive = status.is_active;
+            const statusText = isActive ? '🟢 ACTIVE' : '🔴 INACTIVE';
+            const statusColor = isActive ? 'text-green-700' : 'text-red-700';
+            const bgColor = isActive ? 'bg-green-50' : 'bg-red-50';
+            const borderColor = isActive ? 'border-green-300' : 'border-red-300';
+            
+            statusDisplay.innerHTML = `
+                <div class="flex items-center gap-3 p-3 rounded-lg border ${borderColor} ${bgColor}">
+                    <span class="font-semibold ${statusColor}">${statusText}</span>
+                    <span class="text-gray-600 text-sm">${formatMalaysiaDate(date)}</span>
+                    ${status.reason ? `<span class="text-gray-500 text-sm">Reason: ${status.reason}</span>` : ''}
+                    <span class="text-xs text-gray-400 ml-auto">
+                        ${isActive ? '✅ Bookings allowed' : '❌ Bookings closed'}
+                    </span>
+                </div>
+            `;
+        } else {
+            statusDisplay.innerHTML = `
+                <div class="flex items-center gap-3 p-3 rounded-lg border border-green-300 bg-green-50">
+                    <span class="font-semibold text-green-700">🟢 ACTIVE (Default)</span>
+                    <span class="text-gray-600 text-sm">${formatMalaysiaDate(date)}</span>
+                    <span class="text-xs text-gray-400 ml-auto">✅ Bookings allowed</span>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading date status:', error);
+        statusDisplay.innerHTML = `
+            <div class="flex items-center gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50">
+                <span class="font-semibold text-yellow-700">⚠️ Unknown</span>
+                <span class="text-gray-600 text-sm">${formatMalaysiaDate(date)}</span>
+                <span class="text-xs text-gray-400 ml-auto">Status could not be loaded</span>
+            </div>
+        `;
+    }
+}
+
 
 // ============================================
 // REFRESH SCHEDULE
