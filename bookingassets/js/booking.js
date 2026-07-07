@@ -4,7 +4,9 @@ const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// State variables
+// ============================================
+// STATE VARIABLES
+// ============================================
 let selectedClass = '';
 let currentMonth = 0;
 let currentYear = 0;
@@ -12,9 +14,40 @@ let selectedDate = null;
 let selectedSession = null;
 let availableSessionsData = [];
 let bookingData = {};
-let hasDayDuplicate = false; // NEW: Track duplicate state
+let hasDayDuplicate = false;
+let activeModal = null;
 
-// DOM Elements
+// ============================================
+// LESSON OPTIONS
+// ============================================
+const LESSON_OPTIONS = {
+    'KPP02': [
+        '1st KPP02',
+        '2nd KPP02',
+        '3rd KPP02',
+        '4th KPP02',
+        '5th KPP02'
+    ],
+    'KPP03': [
+        '1st KPP03',
+        '2nd KPP03',
+        '3rd KPP03'
+    ],
+    'TM': [
+        'TM 1JAM',
+        'TM 2JAM'
+    ]
+};
+
+const LESSON_TYPES_SIMPLE = {
+    'KPP02': { label: 'KPP02', max: 5 },
+    'KPP03': { label: 'KPP03', max: 3 },
+    'TM': { label: 'TM', max: 2 }
+};
+
+// ============================================
+// DOM ELEMENTS
+// ============================================
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
@@ -26,11 +59,11 @@ const messageDiv = document.getElementById('message');
 const messageIcon = document.getElementById('messageIcon');
 const messageText = document.getElementById('messageText');
 
+const STEPS = [step1, step2, step3, step4, step5];
+
 // ============================================
 // ICON HELPER
 // ============================================
-// Re-scans the DOM for [data-lucide] and renders any new/updated icons.
-// Safe to call as often as needed after innerHTML changes.
 function refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
@@ -40,8 +73,6 @@ function refreshIcons() {
 // ============================================
 // STEP NAVIGATION + PROGRESS INDICATOR
 // ============================================
-const STEPS = [step1, step2, step3, step4, step5];
-
 function showStep(stepNumber) {
     STEPS.forEach((el, i) => {
         el.classList.toggle('hidden', i !== stepNumber - 1);
@@ -77,7 +108,6 @@ function updateStepIndicator(stepNumber) {
 // ============================================
 // TIMEZONE HELPER FUNCTIONS (Malaysia UTC+8)
 // ============================================
-
 function getMalaysiaDate(dateInput) {
     const date = new Date(dateInput);
     const malaysiaOffset = 8 * 60;
@@ -124,19 +154,9 @@ function getMalaysiaMonthYear() {
 }
 
 // ============================================
-// INITIALIZE MONTH/YEAR
-// ============================================
-function initMonthYear() {
-    const { month, year } = getMalaysiaMonthYear();
-    currentMonth = month;
-    currentYear = year;
-}
-
-// ============================================
-// CALENDAR CELL STYLING (class-based, no inline styles)
+// CALENDAR CELL STYLING
 // ============================================
 const CAL_BASE = 'cal-cell';
-
 const CAL_STATE_CLASSES = {
     past:      'bg-muted/60 text-muted-foreground/60 cursor-not-allowed',
     inactive:  'bg-muted text-muted-foreground cursor-not-allowed',
@@ -151,6 +171,33 @@ function setCellState(cell, state) {
 }
 
 // ============================================
+// MESSAGE SYSTEM
+// ============================================
+const MESSAGE_VARIANTS = {
+    error:   { icon: 'circle-alert', attr: 'destructive', extra: '' },
+    success: { icon: 'circle-check', attr: null, extra: 'border-emerald-300 bg-emerald-50 text-emerald-800' },
+    info:    { icon: 'info', attr: null, extra: 'border-blue-200 bg-blue-50 text-blue-800' }
+};
+
+function showMessage(text, type = 'info') {
+    const variant = MESSAGE_VARIANTS[type] || MESSAGE_VARIANTS.info;
+    messageDiv.classList.remove('hidden');
+    messageDiv.className = `alert items-start gap-2 ${variant.extra}`;
+    if (variant.attr) {
+        messageDiv.setAttribute('data-variant', variant.attr);
+    } else {
+        messageDiv.removeAttribute('data-variant');
+    }
+    messageIcon.setAttribute('data-lucide', variant.icon);
+    messageText.textContent = text;
+    refreshIcons();
+}
+
+function hideMessage() {
+    messageDiv.classList.add('hidden');
+}
+
+// ============================================
 // STEP 1: Class Selection
 // ============================================
 classForm.addEventListener('submit', async (e) => {
@@ -160,7 +207,6 @@ classForm.addEventListener('submit', async (e) => {
         `<span class="badge" data-variant="secondary">Selected Class: ${selectedClass}</span>`;
 
     showStep(2);
-
     renderCalendar();
     await checkAvailabilityForMonth();
 });
@@ -168,6 +214,12 @@ classForm.addEventListener('submit', async (e) => {
 // ============================================
 // STEP 2: Calendar
 // ============================================
+function initMonthYear() {
+    const { month, year } = getMalaysiaMonthYear();
+    currentMonth = month;
+    currentYear = year;
+}
+
 function renderCalendar() {
     const calendar = document.getElementById('calendar');
     const monthDisplay = document.getElementById('currentMonthDisplay');
@@ -206,9 +258,7 @@ function renderCalendar() {
         cell.type = 'button';
         cell.dataset.date = dateStr;
         
-        // Check if this is today
         if (dateStr === todayStr) {
-            // Add a small indicator for today
             cell.innerHTML = `${day} <span class="text-[8px] font-bold text-amber-500 ml-0.5">●</span>`;
             cell.title = 'Today';
         } else {
@@ -219,7 +269,6 @@ function renderCalendar() {
             setCellState(cell, 'past');
             cell.title = dateStr === todayStr ? 'Today - cannot book' : '';
         } else if (dateStr === todayStr) {
-            // Today: rendered with a small dot indicator
             setCellState(cell, 'past');
             cell.title = 'Today - cannot book';
         } else {
@@ -233,10 +282,6 @@ function renderCalendar() {
     refreshIcons();
 }
 
-// ============================================
-// UPDATE TODAY INDICATOR
-// ============================================
-
 function updateTodayIndicator() {
     const todayDisplay = document.getElementById('todayDateDisplay');
     if (todayDisplay) {
@@ -250,58 +295,6 @@ function updateTodayIndicator() {
         todayDisplay.textContent = today.toLocaleDateString('en-MY', options);
     }
 }
-
-// Call this on page load
-document.addEventListener('DOMContentLoaded', () => {
-    initMonthYear();
-    showStep(1);
-    updateTodayIndicator(); // Add this line
-
-    const icnoInput = document.getElementById('icno');
-    if (icnoInput) {
-        icnoInput.addEventListener('blur', checkDayDuplicate);
-        icnoInput.addEventListener('input', () => {
-            document.getElementById('dayDuplicateWarning').innerHTML = '';
-        });
-    }
-
-    refreshIcons();
-});
-
-// ============================================
-// UPDATE TODAY INDICATOR
-// ============================================
-
-function updateTodayIndicator() {
-    const todayDisplay = document.getElementById('todayDateDisplay');
-    if (todayDisplay) {
-        const today = new Date();
-        const options = { 
-            weekday: 'short', 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-        };
-        todayDisplay.textContent = today.toLocaleDateString('en-MY', options);
-    }
-}
-
-// Call this on page load
-document.addEventListener('DOMContentLoaded', () => {
-    initMonthYear();
-    showStep(1);
-    updateTodayIndicator(); // Add this line
-
-    const icnoInput = document.getElementById('icno');
-    if (icnoInput) {
-        icnoInput.addEventListener('blur', checkDayDuplicate);
-        icnoInput.addEventListener('input', () => {
-            document.getElementById('dayDuplicateWarning').innerHTML = '';
-        });
-    }
-
-    refreshIcons();
-});
 
 async function checkAvailabilityForMonth() {
     const year = currentYear;
@@ -313,7 +306,6 @@ async function checkAvailabilityForMonth() {
     const todayStr = getMalaysiaToday();
 
     try {
-        // Get sessions
         const { data: sessions, error: sessionsError } = await supabaseClient
             .from('available_sessions')
             .select('*')
@@ -324,7 +316,6 @@ async function checkAvailabilityForMonth() {
 
         if (sessionsError) throw sessionsError;
 
-        // Get date statuses (inactive dates)
         const { data: statuses, error: statusError } = await supabaseClient
             .from('date_status')
             .select('target_date, is_active, reason')
@@ -333,7 +324,6 @@ async function checkAvailabilityForMonth() {
 
         if (statusError) throw statusError;
 
-        // Build maps
         const sessionMap = {};
         sessions.forEach(session => {
             if (!sessionMap[session.session_date]) {
@@ -347,30 +337,22 @@ async function checkAvailabilityForMonth() {
             statusMap[status.target_date] = status;
         });
 
-        // Update calendar cells
         const cells = document.querySelectorAll('#calendar button[data-date]');
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
-
-            // Skip past dates and today
             if (dateStr < todayStr || dateStr === todayStr) return;
 
             const sessions = sessionMap[dateStr] || [];
             const status = statusMap[dateStr];
-
-            // Check if date is inactive
             const isInactive = status ? !status.is_active : false;
 
-            // If inactive, show muted
             if (isInactive) {
                 setCellState(cell, 'inactive');
                 cell.title = status.reason || 'Date is closed for bookings';
                 return;
             }
 
-            // Check if any sessions have available slots
             const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
-
             if (hasAvailable) {
                 setCellState(cell, 'available');
                 cell.title = 'Available';
@@ -400,7 +382,6 @@ async function resetCalendarColors() {
     const endDateStr = toMalaysiaDateStr(endDate);
 
     try {
-        // Get sessions
         const { data: sessions, error: sessionsError } = await supabaseClient
             .from('available_sessions')
             .select('*')
@@ -411,7 +392,6 @@ async function resetCalendarColors() {
 
         if (sessionsError) throw sessionsError;
 
-        // Get date statuses
         const { data: statuses, error: statusError } = await supabaseClient
             .from('date_status')
             .select('target_date, is_active, reason')
@@ -435,20 +415,15 @@ async function resetCalendarColors() {
 
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
-
-            // Skip if this is the currently selected date
             if (dateStr === selectedDate) return;
 
             if (dateStr < todayStr) {
                 setCellState(cell, 'past');
                 cell.title = '';
-            }
-            else if (dateStr === todayStr) {
-                // Today: same muted look as any other non-bookable day, no label.
+            } else if (dateStr === todayStr) {
                 setCellState(cell, 'past');
                 cell.title = 'Today - cannot book';
-            }
-            else {
+            } else {
                 const sessions = sessionMap[dateStr] || [];
                 const status = statusMap[dateStr];
                 const isInactive = status ? !status.is_active : false;
@@ -458,7 +433,6 @@ async function resetCalendarColors() {
                     cell.title = status.reason || 'Date is closed for bookings';
                 } else {
                     const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
-
                     if (hasAvailable) {
                         setCellState(cell, 'available');
                         cell.title = 'Available';
@@ -521,7 +495,6 @@ async function onDateClick(dateStr) {
         return;
     }
 
-    // Check if date is inactive
     try {
         const { data: status, error } = await supabaseClient
             .from('date_status')
@@ -531,7 +504,6 @@ async function onDateClick(dateStr) {
 
         if (error && error.code !== 'PGRST116') throw error;
 
-        // If date is explicitly set to inactive
         if (status && !status.is_active) {
             const reason = status.reason ? ` (Reason: ${status.reason})` : '';
             showMessage(`This date is closed for bookings.${reason}`, 'error');
@@ -539,10 +511,8 @@ async function onDateClick(dateStr) {
         }
     } catch (error) {
         console.error('Error checking date status:', error);
-        // Continue anyway - don't block if there's an error
     }
 
-    // If clicking the same date, deselect it
     if (selectedDate === dateStr) {
         selectedDate = null;
         selectedSession = null;
@@ -579,16 +549,13 @@ async function loadSessionsForDate(dateStr) {
 
         if (error) throw error;
 
-        // Sort sessions: morning first, then afternoon
         if (data) {
             const timeOrder = { '9am-12pm': 1, '12pm-3pm': 2 };
             const slotOrder = { 'sesi1': 1, 'sesi2': 2, 'sesi3': 3 };
 
             data.sort((a, b) => {
-                // First by time
                 const timeDiff = (timeOrder[a.session_time] || 99) - (timeOrder[b.session_time] || 99);
                 if (timeDiff !== 0) return timeDiff;
-                // Then by slot
                 return (slotOrder[a.session_slot] || 99) - (slotOrder[b.session_slot] || 99);
             });
         }
@@ -667,18 +634,17 @@ function goToStep3() {
         showMessage('Please select a session first.', 'error');
         return;
     }
-
     showStep(3);
 }
 
 function goBackStep1() {
-    hasDayDuplicate = false; // NEW: Reset flag when going back
+    hasDayDuplicate = false;
     document.getElementById('dayDuplicateWarning').innerHTML = '';
     showStep(1);
 }
 
 function goBackStep2() {
-    hasDayDuplicate = false; // NEW: Reset flag when going back
+    hasDayDuplicate = false;
     document.getElementById('dayDuplicateWarning').innerHTML = '';
     showStep(2);
 }
@@ -686,6 +652,60 @@ function goBackStep2() {
 // ============================================
 // STEP 3: Student Details
 // ============================================
+function updateLessonSubOptions() {
+    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
+    const subContainer = document.getElementById('lessonSubContainer');
+    const subSelect = document.getElementById('lessonSub');
+    
+    if (!selectedType) {
+        subContainer.classList.add('hidden');
+        return;
+    }
+    
+    const type = selectedType.value;
+    const options = LESSON_OPTIONS[type] || [];
+    
+    if (options.length > 0) {
+        subContainer.classList.remove('hidden');
+        subSelect.innerHTML = '<option value="">-- Select a lesson --</option>';
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            subSelect.appendChild(option);
+        });
+        refreshIcons();
+    } else {
+        subContainer.classList.add('hidden');
+    }
+}
+
+function getFullLesson() {
+    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
+    const subSelect = document.getElementById('lessonSub');
+    
+    if (!selectedType) return null;
+    const type = selectedType.value;
+    const sub = subSelect.value;
+    if (!sub) return null;
+    return `${type} - ${sub}`;
+}
+
+function validateLesson() {
+    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
+    const subSelect = document.getElementById('lessonSub');
+    
+    if (!selectedType) {
+        showMessage('Please select a lesson type.', 'error');
+        return false;
+    }
+    if (!subSelect.value) {
+        showMessage('Please select a specific lesson.', 'error');
+        return false;
+    }
+    return true;
+}
+
 detailsForm.addEventListener('submit', (e) => {
     e.preventDefault();
     goToStep4();
@@ -696,10 +716,7 @@ function goToStep4() {
     const name = document.getElementById('name').value.trim();
     const contact = document.getElementById('contact').value.trim();
     
-    // Validate lesson selection
-    if (!validateLesson()) {
-        return;
-    }
+    if (!validateLesson()) return;
 
     if (!icno || icno.length < 8) {
         showMessage('Please enter a valid IC or Passport number.', 'error');
@@ -716,7 +733,6 @@ function goToStep4() {
         return;
     }
 
-    // Check if there's a duplicate before proceeding
     if (hasDayDuplicate) {
         showMessage('⚠️ You cannot proceed with a duplicate booking. Please cancel your existing booking first.', 'error');
         return;
@@ -731,7 +747,7 @@ function goToStep4() {
         class: selectedClass,
         date: selectedDate,
         session: availableSessionsData[selectedSession],
-        lesson: fullLesson  // Add the lesson
+        lesson: fullLesson
     };
 
     const summary = document.getElementById('bookingSummary');
@@ -739,7 +755,7 @@ function goToStep4() {
         { icon: 'bike', label: 'Class', value: bookingData.class },
         { icon: 'calendar', label: 'Date', value: formatMalaysiaDate(bookingData.date) },
         { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${bookingData.session.session_slot}` },
-        { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },  // Add lesson
+        { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },
         { icon: 'user', label: 'Name', value: bookingData.name },
         { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
         { icon: 'phone', label: 'Contact', value: bookingData.contact }
@@ -772,173 +788,19 @@ function goBackStep3() {
 }
 
 // ============================================
-// STEP 4: Submit Booking
+// DUPLICATE CHECK
 // ============================================
-
-function showConfirmDialog() {
-    // Populate dialog with booking data
-    document.getElementById('confirmClass').textContent = bookingData.class;
-    document.getElementById('confirmDate').textContent = formatMalaysiaDate(bookingData.date);
-    document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${bookingData.session.session_slot}`;
-    document.getElementById('confirmLesson').textContent = bookingData.lesson; 
-    document.getElementById('confirmName').textContent = bookingData.name;
-    document.getElementById('confirmIC').textContent = bookingData.icno;
-    document.getElementById('confirmContact').textContent = bookingData.contact;
-    
-    // Show dialog
-    document.getElementById('confirmDialog').classList.remove('hidden');
-    document.body.style.overflow = 'hidden'; // Prevent scrolling
-    refreshIcons();
-}
-
-// Close confirmation dialog
-function closeConfirmDialog() {
-    document.getElementById('confirmDialog').classList.add('hidden');
-    document.body.style.overflow = ''; // Restore scrolling
-}
-
-function submitBooking() {
-    // Validate that we have all required data
-    if (!bookingData || !bookingData.class || !bookingData.date || !bookingData.session || !bookingData.name) {
-        showMessage('Missing booking information. Please go back and check your details.', 'error');
-        return;
-    }
-    
-    // Show confirmation dialog
-    showConfirmDialog();
-}
-
-// Confirm booking (called from dialog)
-async function confirmBooking() {
-    closeConfirmDialog();
-    
-    // Disable confirm button to prevent double submission
-    const confirmBtn = document.querySelector('#step4 button[onclick="submitBooking()"]');
-    const originalHTML = confirmBtn.innerHTML;
-    confirmBtn.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Processing...';
-    confirmBtn.disabled = true;
-    refreshIcons();
-
-    try {
-        showMessage('Checking for duplicate bookings...', 'info');
-
-        // Check for duplicates (including same day)
-        const { data: duplicateCheck, error: dupError } = await supabaseClient
-            .rpc('check_duplicate_booking', {
-                p_icno: bookingData.icno,
-                p_booking_date: bookingData.date,
-                p_session_time: bookingData.session.session_time,
-                p_session_slot: bookingData.session.session_slot,
-                p_class: bookingData.class
-            });
-
-        if (dupError) throw dupError;
-
-        // If duplicate found, show detailed message
-        if (duplicateCheck && duplicateCheck.is_duplicate) {
-            let message = duplicateCheck.message;
-
-            // Add extra guidance for same-day duplicates
-            if (duplicateCheck.existing_session_time !== bookingData.session.session_time ||
-                duplicateCheck.existing_session_slot !== bookingData.session.session_slot) {
-                message += '\n\n💡 Tip: You can only have ONE booking per day. To book a different session, first cancel your existing booking using the Session ID above.';
-            } else {
-                message += '\n\n💡 Tip: You are trying to book the exact same session. Please check your existing booking.';
-            }
-
-            showMessage(message, 'error');
-
-            // Show the existing booking details for reference
-            showExistingBooking(duplicateCheck);
-
-            confirmBtn.innerHTML = originalHTML;
-            confirmBtn.disabled = false;
-            refreshIcons();
-            return;
-        }
-
-        // Proceed with booking creation
-        showMessage('Creating booking...', 'info');
-
-        const { data: booking, error: createError } = await supabaseClient
-            .from('bookings')
-            .insert([{
-                icno: bookingData.icno,
-                name: bookingData.name,
-                contact_no: bookingData.contact,
-                class: bookingData.class,
-                booking_date: bookingData.date,
-                session_time: bookingData.session.session_time,
-                session_slot: bookingData.session.session_slot,
-                lesson: bookingData.lesson,
-                status: 'confirmed'
-            }])
-            .select('session_id')
-            .single();
-
-        if (createError) {
-            // Check if it's a duplicate error from the database
-            if (createError.code === '23505') { // Unique violation
-                showMessage('This booking already exists. Please check your bookings.', 'error');
-                confirmBtn.innerHTML = originalHTML;
-                confirmBtn.disabled = false;
-                refreshIcons();
-                return;
-            }
-            throw createError;
-        }
-
-        // Show confirmation
-        showConfirmation(booking.session_id);
-
-    } catch (error) {
-        console.error('Booking error:', error);
-        showMessage('Error creating booking: ' + error.message, 'error');
-        confirmBtn.innerHTML = originalHTML;
-        confirmBtn.disabled = false;
-        refreshIcons();
-    }
-}
-// Show existing booking details when duplicate found
-function showExistingBooking(duplicateCheck) {
-    const summary = document.getElementById('bookingSummary');
-    const existingHTML = `
-        <div class="mt-4 rounded-lg border-2 border-red-300 bg-red-50 p-4 space-y-2">
-            <h4 class="flex items-center gap-1.5 text-sm font-semibold text-red-700">
-                <i data-lucide="circle-alert" class="w-4 h-4"></i>
-                Existing Booking Found
-            </h4>
-            <dl class="text-sm space-y-1.5">
-                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session ID</dt><dd class="font-semibold">${duplicateCheck.existing_session_id}</dd></div>
-                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session Time</dt><dd>${duplicateCheck.existing_session_time}</dd></div>
-                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session Slot</dt><dd>${duplicateCheck.existing_session_slot}</dd></div>
-            </dl>
-            <p class="text-xs text-red-700 pt-1 border-t border-red-200">
-                <strong>Cancel this booking first.</strong> Go to
-                <a href="manage-booking.html" target="_blank" class="underline font-medium">Manage My Bookings</a>
-                and use the Session ID above to cancel.
-            </p>
-        </div>
-    `;
-
-    // Insert the existing booking info below the summary
-    summary.innerHTML += existingHTML;
-    refreshIcons();
-}
-
 async function checkDayDuplicate() {
     const icno = document.getElementById('icno').value.trim();
 
     if (!icno || icno.length < 8) {
         document.getElementById('dayDuplicateWarning').innerHTML = '';
         hasDayDuplicate = false;
-        // Hide history indicator
         document.getElementById('historyIndicator').classList.add('hidden');
         return;
     }
 
     try {
-        // Check for duplicate booking
         const { data, error } = await supabaseClient
             .from('bookings')
             .select('session_id, session_time, session_slot, booking_date')
@@ -949,7 +811,6 @@ async function checkDayDuplicate() {
 
         if (data) {
             hasDayDuplicate = true;
-            
             const warningContainer = document.getElementById('dayDuplicateWarning');
             if (!warningContainer.querySelector('#dayDuplicateWarningAlert')) {
                 warningContainer.innerHTML = `
@@ -970,30 +831,18 @@ async function checkDayDuplicate() {
             document.getElementById('dayDuplicateWarning').innerHTML = '';
         }
         
-        // Load lesson history
         await loadLessonHistory(icno);
 
     } catch (error) {
         hasDayDuplicate = false;
         document.getElementById('dayDuplicateWarning').innerHTML = '';
-        console.log('No duplicate found for this day');
-        
-        // Still load history even if no duplicate
         await loadLessonHistory(icno);
     }
 }
+
 // ============================================
 // LESSON HISTORY FUNCTIONS
 // ============================================
-
-// Parse lesson string to get type and number
-const LESSON_TYPES_SIMPLE = {
-    'KPP02': { label: 'KPP02', max: 5 },
-    'KPP03': { label: 'KPP03', max: 3 },
-    'TM': { label: 'TM', max: 2 }
-};
-
-// Load lesson history for a student
 async function loadLessonHistory(icno) {
     try {
         const { data: bookings, error } = await supabaseClient
@@ -1005,24 +854,20 @@ async function loadLessonHistory(icno) {
         if (error) throw error;
         
         if (!bookings || bookings.length === 0) {
-            // No bookings found - hide the history indicator
             const indicator = document.getElementById('historyIndicator');
             if (indicator) indicator.classList.add('hidden');
             return;
         }
         
-        // Show the history indicator with count
         const historyIndicator = document.getElementById('historyIndicator');
         historyIndicator.classList.remove('hidden');
         document.getElementById('historyCount').textContent = bookings.length;
         
-        // Handle plural
         const plural = document.getElementById('historyPlural');
         if (plural) {
             plural.textContent = bookings.length > 1 ? 's' : '';
         }
         
-        // Store bookings for modal display
         window._lessonHistory = bookings;
         
     } catch (error) {
@@ -1030,39 +875,15 @@ async function loadLessonHistory(icno) {
     }
 }
 
-// Open the history modal
-function openHistoryModal() {
-    const bookings = window._lessonHistory || [];
-    const modal = document.getElementById('historyModal');
-    
-    if (!modal) return;
-    
-    // Render summary counts
-    renderHistorySummary(bookings);
-    
-    // Render bookings list
-    renderHistoryBookings(bookings);
-    
-    // Show modal
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    refreshIcons();
+function getLessonType(lessonStr) {
+    if (!lessonStr) return null;
+    const parts = lessonStr.split(' - ');
+    return parts.length === 2 ? parts[0] : null;
 }
 
-// Close history modal
-function closeHistoryModal() {
-    const modal = document.getElementById('historyModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
-    }
-}
-
-// Render summary counts by lesson type
 function renderHistorySummary(bookings) {
     const summaryDiv = document.getElementById('historySummary');
     
-    // Count bookings by lesson type
     const counts = {};
     bookings.forEach(booking => {
         if (booking.status !== 'confirmed') return;
@@ -1088,7 +909,6 @@ function renderHistorySummary(bookings) {
     summaryDiv.innerHTML = html;
 }
 
-// Render bookings list in history modal
 function renderHistoryBookings(bookings) {
     const listDiv = document.getElementById('historyBookingsList');
     
@@ -1097,9 +917,8 @@ function renderHistoryBookings(bookings) {
         return;
     }
     
-    // Show all bookings
     let html = '';
-    bookings.forEach((booking, index) => {
+    bookings.forEach((booking) => {
         const isPast = booking.booking_date < getMalaysiaToday();
         const dateObj = new Date(booking.booking_date + 'T00:00:00');
         const dateStr = dateObj.toLocaleDateString('en-MY', { 
@@ -1132,7 +951,6 @@ function renderHistoryBookings(bookings) {
         `;
     });
     
-    // Add total count
     html += `
         <div class="text-center text-xs pt-2" style="color: #6b7280;">
             Total: ${bookings.length} lesson${bookings.length > 1 ? 's' : ''}
@@ -1142,92 +960,15 @@ function renderHistoryBookings(bookings) {
     listDiv.innerHTML = html;
 }
 
-// Get lesson type from string
-function getLessonType(lessonStr) {
-    if (!lessonStr) return null;
-    const parts = lessonStr.split(' - ');
-    return parts.length === 2 ? parts[0] : null;
-}
-
-function showConfirmation(sessionId) {
-    document.getElementById('confirmationDetails').innerHTML = buildSummaryRows([
-        { icon: 'hash', label: 'Session ID', value: sessionId },
-        { icon: 'bike', label: 'Class', value: bookingData.class },
-        { icon: 'calendar', label: 'Date', value: formatMalaysiaDate(bookingData.date) },
-        { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${bookingData.session.session_slot}` },
-        { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },
-        { icon: 'user', label: 'Name', value: bookingData.name },
-        { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
-        { icon: 'phone', label: 'Contact', value: bookingData.contact }
-    ]) + `<p class="text-xs text-muted-foreground text-center pt-3">Please save your Session ID for future reference.</p>`;
-
-    showStep(5);
-    refreshIcons();
-    showMessage('Booking successful!', 'success');
-}
-
 // ============================================
-// Reset
+// MODAL MANAGEMENT
 // ============================================
-function resetAll() {
-    showStep(1);
-    selectedDate = null;
-    selectedSession = null;
-    bookingData = {};
-    hasDayDuplicate = false; // NEW: Reset flag
-    document.getElementById('icno').value = '';
-    document.getElementById('name').value = '';
-    document.getElementById('contact').value = '';
-    document.getElementById('selectedDateDisplay').textContent = '';
-    document.getElementById('sessionsContainer').classList.add('hidden');
-    document.getElementById('nextToDetailsBtn').classList.add('hidden');
-    document.getElementById('dayDuplicateWarning').innerHTML = '';
-    hideMessage();
-}
-
-// ============================================
-// Utilities
-// ============================================
-const MESSAGE_VARIANTS = {
-    error:   { icon: 'circle-alert', attr: 'destructive', extra: '' },
-    success: { icon: 'circle-check', attr: null, extra: 'border-emerald-300 bg-emerald-50 text-emerald-800' },
-    info:    { icon: 'info', attr: null, extra: 'border-blue-200 bg-blue-50 text-blue-800' }
-};
-
-function showMessage(text, type = 'info') {
-    const variant = MESSAGE_VARIANTS[type] || MESSAGE_VARIANTS.info;
-
-    messageDiv.classList.remove('hidden');
-    messageDiv.className = `alert items-start gap-2 ${variant.extra}`;
-    if (variant.attr) {
-        messageDiv.setAttribute('data-variant', variant.attr);
-    } else {
-        messageDiv.removeAttribute('data-variant');
-    }
-
-    messageIcon.setAttribute('data-lucide', variant.icon);
-    messageText.textContent = text;
-    refreshIcons();
-}
-
-function hideMessage() {
-    messageDiv.classList.add('hidden');
-}
-
-// ============================================
-// GUIDE MODAL FUNCTIONS - MOST ROBUST
-// ============================================
-
-let activeModal = null; // Track which modal is currently open
-
-// Guide Modal Functions
 function openGuideModal(event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
     
-    // Close any other modal first
     if (activeModal && activeModal !== 'guide') {
         closeHistoryModal();
     }
@@ -1255,7 +996,6 @@ function closeGuideModal(event) {
         if (activeModal === 'guide') {
             activeModal = null;
         }
-        // Only restore scroll if no other modal is open
         if (!activeModal) {
             document.body.style.overflow = '';
         }
@@ -1263,100 +1003,261 @@ function closeGuideModal(event) {
     }
 }
 
-
-// ============================================
-// LESSON TYPE AND SUB-OPTIONS
-// ============================================
-
-// Lesson options mapping
-const LESSON_OPTIONS = {
-    'KPP02': [
-        '1st KPP02',
-        '2nd KPP02',
-        '3rd KPP02',
-        '4th KPP02',
-        '5th KPP02'
-    ],
-    'KPP03': [
-        '1st KPP03',
-        '2nd KPP03',
-        '3rd KPP03'
-        
-    ],
-    'TM': [
-        'T.M 1JAM',
-        'T.M 2JAM'
-    ]
-};
-
-// Update lesson sub-options based on selected lesson type
-function updateLessonSubOptions() {
-    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
-    const subContainer = document.getElementById('lessonSubContainer');
-    const subSelect = document.getElementById('lessonSub');
+function openHistoryModal() {
+    if (activeModal && activeModal !== 'history') {
+        closeGuideModal();
+    }
     
-    if (!selectedType) {
-        subContainer.classList.add('hidden');
+    const bookings = window._lessonHistory || [];
+    const modal = document.getElementById('historyModal');
+    
+    if (!modal) return;
+    
+    renderHistorySummary(bookings);
+    renderHistoryBookings(bookings);
+    
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    activeModal = 'history';
+    refreshIcons();
+}
+
+function closeHistoryModal(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const modal = document.getElementById('historyModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        if (activeModal === 'history') {
+            activeModal = null;
+        }
+        if (!activeModal) {
+            document.body.style.overflow = '';
+        }
+        refreshIcons();
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    if (!activeModal) return;
+    
+    const modalId = activeModal === 'guide' ? 'guideModal' : 'historyModal';
+    const modal = document.getElementById(modalId);
+    if (!modal || modal.classList.contains('hidden')) return;
+    
+    const modalContent = modal.querySelector('div');
+    if (!modalContent) return;
+    
+    if (!modalContent.contains(event.target)) {
+        const triggerButton = activeModal === 'guide' ? 
+            document.querySelector('[onclick="openGuideModal()"]') : 
+            document.getElementById('historyIndicator');
+            
+        if (triggerButton && triggerButton.contains(event.target)) {
+            return;
+        }
+        
+        if (activeModal === 'guide') {
+            closeGuideModal();
+        } else {
+            closeHistoryModal();
+        }
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && activeModal) {
+        if (activeModal === 'guide') {
+            closeGuideModal();
+        } else {
+            closeHistoryModal();
+        }
+    }
+});
+
+// ============================================
+// STEP 4: Submit Booking
+// ============================================
+function showConfirmDialog() {
+    document.getElementById('confirmClass').textContent = bookingData.class;
+    document.getElementById('confirmDate').textContent = formatMalaysiaDate(bookingData.date);
+    document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${bookingData.session.session_slot}`;
+    document.getElementById('confirmLesson').textContent = bookingData.lesson;
+    document.getElementById('confirmName').textContent = bookingData.name;
+    document.getElementById('confirmIC').textContent = bookingData.icno;
+    document.getElementById('confirmContact').textContent = bookingData.contact;
+    
+    document.getElementById('confirmDialog').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    refreshIcons();
+}
+
+function closeConfirmDialog() {
+    document.getElementById('confirmDialog').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function submitBooking() {
+    if (!bookingData || !bookingData.class || !bookingData.date || !bookingData.session || !bookingData.name) {
+        showMessage('Missing booking information. Please go back and check your details.', 'error');
         return;
     }
+    showConfirmDialog();
+}
+
+async function confirmBooking() {
+    closeConfirmDialog();
     
-    const type = selectedType.value;
-    const options = LESSON_OPTIONS[type] || [];
-    
-    if (options.length > 0) {
-        subContainer.classList.remove('hidden');
-        subSelect.innerHTML = '<option value="">-- Select a lesson --</option>';
-        options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt;
-            option.textContent = opt;
-            subSelect.appendChild(option);
-        });
+    const confirmBtn = document.querySelector('#step4 button[onclick="submitBooking()"]');
+    const originalHTML = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Processing...';
+    confirmBtn.disabled = true;
+    refreshIcons();
+
+    try {
+        showMessage('Checking for duplicate bookings...', 'info');
+
+        const { data: duplicateCheck, error: dupError } = await supabaseClient
+            .rpc('check_duplicate_booking', {
+                p_icno: bookingData.icno,
+                p_booking_date: bookingData.date,
+                p_session_time: bookingData.session.session_time,
+                p_session_slot: bookingData.session.session_slot,
+                p_class: bookingData.class
+            });
+
+        if (dupError) throw dupError;
+
+        if (duplicateCheck && duplicateCheck.is_duplicate) {
+            let message = duplicateCheck.message;
+            if (duplicateCheck.existing_session_time !== bookingData.session.session_time ||
+                duplicateCheck.existing_session_slot !== bookingData.session.session_slot) {
+                message += '\n\n💡 Tip: You can only have ONE booking per day. To book a different session, first cancel your existing booking using the Session ID above.';
+            } else {
+                message += '\n\n💡 Tip: You are trying to book the exact same session. Please check your existing booking.';
+            }
+            showMessage(message, 'error');
+            showExistingBooking(duplicateCheck);
+            confirmBtn.innerHTML = originalHTML;
+            confirmBtn.disabled = false;
+            refreshIcons();
+            return;
+        }
+
+        showMessage('Creating booking...', 'info');
+
+        const { data: booking, error: createError } = await supabaseClient
+            .from('bookings')
+            .insert([{
+                icno: bookingData.icno,
+                name: bookingData.name,
+                contact_no: bookingData.contact,
+                class: bookingData.class,
+                booking_date: bookingData.date,
+                session_time: bookingData.session.session_time,
+                session_slot: bookingData.session.session_slot,
+                lesson: bookingData.lesson,
+                status: 'confirmed'
+            }])
+            .select('session_id')
+            .single();
+
+        if (createError) {
+            if (createError.code === '23505') {
+                showMessage('This booking already exists. Please check your bookings.', 'error');
+                confirmBtn.innerHTML = originalHTML;
+                confirmBtn.disabled = false;
+                refreshIcons();
+                return;
+            }
+            throw createError;
+        }
+
+        showConfirmation(booking.session_id);
+
+    } catch (error) {
+        console.error('Booking error:', error);
+        showMessage('Error creating booking: ' + error.message, 'error');
+        confirmBtn.innerHTML = originalHTML;
+        confirmBtn.disabled = false;
         refreshIcons();
-    } else {
-        subContainer.classList.add('hidden');
     }
 }
 
-// Get the full lesson value (type + sub)
-function getFullLesson() {
-    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
-    const subSelect = document.getElementById('lessonSub');
-    
-    if (!selectedType) return null;
-    
-    const type = selectedType.value;
-    const sub = subSelect.value;
-    
-    if (!sub) return null;
-    
-    return `${type} - ${sub}`;
+function showExistingBooking(duplicateCheck) {
+    const summary = document.getElementById('bookingSummary');
+    const existingHTML = `
+        <div class="mt-4 rounded-lg border-2 border-red-300 bg-red-50 p-4 space-y-2">
+            <h4 class="flex items-center gap-1.5 text-sm font-semibold text-red-700">
+                <i data-lucide="circle-alert" class="w-4 h-4"></i>
+                Existing Booking Found
+            </h4>
+            <dl class="text-sm space-y-1.5">
+                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session ID</dt><dd class="font-semibold">${duplicateCheck.existing_session_id}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session Time</dt><dd>${duplicateCheck.existing_session_time}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session Slot</dt><dd>${duplicateCheck.existing_session_slot}</dd></div>
+            </dl>
+            <p class="text-xs text-red-700 pt-1 border-t border-red-200">
+                <strong>Cancel this booking first.</strong> Go to
+                <a href="manage-booking.html" target="_blank" class="underline font-medium">Manage My Bookings</a>
+                and use the Session ID above to cancel.
+            </p>
+        </div>
+    `;
+    summary.innerHTML += existingHTML;
+    refreshIcons();
 }
 
-// Validate lesson selection
-function validateLesson() {
-    const selectedType = document.querySelector('input[name="lesson_type"]:checked');
-    const subSelect = document.getElementById('lessonSub');
-    
-    if (!selectedType) {
-        showMessage('Please select a lesson type.', 'error');
-        return false;
-    }
-    
-    if (!subSelect.value) {
-        showMessage('Please select a specific lesson.', 'error');
-        return false;
-    }
-    
-    return true;
+function showConfirmation(sessionId) {
+    document.getElementById('confirmationDetails').innerHTML = buildSummaryRows([
+        { icon: 'hash', label: 'Session ID', value: sessionId },
+        { icon: 'bike', label: 'Class', value: bookingData.class },
+        { icon: 'calendar', label: 'Date', value: formatMalaysiaDate(bookingData.date) },
+        { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${bookingData.session.session_slot}` },
+        { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },
+        { icon: 'user', label: 'Name', value: bookingData.name },
+        { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
+        { icon: 'phone', label: 'Contact', value: bookingData.contact }
+    ]) + `<p class="text-xs text-muted-foreground text-center pt-3">Please save your Session ID for future reference.</p>`;
+
+    showStep(5);
+    refreshIcons();
+    showMessage('Booking successful!', 'success');
 }
 
 // ============================================
-// Initialize
+// RESET
+// ============================================
+function resetAll() {
+    showStep(1);
+    selectedDate = null;
+    selectedSession = null;
+    bookingData = {};
+    hasDayDuplicate = false;
+    document.getElementById('icno').value = '';
+    document.getElementById('name').value = '';
+    document.getElementById('contact').value = '';
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').classList.add('hidden');
+    document.getElementById('nextToDetailsBtn').classList.add('hidden');
+    document.getElementById('dayDuplicateWarning').innerHTML = '';
+    hideMessage();
+}
+
+// ============================================
+// INITIALIZE
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
     initMonthYear();
     showStep(1);
+    updateTodayIndicator();
 
     const icnoInput = document.getElementById('icno');
     if (icnoInput) {
