@@ -932,6 +932,8 @@ async function checkDayDuplicate() {
     if (!icno || icno.length < 8) {
         document.getElementById('dayDuplicateWarning').innerHTML = '';
         hasDayDuplicate = false;
+        // Hide history indicator
+        document.getElementById('historyIndicator').classList.add('hidden');
         return;
     }
 
@@ -968,7 +970,7 @@ async function checkDayDuplicate() {
             document.getElementById('dayDuplicateWarning').innerHTML = '';
         }
         
-        // NEW: Load lesson history after duplicate check
+        // Load lesson history
         await loadLessonHistory(icno);
 
     } catch (error) {
@@ -980,52 +982,15 @@ async function checkDayDuplicate() {
         await loadLessonHistory(icno);
     }
 }
-
 // ============================================
 // LESSON HISTORY FUNCTIONS
 // ============================================
 
 // Parse lesson string to get type and number
-function parseLesson(lessonStr) {
-    if (!lessonStr) return null;
-    
-    // Example: "KPP02 - 1st KPP02"
-    const parts = lessonStr.split(' - ');
-    if (parts.length === 2) {
-        const type = parts[0];
-        const sub = parts[1];
-        // Extract number from "1st KPP02"
-        const match = sub.match(/(\d+)/);
-        const number = match ? parseInt(match[0]) : 0;
-        return { type, sub, number };
-    }
-    return null;
-}
-
-// Get lesson type from string
-function getLessonType(lessonStr) {
-    if (!lessonStr) return null;
-    const parts = lessonStr.split(' - ');
-    return parts.length === 2 ? parts[0] : null;
-}
-
-// Lesson type definitions
-const LESSON_TYPES = {
-    'KPP02': {
-        label: 'KPP02 (Circuit)',
-        totalLessons: 5,
-        color: '#2563eb'
-    },
-    'KPP03': {
-        label: 'KPP03 (Road)',
-        totalLessons: 5,
-        color: '#16a34a'
-    },
-    'TM': {
-        label: 'TM (Theory)',
-        totalLessons: 2,
-        color: '#9333ea'
-    }
+const LESSON_TYPES_SIMPLE = {
+    'KPP02': { label: 'KPP02', max: 5 },
+    'KPP03': { label: 'KPP03', max: 3 },
+    'TM': { label: 'TM', max: 2 }
 };
 
 // Load lesson history for a student
@@ -1041,7 +1006,8 @@ async function loadLessonHistory(icno) {
         
         if (!bookings || bookings.length === 0) {
             // No bookings found - hide the history indicator
-            document.getElementById('historyIndicator').classList.add('hidden');
+            const indicator = document.getElementById('historyIndicator');
+            if (indicator) indicator.classList.add('hidden');
             return;
         }
         
@@ -1049,6 +1015,12 @@ async function loadLessonHistory(icno) {
         const historyIndicator = document.getElementById('historyIndicator');
         historyIndicator.classList.remove('hidden');
         document.getElementById('historyCount').textContent = bookings.length;
+        
+        // Handle plural
+        const plural = document.getElementById('historyPlural');
+        if (plural) {
+            plural.textContent = bookings.length > 1 ? 's' : '';
+        }
         
         // Store bookings for modal display
         window._lessonHistory = bookings;
@@ -1065,14 +1037,11 @@ function openHistoryModal() {
     
     if (!modal) return;
     
-    // Render progress summary
-    renderHistoryProgress(bookings);
+    // Render summary counts
+    renderHistorySummary(bookings);
     
     // Render bookings list
     renderHistoryBookings(bookings);
-    
-    // Render recommendations
-    renderHistoryRecommendation(bookings);
     
     // Show modal
     modal.classList.remove('hidden');
@@ -1089,70 +1058,33 @@ function closeHistoryModal() {
     }
 }
 
-// Render progress summary in history modal
-function renderHistoryProgress(bookings) {
-    const summaryDiv = document.getElementById('historyProgressSummary');
+// Render summary counts by lesson type
+function renderHistorySummary(bookings) {
+    const summaryDiv = document.getElementById('historySummary');
     
-    // Group by lesson type
-    const completedLessons = {};
-    
+    // Count bookings by lesson type
+    const counts = {};
     bookings.forEach(booking => {
         if (booking.status !== 'confirmed') return;
         const lessonType = getLessonType(booking.lesson);
         if (!lessonType) return;
-        if (!completedLessons[lessonType]) {
-            completedLessons[lessonType] = new Set();
+        if (!counts[lessonType]) {
+            counts[lessonType] = 0;
         }
-        completedLessons[lessonType].add(booking.lesson);
+        counts[lessonType]++;
     });
     
-    let html = '<div class="space-y-2">';
-    
-    for (const [type, config] of Object.entries(LESSON_TYPES)) {
-        const completed = completedLessons[type] ? completedLessons[type].size : 0;
-        const total = config.totalLessons;
-        const percentage = Math.min(100, Math.round((completed / total) * 100));
-        const isComplete = completed >= total;
-        
+    let html = '';
+    for (const [type, config] of Object.entries(LESSON_TYPES_SIMPLE)) {
+        const count = counts[type] || 0;
         html += `
-            <div>
-                <div class="flex justify-between items-center text-xs">
-                    <span class="font-medium" style="color: #374151;">${config.label}</span>
-                    <span style="color: #6b7280;">${completed}/${total}</span>
-                </div>
-                <div class="lesson-progress mt-0.5">
-                    <div class="lesson-progress-bar ${isComplete ? 'completed' : ''}" 
-                         style="width: ${percentage}%; background-color: ${isComplete ? '#22c55e' : config.color};">
-                    </div>
-                </div>
+            <div class="p-2 rounded-lg border" style="border-color: #e5e7eb;">
+                <div class="font-semibold" style="color: #111827;">${config.label}</div>
+                <div style="color: #6b7280;">${count} / ${config.max}</div>
             </div>
         `;
     }
     
-    // Overall progress
-    const totalLessons = Object.values(LESSON_TYPES).reduce((sum, t) => sum + t.totalLessons, 0);
-    let totalCompleted = 0;
-    for (const type of Object.keys(LESSON_TYPES)) {
-        totalCompleted += completedLessons[type] ? completedLessons[type].size : 0;
-    }
-    const overallPercentage = Math.min(100, Math.round((totalCompleted / totalLessons) * 100));
-    
-    html += `
-        <div class="pt-2 border-t" style="border-color: #e5e7eb;">
-            <div class="flex justify-between items-center text-xs">
-                <span class="font-semibold" style="color: #374151;">Overall Progress</span>
-                <span style="color: #6b7280;">${totalCompleted}/${totalLessons}</span>
-            </div>
-            <div class="lesson-progress mt-0.5">
-                <div class="lesson-progress-bar ${overallPercentage >= 100 ? 'completed' : ''}" 
-                     style="width: ${overallPercentage}%; ${overallPercentage >= 100 ? 'background-color: #22c55e;' : ''}">
-                </div>
-            </div>
-            ${overallPercentage >= 100 ? '<span class="text-xs text-emerald-600 font-medium">🎉 All lessons completed!</span>' : ''}
-        </div>
-    `;
-    
-    html += '</div>';
     summaryDiv.innerHTML = html;
 }
 
@@ -1161,15 +1093,13 @@ function renderHistoryBookings(bookings) {
     const listDiv = document.getElementById('historyBookingsList');
     
     if (!bookings || bookings.length === 0) {
-        listDiv.innerHTML = '<p class="text-sm text-muted-foreground">No bookings found.</p>';
+        listDiv.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No lesson history found.</p>';
         return;
     }
     
-    // Show only the 10 most recent bookings
-    const recentBookings = bookings.slice(0, 10);
-    
+    // Show all bookings
     let html = '';
-    recentBookings.forEach(booking => {
+    bookings.forEach((booking, index) => {
         const isPast = booking.booking_date < getMalaysiaToday();
         const dateObj = new Date(booking.booking_date + 'T00:00:00');
         const dateStr = dateObj.toLocaleDateString('en-MY', { 
@@ -1178,105 +1108,45 @@ function renderHistoryBookings(bookings) {
             year: 'numeric'
         });
         
+        const statusIcon = booking.status === 'confirmed' ? '✅' : '❌';
+        const statusText = booking.status === 'confirmed' ? 'Confirmed' : booking.status.toUpperCase();
+        
         html += `
-            <div class="history-item p-2 rounded-lg border" style="border-color: #e5e7eb; ${isPast ? 'background: #f9fafb;' : 'background: #ffffff;'}">
+            <div class="history-item p-2.5 rounded-lg border ${isPast ? 'history-item-past' : 'history-item-upcoming'}" style="border-color: #e5e7eb;">
                 <div class="flex items-center justify-between">
-                    <div>
-                        <span class="text-sm font-medium" style="color: #111827;">${booking.lesson || 'N/A'}</span>
-                        <span class="text-xs ml-2" style="color: #6b7280;">${dateStr}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium" style="color: #111827;">${booking.lesson || 'N/A'}</span>
+                            <span class="text-xs px-1.5 py-0.5 rounded" style="background: #f3f4f6; color: #6b7280;">${booking.class}</span>
+                        </div>
+                        <div class="text-xs" style="color: #6b7280; margin-top: 1px;">
+                            ${dateStr} • ${booking.session_time}
+                        </div>
                     </div>
-                    <span class="text-xs ${booking.status === 'confirmed' ? 'text-emerald-600' : 'text-red-500'}">
-                        ${booking.status === 'confirmed' ? '✅' : '❌'}
-                    </span>
+                    <div class="text-xs text-right ml-2 shrink-0">
+                        <div>${statusIcon}</div>
+                        <div style="color: ${booking.status === 'confirmed' ? '#065f46' : '#991b1b'}; font-size: 9px;">${statusText}</div>
+                    </div>
                 </div>
             </div>
         `;
     });
     
-    if (bookings.length > 10) {
-        html += `
-            <p class="text-xs text-center" style="color: #6b7280;">
-                + ${bookings.length - 10} more bookings
-            </p>
-        `;
-    }
+    // Add total count
+    html += `
+        <div class="text-center text-xs pt-2" style="color: #6b7280;">
+            Total: ${bookings.length} lesson${bookings.length > 1 ? 's' : ''}
+        </div>
+    `;
     
     listDiv.innerHTML = html;
 }
 
-// Render recommended next lesson
-function renderHistoryRecommendation(bookings) {
-    const recDiv = document.getElementById('historyRecommendation');
-    
-    // Get completed lessons
-    const completed = {};
-    bookings.forEach(booking => {
-        if (booking.status !== 'confirmed') return;
-        const lessonType = getLessonType(booking.lesson);
-        if (!lessonType) return;
-        if (!completed[lessonType]) {
-            completed[lessonType] = new Set();
-        }
-        completed[lessonType].add(booking.lesson);
-    });
-    
-    // Find next lessons
-    const nextLessons = [];
-    for (const [type, config] of Object.entries(LESSON_TYPES)) {
-        const done = completed[type] || new Set();
-        const options = getLessonOptions(type);
-        const next = options.find(opt => !done.has(`${type} - ${opt}`));
-        if (next) {
-            nextLessons.push(`${type} - ${next}`);
-        }
-    }
-    
-    // Check if all completed
-    const allComplete = Object.values(LESSON_TYPES).every((config, index) => {
-        const type = Object.keys(LESSON_TYPES)[index];
-        const done = completed[type] || new Set();
-        return done.size >= config.totalLessons;
-    });
-    
-    if (allComplete) {
-        recDiv.classList.remove('hidden');
-        recDiv.innerHTML = `
-            <div class="text-center">
-                <p class="text-sm font-medium text-emerald-600">🎉 All lessons completed!</p>
-                <p class="text-xs text-muted-foreground mt-0.5">You're ready for your license test!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    if (nextLessons.length === 0) {
-        recDiv.classList.add('hidden');
-        return;
-    }
-    
-    recDiv.classList.remove('hidden');
-    recDiv.innerHTML = `
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-xs font-medium text-blue-700">📖 Next Lesson</p>
-                <p class="text-sm font-semibold" style="color: #111827;">${nextLessons[0]}</p>
-            </div>
-            <a href="booking.html" class="btn" data-size="sm" style="background: #2563eb; color: white; font-weight: 500; padding: 4px 12px; font-size: 12px; border-radius: 6px;">
-                Book Now
-            </a>
-        </div>
-    `;
-    refreshIcons();
-}
-
-// Get lesson options for a type
-function getLessonOptions(type) {
-    const options = {
-        'KPP02': ['1st KPP02', '2nd KPP02', '3rd KPP02', '4th KPP02', '5th KPP02'],
-        'KPP03': ['1st KPP03', '2nd KPP03', '3rd KPP03'],
-        'TM': ['TM 1JAM', 'TM 2JAM']
-    };
-    return options[type] || [];
+// Get lesson type from string
+function getLessonType(lessonStr) {
+    if (!lessonStr) return null;
+    const parts = lessonStr.split(' - ');
+    return parts.length === 2 ? parts[0] : null;
 }
 
 function showConfirmation(sessionId) {
