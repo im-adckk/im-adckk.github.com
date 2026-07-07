@@ -27,7 +27,7 @@ const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
 
 // ============================================
-// UTILITIES (Define first so they're available)
+// UTILITIES
 // ============================================
 
 function getMalaysiaDate(dateInput) {
@@ -121,14 +121,13 @@ function showMessage(text, type = 'info') {
 // ADMIN SESSION MANAGEMENT
 // ============================================
 
-// Check if admin session exists and is valid
 function checkAdminSession() {
     const isLoggedIn = sessionStorage.getItem(ADMIN_SESSION_KEY);
     const loginTime = sessionStorage.getItem(ADMIN_LOGIN_TIME_KEY);
     
     if (isLoggedIn === 'true' && loginTime) {
         const sessionAge = Date.now() - parseInt(loginTime);
-        const maxSessionAge = 24 * 60 * 60 * 1000; // 24 hours
+        const maxSessionAge = 24 * 60 * 60 * 1000;
         
         if (sessionAge < maxSessionAge) {
             return true;
@@ -256,7 +255,7 @@ async function loadStats() {
 }
 
 // ============================================
-// ALL BOOKINGS TABLE - WITH LESSON COLUMN
+// ALL BOOKINGS TABLE
 // ============================================
 
 function renderBookingsTable(bookings, isLoading = false) {
@@ -501,7 +500,7 @@ function setDateRange(range) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - WITH LESSON COLUMN
+// PDF REPORT GENERATION - REFORMATTED
 // ============================================
 
 function buildReportHTML(data) {
@@ -529,6 +528,44 @@ function buildReportHTML(data) {
     const classLabel = data.classLabel;
     const statusLabel = data.statusLabel;
     const filename = `booking_report_${dateFrom}_to_${dateTo}`;
+    
+    // Separate bookings by class
+    const classBBookings = bookings.filter(b => b.class === 'B');
+    const classB2Bookings = bookings.filter(b => b.class === 'B2');
+    
+    // Function to render table rows for a class
+    function renderTableRows(bookingsList, startNumber) {
+        let html = '';
+        bookingsList.forEach((b, index) => {
+            const num = startNumber + index;
+            // Get lesson display name (extract the lesson part)
+            let lessonDisplay = b.lesson || '';
+            // Remove class prefix if present (e.g., "KPP02 - 1st KPP02" -> "1st KPP02")
+            if (lessonDisplay.includes(' - ')) {
+                lessonDisplay = lessonDisplay.split(' - ')[1] || lessonDisplay;
+            }
+            
+            html += `
+                <tr>
+                    <td style="text-align:center;padding:6px;border:1px solid #ddd;">${num}</td>
+                    <td style="padding:6px;border:1px solid #ddd;">${b.name || ''}</td>
+                    <td style="padding:6px;border:1px solid #ddd;">${b.icno || ''}</td>
+                    <td style="padding:6px;border:1px solid #ddd;">${b.remark || ''}</td>
+                    <td style="text-align:center;padding:6px;border:1px solid #ddd;">${b.class || ''}</td>
+                    <td style="padding:6px;border:1px solid #ddd;">${lessonDisplay}</td>
+                    <td style="padding:6px;border:1px solid #ddd;">${b.plate_no || ''}</td>
+                    <td style="padding:6px;border:1px solid #ddd;">${b.sign_in || ''}</td>
+                    <td style="padding:6px;border:1px solid #ddd;">${b.sign_out || ''}</td>
+                </tr>
+            `;
+        });
+        return html;
+    }
+    
+    // Count totals
+    const totalB = classBBookings.length;
+    const totalB2 = classB2Bookings.length;
+    const totalAll = bookings.length;
     
     return `
 <!DOCTYPE html>
@@ -576,13 +613,27 @@ function buildReportHTML(data) {
         .stat-card.red h3 { color: #e74c3c; }
         .stat-card.amber { background: #fffbeb; }
         .stat-card.amber h3 { color: #f39c12; }
+        .stat-card.blue { background: #eff6ff; }
+        .stat-card.blue h3 { color: #2563eb; }
+        .stat-card.purple { background: #f5f3ff; }
+        .stat-card.purple h3 { color: #7c3aed; }
         .section-title {
             color: #2c3e50;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 10px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 8px;
             font-size: 16px;
-            margin-bottom: 15px;
+            margin: 25px 0 15px 0;
         }
+        .section-title:first-of-type { margin-top: 0; }
+        .class-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .class-badge-b { background: #dbeafe; color: #1e40af; }
+        .class-badge-b2 { background: #fce7f3; color: #9d174d; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -595,15 +646,22 @@ function buildReportHTML(data) {
             text-align: left;
             border: 1px solid #34495e;
         }
+        thead th.center { text-align: center; }
         tbody td {
             padding: 6px;
             border: 1px solid #ddd;
         }
         tbody tr:nth-child(even) { background: #f8f9fa; }
         tbody tr:nth-child(odd) { background: #ffffff; }
-        .status-confirmed { color: #27ae60; font-weight: bold; }
-        .status-cancelled { color: #e74c3c; font-weight: bold; }
-        .status-rescheduled { color: #f39c12; font-weight: bold; }
+        .class-separator {
+            background: #e8ecf1 !important;
+            font-weight: bold;
+        }
+        .class-separator td {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            background: #e8ecf1 !important;
+        }
         .footer {
             margin-top: 30px;
             padding-top: 20px;
@@ -631,6 +689,12 @@ function buildReportHTML(data) {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .subtotal {
+            font-weight: bold;
+            padding: 4px 8px;
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -643,58 +707,88 @@ function buildReportHTML(data) {
         <div class="header">
             <h1>🏍️ Motorcycle Booking Report</h1>
             <p>Period: ${formatDate(dateFrom)} to ${formatDate(dateTo)}</p>
-            <p>Class: ${classLabel} | Status: ${statusLabel}</p>
+            <p>Status: ${statusLabel}</p>
             <p>Generated: ${formatDateTimeLocal(new Date().toISOString())}</p>
         </div>
         
         <div class="stats-grid">
-            <div class="stat-card">
-                <h3>${bookings.length}</h3>
+            <div class="stat-card blue">
+                <h3>${totalAll}</h3>
                 <p>Total Bookings</p>
+            </div>
+            <div class="stat-card">
+                <h3>${totalB}</h3>
+                <p>Class B</p>
+            </div>
+            <div class="stat-card purple">
+                <h3>${totalB2}</h3>
+                <p>Class B2</p>
             </div>
             <div class="stat-card green">
                 <h3>${bookings.filter(b => b.status === 'confirmed').length}</h3>
                 <p>Confirmed</p>
             </div>
-            <div class="stat-card red">
-                <h3>${bookings.filter(b => b.status === 'cancelled').length}</h3>
-                <p>Cancelled</p>
-            </div>
-            <div class="stat-card amber">
-                <h3>${bookings.filter(b => b.status === 'rescheduled').length}</h3>
-                <p>Rescheduled</p>
-            </div>
         </div>
         
-        <h3 class="section-title">Booking Details</h3>
+        <!-- CLASS B TABLE -->
+        <h3 class="section-title">
+            <span class="class-badge class-badge-b">CLASS B</span>
+            <span style="margin-left:15px;font-weight:normal;font-size:13px;color:#666;">Total: ${totalB} participants</span>
+        </h3>
+        ${totalB > 0 ? `
         <table>
             <thead>
                 <tr>
-                    <th>Session ID</th>
-                    <th>Name</th>
-                    <th>Class</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Slot</th>
-                    <th>Lesson</th>
-                    <th>Status</th>
+                    <th class="center" style="width:40px;">NO</th>
+                    <th style="min-width:120px;">NAME</th>
+                    <th style="min-width:100px;">IC/PASSPORT</th>
+                    <th style="min-width:80px;">REMARK</th>
+                    <th class="center" style="width:50px;">CLASS</th>
+                    <th style="min-width:80px;">LESSON</th>
+                    <th style="min-width:80px;">PLATE NO</th>
+                    <th style="min-width:70px;">SIGN IN</th>
+                    <th style="min-width:70px;">SIGN OUT</th>
                 </tr>
             </thead>
             <tbody>
-                ${bookings.map(b => `
-                    <tr>
-                        <td>${b.session_id || ''}</td>
-                        <td>${b.name || ''}</td>
-                        <td>${b.class || ''}</td>
-                        <td>${formatDate(b.booking_date)}</td>
-                        <td>${b.session_time || ''}</td>
-                        <td>${b.session_slot || ''}</td>
-                        <td>${b.lesson || ''}</td>
-                        <td class="status-${b.status || ''}">${(b.status || '').toUpperCase()}</td>
-                    </tr>
-                `).join('')}
+                ${renderTableRows(classBBookings, 1)}
             </tbody>
         </table>
+        ` : '<p style="color:#999;font-style:italic;padding:10px 0;">No Class B bookings found for this period.</p>'}
+        
+        <!-- CLASS B2 TABLE -->
+        <h3 class="section-title" style="margin-top:30px;">
+            <span class="class-badge class-badge-b2">CLASS B2</span>
+            <span style="margin-left:15px;font-weight:normal;font-size:13px;color:#666;">Total: ${totalB2} participants</span>
+        </h3>
+        ${totalB2 > 0 ? `
+        <table>
+            <thead>
+                <tr>
+                    <th class="center" style="width:40px;">NO</th>
+                    <th style="min-width:120px;">NAME</th>
+                    <th style="min-width:100px;">IC/PASSPORT</th>
+                    <th style="min-width:80px;">REMARK</th>
+                    <th class="center" style="width:50px;">CLASS</th>
+                    <th style="min-width:80px;">LESSON</th>
+                    <th style="min-width:80px;">PLATE NO</th>
+                    <th style="min-width:70px;">SIGN IN</th>
+                    <th style="min-width:70px;">SIGN OUT</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${renderTableRows(classB2Bookings, totalB + 1)}
+            </tbody>
+        </table>
+        ` : '<p style="color:#999;font-style:italic;padding:10px 0;">No Class B2 bookings found for this period.</p>'}
+        
+        <!-- Grand Total -->
+        <div style="margin-top:20px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;text-align:right;">
+            <span style="font-weight:bold;font-size:14px;">Grand Total: ${totalAll} participants</span>
+            <span style="margin-left:20px;color:#666;font-size:12px;">
+                (B: ${totalB} | B2: ${totalB2})
+            </span>
+        </div>
         
         <div class="footer">
             <p>This report is auto-generated by the Motorcycle Booking System.</p>
@@ -705,12 +799,10 @@ function buildReportHTML(data) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
     <script>
         (function() {
-            // Show the report content after a brief delay
             setTimeout(function() {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('reportContent').style.display = 'block';
                 
-                // Generate PDF
                 const element = document.getElementById('reportContent');
                 const opt = {
                     margin: [10, 10, 10, 10],
@@ -731,7 +823,6 @@ function buildReportHTML(data) {
                 };
                 
                 html2pdf().set(opt).from(element).save().then(function() {
-                    // Close the tab after a short delay
                     setTimeout(function() {
                         window.close();
                     }, 1000);
@@ -753,7 +844,6 @@ function buildReportHTML(data) {
 }
 
 async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
-    // Prepare data for the report
     const classLabel = classFilter === 'all' ? 'All Classes' : 'Class ' + classFilter;
     const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
     
@@ -765,27 +855,20 @@ async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
         statusLabel: statusLabel
     };
     
-    // Build the complete HTML
     const htmlContent = buildReportHTML(reportData);
-    
-    // Create a Blob URL
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     
-    // Open in new tab
     const newTab = window.open(url, '_blank');
     
     if (!newTab) {
         throw new Error('Popup blocked. Please allow popups for this site.');
     }
     
-    // Clean up the URL after a delay (give time for the tab to load)
     setTimeout(() => {
         try {
             URL.revokeObjectURL(url);
-        } catch(e) {
-            // Ignore errors
-        }
+        } catch(e) {}
     }, 10000);
 }
 
@@ -814,7 +897,8 @@ async function generatePDFReport() {
             .select('*')
             .gte('booking_date', dateFrom)
             .lte('booking_date', dateTo)
-            .order('booking_date', { ascending: true });
+            .order('booking_date', { ascending: true })
+            .order('session_time', { ascending: true });
         
         if (classFilter !== 'all') {
             query = query.eq('class', classFilter);
@@ -867,11 +951,9 @@ async function toggleDateStatus() {
         return;
     }
     
-    // Show loading state
     showNotification('⏳ Processing...', 'info', messageDiv);
     
     try {
-        // Check current status
         const { data: existing, error: checkError } = await supabaseClient
             .from('date_status')
             .select('is_active, reason')
@@ -888,7 +970,6 @@ async function toggleDateStatus() {
         const borderColor = newStatus ? 'border-green-300' : 'border-red-300';
         
         if (existing) {
-            // Update existing record
             const { error: updateError } = await supabaseClient
                 .from('date_status')
                 .update({
@@ -900,7 +981,6 @@ async function toggleDateStatus() {
             
             if (updateError) throw updateError;
         } else {
-            // Insert new record
             const { error: insertError } = await supabaseClient
                 .from('date_status')
                 .insert([{
@@ -912,7 +992,6 @@ async function toggleDateStatus() {
             if (insertError) throw insertError;
         }
         
-        // Show success notification
         const icon = newStatus ? '✅' : '❌';
         const actionText = newStatus ? 'enabled' : 'disabled';
         const reasonText = reason ? ` (Reason: ${reason})` : '';
@@ -923,7 +1002,6 @@ async function toggleDateStatus() {
             messageDiv
         );
         
-        // Show current status badge
         statusDisplay.innerHTML = `
             <div class="flex items-center gap-3 p-3 rounded-lg border ${borderColor} ${bgColor}">
                 <span class="font-semibold ${statusColor}">${statusText}</span>
@@ -935,14 +1013,11 @@ async function toggleDateStatus() {
             </div>
         `;
         
-        // Refresh calendar data
         await loadAdminCalendarData();
         await loadStats();
         
-        // Clear reason input
         document.getElementById('closureReason').value = '';
         
-        // Auto-hide notification after 5 seconds
         setTimeout(() => {
             if (!messageDiv.classList.contains('hidden')) {
                 messageDiv.classList.add('hidden');
@@ -967,7 +1042,6 @@ function showNotification(message, type = 'info', messageDiv) {
     messageDiv.classList.remove('hidden');
     messageDiv.className = 'mt-3 p-3 rounded-lg border';
     
-    // Clear previous classes
     messageDiv.classList.remove(
         'bg-green-50', 'border-green-300', 'text-green-700',
         'bg-red-50', 'border-red-300', 'text-red-700',
@@ -975,7 +1049,6 @@ function showNotification(message, type = 'info', messageDiv) {
         'bg-yellow-50', 'border-yellow-300', 'text-yellow-700'
     );
     
-    // Apply appropriate styles
     switch(type) {
         case 'success':
             messageDiv.classList.add('bg-green-50', 'border-green-300', 'text-green-700');
@@ -986,7 +1059,7 @@ function showNotification(message, type = 'info', messageDiv) {
         case 'warning':
             messageDiv.classList.add('bg-yellow-50', 'border-yellow-300', 'text-yellow-700');
             break;
-        default: // info
+        default:
             messageDiv.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-700');
             break;
     }
@@ -1007,7 +1080,6 @@ function showNotification(message, type = 'info', messageDiv) {
 // LOAD CURRENT DATE STATUS ON DATE SELECT
 // ============================================
 
-// Add event listener for date selection
 document.addEventListener('DOMContentLoaded', function() {
     const dateSelect = document.getElementById('adminDateSelect');
     if (dateSelect) {
@@ -1015,7 +1087,6 @@ document.addEventListener('DOMContentLoaded', function() {
             loadDateStatus(this.value);
         });
         
-        // Load status for initial date
         if (dateSelect.value) {
             loadDateStatus(dateSelect.value);
         }
@@ -1073,7 +1144,6 @@ async function loadDateStatus(date) {
         `;
     }
 }
-
 
 // ============================================
 // REFRESH SCHEDULE
@@ -1231,7 +1301,6 @@ async function loadAdminCalendarData() {
             cell.style.color = textColor;
             cell.style.cursor = cursor;
             
-            // Remove existing dots
             const existingDot = cell.querySelector('.availability-dot');
             if (existingDot) existingDot.remove();
             
