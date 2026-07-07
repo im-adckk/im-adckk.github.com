@@ -500,7 +500,7 @@ function setDateRange(range) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - WITHOUT STATS BOXES
+// PDF REPORT GENERATION - SEPARATE INCREMENT NUMBERS
 // ============================================
 
 function buildReportHTML(data) {
@@ -533,11 +533,11 @@ function buildReportHTML(data) {
     const classBBookings = bookings.filter(b => b.class === 'B');
     const classB2Bookings = bookings.filter(b => b.class === 'B2');
     
-    // Function to render table rows for a class
-    function renderTableRows(bookingsList, startNumber) {
+    // Function to render table rows for a class - each starts from 1
+    function renderTableRows(bookingsList) {
         let html = '';
         bookingsList.forEach((b, index) => {
-            const num = startNumber + index;
+            const num = index + 1; // Starts from 1 for each class
             // Get lesson display name (extract the lesson part)
             let lessonDisplay = b.lesson || '';
             // Remove class prefix if present (e.g., "KPP02 - 1st KPP02" -> "1st KPP02")
@@ -706,7 +706,7 @@ function buildReportHTML(data) {
                 </tr>
             </thead>
             <tbody>
-                ${renderTableRows(classBBookings, 1)}
+                ${renderTableRows(classBBookings)}
             </tbody>
         </table>
         ` : '<p style="color:#999;font-style:italic;padding:10px 0;">No Class B bookings found for this period.</p>'}
@@ -732,7 +732,7 @@ function buildReportHTML(data) {
                 </tr>
             </thead>
             <tbody>
-                ${renderTableRows(classB2Bookings, totalB + 1)}
+                ${renderTableRows(classB2Bookings)}
             </tbody>
         </table>
         ` : '<p style="color:#999;font-style:italic;padding:10px 0;">No Class B2 bookings found for this period.</p>'}
