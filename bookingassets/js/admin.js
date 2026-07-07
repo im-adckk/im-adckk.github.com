@@ -256,7 +256,7 @@ async function loadStats() {
 }
 
 // ============================================
-// ALL BOOKINGS TABLE
+// ALL BOOKINGS TABLE - WITH LESSON COLUMN
 // ============================================
 
 function renderBookingsTable(bookings, isLoading = false) {
@@ -264,13 +264,13 @@ function renderBookingsTable(bookings, isLoading = false) {
     if (!tbody) return;
     
     if (isLoading) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center p-8 text-muted-foreground"><i data-lucide="refresh-cw" class="w-5 h-5 animate-spin mx-auto mb-2"></i>Loading bookings data...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center p-8 text-muted-foreground"><i data-lucide="refresh-cw" class="w-5 h-5 animate-spin mx-auto mb-2"></i>Loading bookings data...</td></tr>`;
         if (window.lucide) lucide.createIcons();
         return;
     }
     
     if (!bookings || bookings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center p-12 text-muted-foreground font-medium">No bookings match the selected filtration query.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center p-12 text-muted-foreground font-medium">No bookings match the selected filtration query.</td></tr>`;
         return;
     }
     
@@ -296,6 +296,7 @@ function renderBookingsTable(bookings, isLoading = false) {
                 <td class="p-3.5 text-foreground">${formatMalaysiaDate(booking.booking_date)}</td>
                 <td class="p-3.5 text-muted-foreground">${booking.session_time || ''}</td>
                 <td class="p-3.5 text-muted-foreground font-medium">${booking.session_slot || ''}</td>
+                <td class="p-3.5 text-muted-foreground font-medium">${booking.lesson || ''}</td>
                 <td class="p-3.5">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${customColors}">
                         ${booking.status.toUpperCase()}
@@ -500,7 +501,7 @@ function setDateRange(range) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - COMPLETE FIX
+// PDF REPORT GENERATION - WITH LESSON COLUMN
 // ============================================
 
 function buildReportHTML(data) {
@@ -675,6 +676,7 @@ function buildReportHTML(data) {
                     <th>Date</th>
                     <th>Time</th>
                     <th>Slot</th>
+                    <th>Lesson</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -687,6 +689,7 @@ function buildReportHTML(data) {
                         <td>${formatDate(b.booking_date)}</td>
                         <td>${b.session_time || ''}</td>
                         <td>${b.session_slot || ''}</td>
+                        <td>${b.lesson || ''}</td>
                         <td class="status-${b.status || ''}">${(b.status || '').toUpperCase()}</td>
                     </tr>
                 `).join('')}
