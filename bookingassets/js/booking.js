@@ -1218,23 +1218,27 @@ function hideMessage() {
 // GUIDE MODAL FUNCTIONS - MOST ROBUST
 // ============================================
 
-let isGuideModalOpen = false;
+let activeModal = null; // Track which modal is currently open
 
+// Guide Modal Functions
 function openGuideModal(event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
     
-    console.log('Opening guide modal...');
+    // Close any other modal first
+    if (activeModal && activeModal !== 'guide') {
+        closeHistoryModal();
+    }
+    
     const modal = document.getElementById('guideModal');
     if (modal) {
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        isGuideModalOpen = true;
+        activeModal = 'guide';
         refreshIcons();
-        console.log('Modal opened successfully');
     }
 }
 
@@ -1244,44 +1248,21 @@ function closeGuideModal(event) {
         event.stopPropagation();
     }
     
-    console.log('Closing guide modal...');
     const modal = document.getElementById('guideModal');
     if (modal) {
         modal.classList.add('hidden');
         modal.style.display = 'none';
-        document.body.style.overflow = '';
-        isGuideModalOpen = false;
-        console.log('Modal closed successfully');
+        if (activeModal === 'guide') {
+            activeModal = null;
+        }
+        // Only restore scroll if no other modal is open
+        if (!activeModal) {
+            document.body.style.overflow = '';
+        }
+        refreshIcons();
     }
 }
 
-// Close modal when clicking outside
-document.addEventListener('click', function(event) {
-    if (!isGuideModalOpen) return;
-    
-    const modal = document.getElementById('guideModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    
-    const modalContent = modal.querySelector('div');
-    if (!modalContent) return;
-    
-    // Check if click is inside the modal content
-    if (!modalContent.contains(event.target)) {
-        // Check if click is on the guide button or its children
-        const guideButton = document.getElementById('guideButton');
-        if (guideButton && guideButton.contains(event.target)) {
-            return;
-        }
-        closeGuideModal();
-    }
-});
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape' && isGuideModalOpen) {
-        closeGuideModal();
-    }
-});
 
 // ============================================
 // LESSON TYPE AND SUB-OPTIONS
@@ -1299,13 +1280,12 @@ const LESSON_OPTIONS = {
     'KPP03': [
         '1st KPP03',
         '2nd KPP03',
-        '3rd KPP03',
-        '4th KPP03',
-        '5th KPP03'
+        '3rd KPP03'
+        
     ],
     'TM': [
-        'TM 1JAM',
-        'TM 2JAM'
+        'T.M 1JAM',
+        'T.M 2JAM'
     ]
 };
 
