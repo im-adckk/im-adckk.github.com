@@ -500,7 +500,7 @@ function setDateRange(range) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - REFORMATTED
+// PDF REPORT GENERATION - WITHOUT STATS BOXES
 // ============================================
 
 function buildReportHTML(data) {
@@ -592,31 +592,6 @@ function buildReportHTML(data) {
         }
         .header h1 { margin: 0; color: #2c3e50; font-size: 24px; }
         .header p { margin: 5px 0; color: #7f8c8d; font-size: 14px; }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            text-align: center;
-            background: #f8f9fa;
-        }
-        .stat-card h3 { margin: 0; font-size: 20px; }
-        .stat-card p { margin: 5px 0 0; color: #7f8c8d; font-size: 12px; }
-        .stat-card.green { background: #f0fdf4; }
-        .stat-card.green h3 { color: #27ae60; }
-        .stat-card.red { background: #fef2f2; }
-        .stat-card.red h3 { color: #e74c3c; }
-        .stat-card.amber { background: #fffbeb; }
-        .stat-card.amber h3 { color: #f39c12; }
-        .stat-card.blue { background: #eff6ff; }
-        .stat-card.blue h3 { color: #2563eb; }
-        .stat-card.purple { background: #f5f3ff; }
-        .stat-card.purple h3 { color: #7c3aed; }
         .section-title {
             color: #2c3e50;
             border-bottom: 2px solid #333;
@@ -653,15 +628,6 @@ function buildReportHTML(data) {
         }
         tbody tr:nth-child(even) { background: #f8f9fa; }
         tbody tr:nth-child(odd) { background: #ffffff; }
-        .class-separator {
-            background: #e8ecf1 !important;
-            font-weight: bold;
-        }
-        .class-separator td {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            background: #e8ecf1 !important;
-        }
         .footer {
             margin-top: 30px;
             padding-top: 20px;
@@ -695,6 +661,14 @@ function buildReportHTML(data) {
             background: #f1f5f9;
             border-radius: 4px;
         }
+        .total-row {
+            font-weight: bold;
+            background: #f8fafc;
+        }
+        .total-row td {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
 <body>
@@ -709,25 +683,6 @@ function buildReportHTML(data) {
             <p>Period: ${formatDate(dateFrom)} to ${formatDate(dateTo)}</p>
             <p>Status: ${statusLabel}</p>
             <p>Generated: ${formatDateTimeLocal(new Date().toISOString())}</p>
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-card blue">
-                <h3>${totalAll}</h3>
-                <p>Total Bookings</p>
-            </div>
-            <div class="stat-card">
-                <h3>${totalB}</h3>
-                <p>Class B</p>
-            </div>
-            <div class="stat-card purple">
-                <h3>${totalB2}</h3>
-                <p>Class B2</p>
-            </div>
-            <div class="stat-card green">
-                <h3>${bookings.filter(b => b.status === 'confirmed').length}</h3>
-                <p>Confirmed</p>
-            </div>
         </div>
         
         <!-- CLASS B TABLE -->
