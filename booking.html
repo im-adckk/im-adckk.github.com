@@ -229,22 +229,12 @@
     background: #f3f4f6;
   }
   
-  #historyModal .lesson-progress {
-    height: 4px;
-    border-radius: 9999px;
-    background: #e5e7eb;
-    overflow: hidden;
+  #historyModal .history-item-past {
+    background: #f9fafb;
   }
   
-  #historyModal .lesson-progress-bar {
-    height: 100%;
-    border-radius: 9999px;
-    background: #2563eb;
-    transition: width 0.5s ease;
-  }
-  
-  #historyModal .lesson-progress-bar.completed {
-    background: #22c55e;
+  #historyModal .history-item-upcoming {
+    background: #ffffff;
   }
 </style>
 </head>
@@ -686,7 +676,7 @@
     </div>
   </div>
 
-  <!-- ============================================ -->
+    <!-- ============================================ -->
   <!-- LESSON HISTORY MODAL (Pop-up) -->
   <!-- ============================================ -->
   <div id="historyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
@@ -699,7 +689,7 @@
           </div>
           <div>
             <h3 class="font-semibold text-lg" style="color: #111827;">My Lesson History</h3>
-            <p class="text-sm" style="color: #6b7280;">Your past and upcoming lessons</p>
+            <p class="text-sm" style="color: #6b7280;">Your past lesson bookings</p>
           </div>
         </div>
         <button type="button" onclick="closeHistoryModal()" class="text-gray-400 hover:text-gray-600 transition-colors" style="background:none;border:none;cursor:pointer;font-size:24px;line-height:1;">
@@ -707,23 +697,20 @@
         </button>
       </div>
       
-      <!-- Progress Summary -->
-      <div id="historyProgressSummary" class="space-y-2"></div>
+      <!-- Lesson Types Summary -->
+      <div id="historySummary" class="grid grid-cols-3 gap-2 text-center text-xs"></div>
       
       <!-- Booking List -->
       <div id="historyBookingsList" class="space-y-2 max-h-60 overflow-y-auto"></div>
       
-      <!-- Recommended Next Lesson -->
-      <div id="historyRecommendation" class="hidden bg-blue-50 rounded-lg p-3 border border-blue-200"></div>
-      
       <!-- Close Button -->
       <button type="button" onclick="closeHistoryModal()" class="btn w-full justify-center gap-2 mt-2" style="background: #2563eb; color: white; font-weight: 600;">
         <i data-lucide="check" class="w-4 h-4"></i>
-        Got it
+        Close
       </button>
     </div>
   </div>
-
+  
   <!-- ============================================ -->
   <!-- STEP 5: Success -->
   <!-- ============================================ -->
