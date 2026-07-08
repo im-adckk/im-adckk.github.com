@@ -650,8 +650,27 @@ function goBackStep2() {
 }
 
 // ============================================
-// STEP 3: Student Details
+// STEP 3: Student Details - WITH VALIDATION
 // ============================================
+
+// IC/Passport validation - only letters and numbers
+function validateICPassport(value) {
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '');
+    return cleaned.toUpperCase();
+}
+
+// Name validation - force uppercase letters only
+function validateName(value) {
+    const cleaned = value.replace(/[^a-zA-Z\s]/g, '');
+    return cleaned.toUpperCase();
+}
+
+// Contact validation - only numbers
+function validateContact(value) {
+    const cleaned = value.replace(/\D/g, '');
+    return cleaned;
+}
+
 function updateLessonSubOptions() {
     const selectedType = document.querySelector('input[name="lesson_type"]:checked');
     const subContainer = document.getElementById('lessonSubContainer');
@@ -706,53 +725,119 @@ function validateLesson() {
     return true;
 }
 
+function validateICPassportFormat(value) {
+    // Must contain only letters and numbers
+    if (!/^[A-Z0-9]+$/.test(value)) {
+        return { valid: false, message: 'IC/Passport must contain only letters and numbers.' };
+    }
+    // Must be at least 8 characters
+    if (value.length < 8) {
+        return { valid: false, message: 'IC/Passport must be at least 8 characters.' };
+    }
+    // Must be at most 20 characters
+    if (value.length > 20) {
+        return { valid: false, message: 'IC/Passport must be at most 20 characters.' };
+    }
+    return { valid: true };
+}
+
+function validateNameFormat(value) {
+    // Must contain only letters and spaces
+    if (!/^[A-Z\s]+$/.test(value)) {
+        return { valid: false, message: 'Name must contain only letters and spaces.' };
+    }
+    // Must be at least 3 characters
+    if (value.length < 3) {
+        return { valid: false, message: 'Name must be at least 3 characters.' };
+    }
+    // Must be at most 100 characters
+    if (value.length > 100) {
+        return { valid: false, message: 'Name must be at most 100 characters.' };
+    }
+    return { valid: true };
+}
+
+function validateContactFormat(value) {
+    // Must contain only numbers
+    if (!/^\d+$/.test(value)) {
+        return { valid: false, message: 'Contact number must contain only numbers.' };
+    }
+    // Must be between 10-15 digits
+    if (value.length < 10 || value.length > 15) {
+        return { valid: false, message: 'Contact number must be 10-15 digits.' };
+    }
+    return { valid: true };
+}
+
 detailsForm.addEventListener('submit', (e) => {
     e.preventDefault();
     goToStep4();
 });
 
-function validateICPassport(value) {
-    // Remove any special characters except letters and numbers
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '');
-    return cleaned.toUpperCase();
-}
-
-// Name validation - force uppercase letters only
-function validateName(value) {
-    // Remove numbers and special characters, keep letters and spaces
-    const cleaned = value.replace(/[^a-zA-Z\s]/g, '');
-    return cleaned.toUpperCase();
-}
-
-// Contact validation - only numbers, no spaces or symbols
-function validateContact(value) {
-    // Remove everything except numbers
-    const cleaned = value.replace(/\D/g, '');
-    return cleaned;
-}
-
 function goToStep4() {
-    const icno = document.getElementById('icno').value.trim();
-    const name = document.getElementById('name').value.trim();
-    const contact = document.getElementById('contact').value.trim();
+    // Get and validate IC/Passport
+    let icno = document.getElementById('icno').value.trim();
+    icno = validateICPassport(icno);
+    document.getElementById('icno').value = icno;
     
-    if (!validateLesson()) return;
-
-    if (!icno || icno.length < 8) {
-        showMessage('Please enter a valid IC or Passport number.', 'error');
+    // Get and validate Name
+    let name = document.getElementById('name').value.trim();
+    name = validateName(name);
+    document.getElementById('name').value = name;
+    
+    // Get and validate Contact
+    let contact = document.getElementById('contact').value.trim();
+    contact = validateContact(contact);
+    document.getElementById('contact').value = contact;
+    
+    // Validate lesson selection
+    if (!validateLesson()) {
         return;
     }
 
+    // Validate IC/Passport
+    if (!icno || icno.length < 8) {
+        showMessage('Please enter a valid IC or Passport number (minimum 8 characters).', 'error');
+        document.getElementById('icno').focus();
+        return;
+    }
+    
+    const icValidation = validateICPassportFormat(icno);
+    if (!icValidation.valid) {
+        showMessage(icValidation.message, 'error');
+        document.getElementById('icno').focus();
+        return;
+    }
+
+    // Validate Name
     if (!name || name.length < 3) {
         showMessage('Please enter your full name (minimum 3 characters).', 'error');
+        document.getElementById('name').focus();
+        return;
+    }
+    
+    const nameValidation = validateNameFormat(name);
+    if (!nameValidation.valid) {
+        showMessage(nameValidation.message, 'error');
+        document.getElementById('name').focus();
         return;
     }
 
+    // Validate Contact
     if (!contact || contact.length < 10) {
-        showMessage('Please enter a valid contact number.', 'error');
+        showMessage('Please enter a valid contact number (minimum 10 digits).', 'error');
+        document.getElementById('contact').focus();
+        return;
+    }
+    
+    const contactValidation = validateContactFormat(contact);
+    if (!contactValidation.valid) {
+        showMessage(contactValidation.message, 'error');
+        document.getElementById('contact').focus();
         return;
     }
 
+    // Check if there's a duplicate before proceeding
     if (hasDayDuplicate) {
         showMessage('⚠️ You cannot proceed with a duplicate booking. Please cancel your existing booking first.', 'error');
         return;
@@ -1279,12 +1364,63 @@ document.addEventListener('DOMContentLoaded', () => {
     showStep(1);
     updateTodayIndicator();
 
+    // IC/Passport input - only letters and numbers, auto uppercase
     const icnoInput = document.getElementById('icno');
     if (icnoInput) {
         icnoInput.addEventListener('blur', checkDayDuplicate);
-        icnoInput.addEventListener('input', () => {
+        icnoInput.addEventListener('input', function() {
+            // Auto-validate: remove special characters, convert to uppercase
+            let value = this.value.replace(/[^a-zA-Z0-9]/g, '');
+            value = value.toUpperCase();
+            if (this.value !== value) {
+                this.value = value;
+            }
             document.getElementById('dayDuplicateWarning').innerHTML = '';
             document.getElementById('historyIndicator').classList.add('hidden');
+        });
+        // Handle paste events for IC/Passport
+        icnoInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const paste = (e.clipboardData || window.clipboardData).getData('text');
+            const cleaned = paste.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            document.execCommand('insertText', false, cleaned);
+        });
+    }
+
+    // Name input - force uppercase letters only
+    const nameInput = document.getElementById('name');
+    if (nameInput) {
+        nameInput.addEventListener('input', function() {
+            let value = this.value.replace(/[^a-zA-Z\s]/g, '');
+            value = value.toUpperCase();
+            if (this.value !== value) {
+                this.value = value;
+            }
+        });
+        // Handle paste events for Name
+        nameInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const paste = (e.clipboardData || window.clipboardData).getData('text');
+            const cleaned = paste.replace(/[^a-zA-Z\s]/g, '').toUpperCase();
+            document.execCommand('insertText', false, cleaned);
+        });
+    }
+
+    // Contact input - only numbers
+    const contactInput = document.getElementById('contact');
+    if (contactInput) {
+        contactInput.addEventListener('input', function() {
+            let value = this.value.replace(/\D/g, '');
+            if (this.value !== value) {
+                this.value = value;
+            }
+        });
+        // Handle paste events for Contact
+        contactInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const paste = (e.clipboardData || window.clipboardData).getData('text');
+            const cleaned = paste.replace(/\D/g, '');
+            document.execCommand('insertText', false, cleaned);
         });
     }
 
