@@ -1778,8 +1778,8 @@ function renderDutyReport(data, date) {
         `;
 
         sessionData.forEach((item, index) => {
-            const signStatus = item.sign === 'SIGNED' ? '✍️ Signed' : '⏳ Pending';
-            const signClass = item.sign === 'SIGNED' ? 'text-emerald-600' : 'text-amber-600';
+            // Remove the ✍️ Signed / ⏳ Pending display, just show empty or dash
+            const signDisplay = ''; // Empty for PDF
 
             html += `
                 <tr class="hover:bg-muted/40 transition-colors border-b">
@@ -1787,12 +1787,8 @@ function renderDutyReport(data, date) {
                     <td class="p-2.5 font-medium">${item.total_students || 0}</td>
                     <td class="p-2.5 font-medium">${item.instructor_name || ''}</td>
                     <td class="p-2.5">
-                        <span class="${signClass}">${signStatus}</span>
-                        ${item.sign !== 'SIGNED' ? `
-                            <button onclick="markSigned('${item.schedule_id}')" class="text-xs text-blue-600 hover:text-blue-800 ml-2">
-                                <i data-lucide="pen" class="w-3 h-3 inline"></i> Sign
-                            </button>
-                        ` : ''}
+                        <!-- Sign column - left empty for manual signature -->
+                        <span style="color: transparent;">.</span>
                     </td>
                     <td class="p-2.5">
                         <span class="inline-block px-2 py-0.5 rounded bg-muted text-xs">${item.class || ''}</span>
@@ -1812,17 +1808,7 @@ function renderDutyReport(data, date) {
 
     container.innerHTML = `
         <div class="bg-white rounded-xl border p-6 space-y-6">
-            <div class="text-center border-b pb-4">
-                <h2 class="text-xl font-bold">API-API DRIVING CENTRE SDN BHD (723723T)</h2>
-                <h3 class="text-lg font-semibold mt-1">INSTRUCTOR RECORD TIMETABLE (DUTY SCHEDULE)</h3>
-                <div class="text-sm text-muted-foreground mt-2">
-                    <span class="font-medium">DAY:</span> ${dayName} 
-                    <span class="ml-4 font-medium">DATE:</span> ${formattedDate}
-                </div>
-                <div class="text-sm text-muted-foreground">
-                    <span class="font-medium">SESSION:</span> (9AM-12PM) | (1PM-4PM)
-                </div>
-            </div>
+            <!-- Header removed from here - will be added in PDF export -->
             
             <div>
                 <h4 class="font-semibold text-base mb-3 flex items-center gap-2">
@@ -1848,27 +1834,6 @@ function renderDutyReport(data, date) {
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-async function markSigned(scheduleId) {
-    try {
-        const { error } = await supabaseClient
-            .from('duty_schedule')
-            .update({
-                sign: 'SIGNED',
-                signature: 'SIGNED_' + new Date().toISOString()
-            })
-            .eq('id', scheduleId);
-
-        if (error) throw error;
-
-        showMessage('✅ Duty marked as signed!', 'success');
-        await generateDutyReport();
-
-    } catch (error) {
-        console.error('Error marking signed:', error);
-        showMessage('Error: ' + error.message, 'error');
-    }
-}
-
 async function exportDutyPDF() {
     const container = document.getElementById('dutyReportContainer');
     if (!container || container.classList.contains('hidden')) {
@@ -1877,69 +1842,68 @@ async function exportDutyPDF() {
     }
 
     try {
-        showMessage('Generating PDF...', 'info');
-
         const date = document.getElementById('dutyDate').value;
         const dateObj = new Date(date + 'T00:00:00');
         const filename = `duty_schedule_${dateObj.toISOString().split('T')[0]}`;
 
-        // Get the report content
-        const content = container.querySelector('.bg-white').cloneNode(true);
+        // Get the content and clean it
+        let content = container.innerHTML;
         
-        // Remove any buttons from the content
-        content.querySelectorAll('button').forEach(btn => btn.remove());
+        // Remove any buttons
+        content = content.replace(/<button[^>]*>.*?<\/button>/g, '');
+        
+        // Remove ✍️ Signed text and icons
+        content = content.replace(/✍️ Signed/g, '');
+        content = content.replace(/⏳ Pending/g, '');
+        content = content.replace(/<span[^>]*class="[^"]*text-emerald-600[^"]*"[^>]*>.*?<\/span>/g, '');
+        content = content.replace(/<span[^>]*class="[^"]*text-amber-600[^"]*"[^>]*>.*?<\/span>/g, '');
 
-        // Build clean HTML with inline styles (no oklch colors)
+        // Build full HTML page with single header
         const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Duty Schedule Report</title>
+    <title>Duty Schedule Report - ${filename}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            background: #ffffff;
-            padding: 30px;
+        body { 
+            font-family: Arial, Helvetica, sans-serif; 
+            padding: 30px; 
+            background: white; 
             font-size: 12px;
             line-height: 1.5;
-            color: #000000;
         }
-        .report-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            padding: 20px;
+        .report { 
+            max-width: 1100px; 
+            margin: 0 auto; 
         }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #000000;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+        .header { 
+            text-align: center; 
+            border-bottom: 2px solid #000; 
+            padding-bottom: 15px; 
+            margin-bottom: 20px; 
         }
-        .header h2 {
-            font-size: 18px;
+        .header h2 { 
+            margin: 0; 
+            font-size: 18px; 
             font-weight: bold;
-            color: #000000;
         }
-        .header h3 {
-            font-size: 16px;
+        .header h3 { 
+            margin: 5px 0; 
+            font-size: 16px; 
             font-weight: 600;
-            margin-top: 5px;
-            color: #000000;
         }
-        .header .info {
-            font-size: 13px;
-            color: #555555;
-            margin-top: 8px;
+        .header .info { 
+            margin: 8px 0 0 0; 
+            color: #333; 
+            font-size: 13px; 
         }
-        .header .info span {
-            margin: 0 10px;
+        .header .info span { 
+            margin: 0 10px; 
         }
-        .header .info .label {
-            font-weight: bold;
-            color: #000000;
+        .header .info .label { 
+            font-weight: bold; 
         }
         .session-title {
             font-size: 14px;
@@ -1948,8 +1912,6 @@ async function exportDutyPDF() {
             padding: 8px 15px;
             border-radius: 4px;
             display: inline-block;
-        }
-        .session-title.blue {
             background: #dbeafe;
             color: #1e40af;
         }
@@ -1957,45 +1919,43 @@ async function exportDutyPDF() {
             background: #f3e8ff;
             color: #6b21a8;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-            margin-bottom: 15px;
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 12px; 
+            margin: 10px 0; 
         }
-        thead th {
-            background: #34495e;
-            color: #ffffff;
-            padding: 8px 10px;
-            text-align: left;
-            border: 1px solid #34495e;
+        thead th { 
+            background: #34495e; 
+            color: white; 
+            padding: 8px 10px; 
+            text-align: left; 
+            border: 1px solid #34495e; 
         }
-        thead th.center {
-            text-align: center;
+        thead th.center { 
+            text-align: center; 
         }
-        tbody td {
-            padding: 7px 10px;
-            border: 1px solid #dddddd;
+        tbody td { 
+            padding: 7px 10px; 
+            border: 1px solid #ddd; 
         }
-        tbody tr:nth-child(even) {
-            background: #f8f9fa;
+        tbody tr:nth-child(even) { 
+            background: #f9fafb; 
         }
-        tbody tr:nth-child(odd) {
-            background: #ffffff;
+        tbody tr:nth-child(odd) { 
+            background: #ffffff; 
         }
-        .text-center {
-            text-align: center;
+        .text-center { 
+            text-align: center; 
         }
-        .text-muted {
-            color: #6b7280;
+        .text-muted { 
+            color: #6b7280; 
         }
-        .status-signed {
-            color: #059669;
-            font-weight: bold;
-        }
-        .status-pending {
-            color: #d97706;
-            font-weight: bold;
+        .no-data { 
+            text-align: center; 
+            padding: 20px; 
+            color: #999; 
+            font-style: italic; 
         }
         .badge {
             display: inline-block;
@@ -2004,44 +1964,23 @@ async function exportDutyPDF() {
             background: #f3f4f6;
             font-size: 11px;
         }
-        .footer {
-            text-align: center;
-            font-size: 11px;
-            color: #95a5a6;
-            border-top: 1px solid #dddddd;
-            padding-top: 15px;
-            margin-top: 20px;
+        .footer { 
+            text-align: center; 
+            font-size: 11px; 
+            color: #999; 
+            border-top: 1px solid #ddd; 
+            padding-top: 15px; 
+            margin-top: 20px; 
         }
-        .no-data {
-            text-align: center;
-            padding: 20px;
-            color: #999999;
-            font-style: italic;
-        }
-        .signature-area {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #dddddd;
-            display: flex;
-            justify-content: space-around;
-        }
-        .signature-box {
-            text-align: center;
-        }
-        .signature-box .line {
-            width: 150px;
-            border-bottom: 1px solid #000000;
-            margin: 30px 0 5px 0;
-        }
-        .signature-box .label {
-            font-size: 11px;
-            color: #555555;
+        @media print {
+            body { padding: 20px; }
+            .no-print { display: none; }
         }
     </style>
 </head>
 <body>
-    <div class="report-container">
-        <!-- Header -->
+    <div class="report">
+        <!-- SINGLE HEADER -->
         <div class="header">
             <h2>API-API DRIVING CENTRE SDN BHD (723723T)</h2>
             <h3>INSTRUCTOR RECORD TIMETABLE (DUTY SCHEDULE)</h3>
@@ -2054,37 +1993,20 @@ async function exportDutyPDF() {
             </div>
         </div>
 
-        <!-- Content -->
-        ${content.innerHTML}
+        <!-- TABLE CONTENT -->
+        ${content}
 
-        <!-- Signature Area -->
-        <div class="signature-area">
-            <div class="signature-box">
-                <div class="line"></div>
-                <div class="label">Instructor's Signature</div>
-            </div>
-            <div class="signature-box">
-                <div class="line"></div>
-                <div class="label">Admin's Signature</div>
-            </div>
-            <div class="signature-box">
-                <div class="line"></div>
-                <div class="label">Date</div>
-            </div>
-        </div>
-
+        <!-- FOOTER ONLY -->
         <div class="footer">
-            This report is auto-generated by the Motorcycle Booking System.
-            <br>© ${new Date().getFullYear()} - All rights reserved.
+            Generated on: ${new Date().toLocaleString('en-MY')}
+            <br>© ${new Date().getFullYear()} - API-API Driving Centre Sdn Bhd
         </div>
     </div>
-
     <script>
-        // Auto-print or download
         window.onload = function() {
             setTimeout(function() {
                 window.print();
-            }, 500);
+            }, 800);
         };
     <\/script>
 </body>
@@ -2099,7 +2021,7 @@ async function exportDutyPDF() {
         newTab.document.write(htmlContent);
         newTab.document.close();
 
-        showMessage('✅ Report opened in new tab. Use Print (Ctrl+P) to save as PDF.', 'success');
+        showMessage('✅ Report opened in new tab. Use "Save as PDF" or Print (Ctrl+P).', 'success');
 
     } catch (error) {
         console.error('Error exporting PDF:', error);
