@@ -2112,7 +2112,7 @@ window.deleteInstructor = deleteInstructor;
 // Duty Schedule
 window.assignDuty = assignDuty;
 window.generateDutyReport = generateDutyReport;
-window.markSigned = markSigned;
+// window.markSigned = markSigned;
 window.exportDutyPDF = exportDutyPDF;
 
 // ============================================
