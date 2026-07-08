@@ -533,39 +533,129 @@ function buildReportHTML(data) {
     const classBBookings = bookings.filter(b => b.class === 'B');
     const classB2Bookings = bookings.filter(b => b.class === 'B2');
     
-    // Function to render table rows for a class - each starts from 1
-    function renderTableRows(bookingsList) {
-        let html = '';
-        bookingsList.forEach((b, index) => {
-            const num = index + 1; // Starts from 1 for each class
-            // Get lesson display name (extract the lesson part)
-            let lessonDisplay = b.lesson || '';
-            // Remove class prefix if present (e.g., "KPP02 - 1st KPP02" -> "1st KPP02")
-            if (lessonDisplay.includes(' - ')) {
-                lessonDisplay = lessonDisplay.split(' - ')[1] || lessonDisplay;
-            }
-            
-            html += `
-                <tr>
-                    <td style="text-align:center;padding:6px;border:1px solid #ddd;">${num}</td>
-                    <td style="padding:6px;border:1px solid #ddd;">${b.name || ''}</td>
-                    <td style="padding:6px;border:1px solid #ddd;">${b.icno || ''}</td>
-                    <td style="padding:6px;border:1px solid #ddd;">${b.remark || ''}</td>
-                    <td style="text-align:center;padding:6px;border:1px solid #ddd;">${b.class || ''}</td>
-                    <td style="padding:6px;border:1px solid #ddd;">${lessonDisplay}</td>
-                    <td style="padding:6px;border:1px solid #ddd;">${b.plate_no || ''}</td>
-                    <td style="padding:6px;border:1px solid #ddd;">${b.sign_in || ''}</td>
-                    <td style="padding:6px;border:1px solid #ddd;">${b.sign_out || ''}</td>
-                </tr>
-            `;
-        });
-        return html;
-    }
-    
     // Count totals
     const totalB = classBBookings.length;
     const totalB2 = classB2Bookings.length;
     const totalAll = bookings.length;
+    
+    // Function to render table rows for a class with session grouping
+    function renderGroupedTableRows(bookingsList, startCounter) {
+        const sessionOrder = ['9am-12pm', '12pm-3pm'];
+        const slotOrder = ['sesi1', 'sesi2', 'sesi3'];
+        
+        // Group by session
+        const grouped = {};
+        bookingsList.forEach(b => {
+            const key = b.session_time || 'Unknown';
+            if (!grouped[key]) {
+                grouped[key] = [];
+            }
+            grouped[key].push(b);
+        });
+        
+        let html = '';
+        let counter = startCounter || 0;
+        
+        // Sort sessions by time order
+        const sortedSessions = Object.keys(grouped).sort((a, b) => {
+            return sessionOrder.indexOf(a) - sessionOrder.indexOf(b);
+        });
+        
+        sortedSessions.forEach(sessionTime => {
+            const items = grouped[sessionTime];
+            // Sort items by slot
+            items.sort((a, b) => {
+                return slotOrder.indexOf(a.session_slot) - slotOrder.indexOf(b.session_slot);
+            });
+            
+            // Add session header row
+            html += `
+                <tr class="class-separator">
+                    <td colspan="9" style="padding:8px 10px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;">
+                        📅 ${sessionTime}
+                    </td>
+                </tr>
+            `;
+            
+            // Add each booking in this session
+            items.forEach((b) => {
+                counter++;
+                let lessonDisplay = b.lesson || '';
+                if (lessonDisplay.includes(' - ')) {
+                    lessonDisplay = lessonDisplay.split(' - ')[1] || lessonDisplay;
+                }
+                
+                html += `
+                    <tr>
+                        <td style="text-align:center;padding:6px;border:1px solid #ddd;">${counter}</td>
+                        <td style="padding:6px;border:1px solid #ddd;">${b.name || ''}</td>
+                        <td style="padding:6px;border:1px solid #ddd;">${b.icno || ''}</td>
+                        <td style="padding:6px;border:1px solid #ddd;">${b.remark || ''}</td>
+                        <td style="text-align:center;padding:6px;border:1px solid #ddd;">${b.class || ''}</td>
+                        <td style="padding:6px;border:1px solid #ddd;">${lessonDisplay}</td>
+                        <td style="padding:6px;border:1px solid #ddd;">${b.plate_no || ''}</td>
+                        <td style="padding:6px;border:1px solid #ddd;">${b.sign_in || ''}</td>
+                        <td style="padding:6px;border:1px solid #ddd;">${b.sign_out || ''}</td>
+                    </tr>
+                `;
+            });
+            
+            // Add session subtotal
+            html += `
+                <tr style="background:#f8fafc;font-weight:bold;">
+                    <td colspan="8" style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:#2c3e50;">
+                        Subtotal (${sessionTime}):
+                    </td>
+                    <td style="padding:6px;border:1px solid #ddd;text-align:center;color:#2c3e50;">
+                        ${items.length}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        return html;
+    }
+    
+    // Function to render a single class page
+    function renderClassPage(bookingsList, className, classBadge, totalCount) {
+        if (bookingsList.length === 0) {
+            return `
+                <div style="page-break-after:always;padding:40px 0;text-align:center;color:#999;font-style:italic;">
+                    No ${className} bookings found for this period.
+                </div>
+            `;
+        }
+        
+        return `
+            <div style="page-break-after:always;">
+                <h3 class="section-title" style="margin-top:0;">
+                    <span class="class-badge ${classBadge}">${className}</span>
+                    <span style="margin-left:15px;font-weight:normal;font-size:13px;color:#666;">Total: ${totalCount} participants</span>
+                </h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="center" style="width:40px;">NO</th>
+                            <th style="min-width:120px;">NAME</th>
+                            <th style="min-width:100px;">IC/PASSPORT</th>
+                            <th style="min-width:80px;">REMARK</th>
+                            <th class="center" style="width:50px;">CLASS</th>
+                            <th style="min-width:80px;">LESSON</th>
+                            <th style="min-width:80px;">PLATE NO</th>
+                            <th style="min-width:70px;">SIGN IN</th>
+                            <th style="min-width:70px;">SIGN OUT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${renderGroupedTableRows(bookingsList, 0)}
+                    </tbody>
+                </table>
+                <div style="margin-top:15px;padding:10px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;text-align:right;">
+                    <span style="font-weight:bold;font-size:13px;">Total ${className}: ${totalCount} participants</span>
+                </div>
+            </div>
+        `;
+    }
     
     return `
 <!DOCTYPE html>
@@ -584,6 +674,15 @@ function buildReportHTML(data) {
             line-height: 1.5;
         }
         .report-container { max-width: 100%; margin: 0 auto; }
+        
+        /* Page break for printing */
+        .page-break {
+            page-break-after: always;
+        }
+        .page-break:last-child {
+            page-break-after: avoid;
+        }
+        
         .header {
             text-align: center;
             border-bottom: 2px solid #333;
@@ -592,6 +691,7 @@ function buildReportHTML(data) {
         }
         .header h1 { margin: 0; color: #2c3e50; font-size: 24px; }
         .header p { margin: 5px 0; color: #7f8c8d; font-size: 14px; }
+        
         .section-title {
             color: #2c3e50;
             border-bottom: 2px solid #333;
@@ -600,6 +700,7 @@ function buildReportHTML(data) {
             margin: 25px 0 15px 0;
         }
         .section-title:first-of-type { margin-top: 0; }
+        
         .class-badge {
             display: inline-block;
             padding: 2px 10px;
@@ -609,6 +710,7 @@ function buildReportHTML(data) {
         }
         .class-badge-b { background: #dbeafe; color: #1e40af; }
         .class-badge-b2 { background: #fce7f3; color: #9d174d; }
+        
         table {
             width: 100%;
             border-collapse: collapse;
@@ -628,6 +730,13 @@ function buildReportHTML(data) {
         }
         tbody tr:nth-child(even) { background: #f8f9fa; }
         tbody tr:nth-child(odd) { background: #ffffff; }
+        
+        .class-separator td {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            background: #e8ecf1 !important;
+        }
+        
         .footer {
             margin-top: 30px;
             padding-top: 20px;
@@ -655,19 +764,33 @@ function buildReportHTML(data) {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .subtotal {
-            font-weight: bold;
-            padding: 4px 8px;
-            background: #f1f5f9;
-            border-radius: 4px;
+        
+        .cover-page {
+            text-align: center;
+            padding: 60px 40px;
+            page-break-after: always;
         }
-        .total-row {
-            font-weight: bold;
-            background: #f8fafc;
+        .cover-page h1 {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 20px;
         }
-        .total-row td {
-            padding: 8px 10px;
-            border: 1px solid #ccc;
+        .cover-page .subtitle {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+        }
+        .cover-page .info {
+            font-size: 14px;
+            color: #95a5a6;
+            line-height: 2;
+        }
+        .cover-page .info strong {
+            color: #2c3e50;
+        }
+        .cover-page .logo {
+            font-size: 64px;
+            margin-bottom: 30px;
         }
     </style>
 </head>
@@ -678,77 +801,79 @@ function buildReportHTML(data) {
     </div>
     
     <div id="reportContent" class="report-container" style="display:none;">
-        <div class="header">
-            <h1>🏍️ Motorcycle Booking Report</h1>
-            <p>Period: ${formatDate(dateFrom)} to ${formatDate(dateTo)}</p>
-            <p>Status: ${statusLabel}</p>
-            <p>Generated: ${formatDateTimeLocal(new Date().toISOString())}</p>
+        
+        <!-- COVER PAGE -->
+        <div class="cover-page">
+            <div class="logo">🏍️</div>
+            <h1>Motorcycle Booking Report</h1>
+            <p class="subtitle">Class ${classLabel} • ${statusLabel}</p>
+            <div class="info">
+                <p><strong>Period:</strong> ${formatDate(dateFrom)} to ${formatDate(dateTo)}</p>
+                <p><strong>Total Bookings:</strong> ${totalAll} participants</p>
+                <p><strong>Class B:</strong> ${totalB} participants</p>
+                <p><strong>Class B2:</strong> ${totalB2} participants</p>
+                <p><strong>Generated:</strong> ${formatDateTimeLocal(new Date().toISOString())}</p>
+            </div>
         </div>
         
-        <!-- CLASS B TABLE -->
-        <h3 class="section-title">
-            <span class="class-badge class-badge-b">CLASS B</span>
-            <span style="margin-left:15px;font-weight:normal;font-size:13px;color:#666;">Total: ${totalB} participants</span>
-        </h3>
-        ${totalB > 0 ? `
-        <table>
-            <thead>
-                <tr>
-                    <th class="center" style="width:40px;">NO</th>
-                    <th style="min-width:120px;">NAME</th>
-                    <th style="min-width:100px;">IC/PASSPORT</th>
-                    <th style="min-width:80px;">REMARK</th>
-                    <th class="center" style="width:50px;">CLASS</th>
-                    <th style="min-width:80px;">LESSON</th>
-                    <th style="min-width:80px;">PLATE NO</th>
-                    <th style="min-width:70px;">SIGN IN</th>
-                    <th style="min-width:70px;">SIGN OUT</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${renderTableRows(classBBookings)}
-            </tbody>
-        </table>
-        ` : '<p style="color:#999;font-style:italic;padding:10px 0;">No Class B bookings found for this period.</p>'}
-        
-        <!-- CLASS B2 TABLE -->
-        <h3 class="section-title" style="margin-top:30px;">
-            <span class="class-badge class-badge-b2">CLASS B2</span>
-            <span style="margin-left:15px;font-weight:normal;font-size:13px;color:#666;">Total: ${totalB2} participants</span>
-        </h3>
-        ${totalB2 > 0 ? `
-        <table>
-            <thead>
-                <tr>
-                    <th class="center" style="width:40px;">NO</th>
-                    <th style="min-width:120px;">NAME</th>
-                    <th style="min-width:100px;">IC/PASSPORT</th>
-                    <th style="min-width:80px;">REMARK</th>
-                    <th class="center" style="width:50px;">CLASS</th>
-                    <th style="min-width:80px;">LESSON</th>
-                    <th style="min-width:80px;">PLATE NO</th>
-                    <th style="min-width:70px;">SIGN IN</th>
-                    <th style="min-width:70px;">SIGN OUT</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${renderTableRows(classB2Bookings)}
-            </tbody>
-        </table>
-        ` : '<p style="color:#999;font-style:italic;padding:10px 0;">No Class B2 bookings found for this period.</p>'}
-        
-        <!-- Grand Total -->
-        <div style="margin-top:20px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;text-align:right;">
-            <span style="font-weight:bold;font-size:14px;">Grand Total: ${totalAll} participants</span>
-            <span style="margin-left:20px;color:#666;font-size:12px;">
-                (B: ${totalB} | B2: ${totalB2})
-            </span>
+        <!-- CLASS B PAGE -->
+        <div class="page-break">
+            ${renderClassPage(classBBookings, 'CLASS B', 'class-badge-b', totalB)}
         </div>
         
-        <div class="footer">
-            <p>This report is auto-generated by the Motorcycle Booking System.</p>
-            <p>© ${new Date().getFullYear()} - All rights reserved.</p>
+        <!-- CLASS B2 PAGE -->
+        <div class="page-break">
+            ${renderClassPage(classB2Bookings, 'CLASS B2', 'class-badge-b2', totalB2)}
         </div>
+        
+        <!-- SUMMARY PAGE (Last page) -->
+        <div style="page-break-after:avoid;padding-top:40px;">
+            <h3 class="section-title" style="margin-top:0;">📊 Summary</h3>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:20px;">
+                <div style="padding:20px;border:1px solid #ddd;border-radius:8px;text-align:center;background:#f8f9fa;">
+                    <div style="font-size:28px;font-weight:bold;color:#2c3e50;">${totalAll}</div>
+                    <div style="font-size:12px;color:#7f8c8d;margin-top:5px;">Total Participants</div>
+                </div>
+                <div style="padding:20px;border:1px solid #dbeafe;border-radius:8px;text-align:center;background:#eff6ff;">
+                    <div style="font-size:28px;font-weight:bold;color:#1e40af;">${totalB}</div>
+                    <div style="font-size:12px;color:#7f8c8d;margin-top:5px;">Class B</div>
+                </div>
+                <div style="padding:20px;border:1px solid #fce7f3;border-radius:8px;text-align:center;background:#fdf2f8;">
+                    <div style="font-size:28px;font-weight:bold;color:#9d174d;">${totalB2}</div>
+                    <div style="font-size:12px;color:#7f8c8d;margin-top:5px;">Class B2</div>
+                </div>
+            </div>
+            
+            <!-- Session breakdown -->
+            <div style="margin-top:20px;padding:15px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
+                <h4 style="margin-bottom:10px;color:#2c3e50;">Session Breakdown</h4>
+                ${(() => {
+                    const sessionCounts = {};
+                    bookings.forEach(b => {
+                        const key = b.session_time || 'Unknown';
+                        if (!sessionCounts[key]) sessionCounts[key] = 0;
+                        sessionCounts[key]++;
+                    });
+                    let html = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">';
+                    for (const [session, count] of Object.entries(sessionCounts)) {
+                        html += `
+                            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:white;border-radius:4px;border:1px solid #e2e8f0;">
+                                <span>${session}</span>
+                                <span style="font-weight:bold;">${count}</span>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    return html;
+                })()}
+            </div>
+            
+            <div class="footer">
+                <p>This report is auto-generated by the Motorcycle Booking System.</p>
+                <p>© ${new Date().getFullYear()} - All rights reserved.</p>
+            </div>
+        </div>
+        
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
@@ -797,7 +922,6 @@ function buildReportHTML(data) {
 </body>
 </html>`;
 }
-
 async function generatePDF(data, dateFrom, dateTo, classFilter, statusFilter) {
     const classLabel = classFilter === 'all' ? 'All Classes' : 'Class ' + classFilter;
     const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
@@ -853,7 +977,8 @@ async function generatePDFReport() {
             .gte('booking_date', dateFrom)
             .lte('booking_date', dateTo)
             .order('booking_date', { ascending: true })
-            .order('session_time', { ascending: true });
+            .order('session_time', { ascending: true })
+            .order('session_slot', { ascending: true });
         
         if (classFilter !== 'all') {
             query = query.eq('class', classFilter);
