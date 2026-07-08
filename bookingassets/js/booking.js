@@ -711,6 +711,26 @@ detailsForm.addEventListener('submit', (e) => {
     goToStep4();
 });
 
+function validateICPassport(value) {
+    // Remove any special characters except letters and numbers
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '');
+    return cleaned.toUpperCase();
+}
+
+// Name validation - force uppercase letters only
+function validateName(value) {
+    // Remove numbers and special characters, keep letters and spaces
+    const cleaned = value.replace(/[^a-zA-Z\s]/g, '');
+    return cleaned.toUpperCase();
+}
+
+// Contact validation - only numbers, no spaces or symbols
+function validateContact(value) {
+    // Remove everything except numbers
+    const cleaned = value.replace(/\D/g, '');
+    return cleaned;
+}
+
 function goToStep4() {
     const icno = document.getElementById('icno').value.trim();
     const name = document.getElementById('name').value.trim();
