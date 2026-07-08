@@ -1883,24 +1883,74 @@ async function exportDutyPDF() {
         const dateObj = new Date(date + 'T00:00:00');
         const filename = `duty_schedule_${dateObj.toISOString().split('T')[0]}`;
 
+        // Get the report content
         const content = container.querySelector('.bg-white').cloneNode(true);
         content.querySelectorAll('button').forEach(btn => btn.remove());
 
+        // Create a clean container with safe colors
         const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'padding: 20px; background: white; max-width: 1100px; margin: 0 auto;';
+        tempDiv.style.cssText = 'padding: 20px; background: white; max-width: 1100px; margin: 0 auto; font-family: Arial, sans-serif; color: #000000;';
+        
+        // Replace any oklch colors with safe equivalents
+        const styleFix = document.createElement('style');
+        styleFix.textContent = `
+            .bg-blue-100 { background: #dbeafe !important; }
+            .text-blue-700 { color: #1e40af !important; }
+            .bg-purple-100 { background: #f3e8ff !important; }
+            .text-purple-700 { color: #6b21a8 !important; }
+            .text-emerald-600 { color: #059669 !important; }
+            .text-amber-600 { color: #d97706 !important; }
+            .bg-muted { background: #f3f4f6 !important; }
+            .bg-white { background: #ffffff !important; }
+            .border { border-color: #e5e7eb !important; }
+            .rounded-lg { border-radius: 8px !important; }
+            .rounded-xl { border-radius: 12px !important; }
+            .text-muted-foreground { color: #6b7280 !important; }
+            .font-bold { font-weight: bold !important; }
+            .font-medium { font-weight: 500 !important; }
+            .text-sm { font-size: 13px !important; }
+            .text-xs { font-size: 11px !important; }
+            .p-2 { padding: 8px !important; }
+            .p-2.5 { padding: 10px !important; }
+            .p-3 { padding: 12px !important; }
+            .p-4 { padding: 16px !important; }
+            .p-6 { padding: 24px !important; }
+            .space-y-6 > * + * { margin-top: 24px !important; }
+            .space-y-4 > * + * { margin-top: 16px !important; }
+            .space-y-2 > * + * { margin-top: 8px !important; }
+            table { width: 100%; border-collapse: collapse; }
+            th { background: #34495e !important; color: white !important; padding: 8px !important; text-align: left; border: 1px solid #34495e !important; }
+            td { padding: 8px !important; border: 1px solid #ddd !important; }
+            tr:nth-child(even) { background: #f9fafb !important; }
+        `;
+        tempDiv.appendChild(styleFix);
         tempDiv.appendChild(content);
+
         document.body.appendChild(tempDiv);
 
+        // Use html2pdf with safe options
         const opt = {
             margin: [10, 10, 10, 10],
             filename: `${filename}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true, 
+                logging: false,
+                backgroundColor: '#ffffff',
+                allowTaint: true
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait' 
+            }
         };
 
+        // Generate PDF and download
         await html2pdf().set(opt).from(tempDiv).save();
 
+        // Clean up
         document.body.removeChild(tempDiv);
         showMessage('✅ PDF exported successfully!', 'success');
 
@@ -1909,7 +1959,6 @@ async function exportDutyPDF() {
         showMessage('Error exporting PDF: ' + error.message, 'error');
     }
 }
-
 // ============================================
 // ADMIN INITIALIZATION
 // ============================================
