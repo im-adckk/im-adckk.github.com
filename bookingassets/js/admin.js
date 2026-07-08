@@ -216,7 +216,7 @@ async function loadStats() {
         const { count: upcoming, error: upcomingError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
-            .gte('booking_date', today)
+            .gt('booking_date', today) 
             .eq('status', 'confirmed');
         
         if (upcomingError) throw upcomingError;
