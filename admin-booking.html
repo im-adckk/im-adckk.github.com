@@ -291,6 +291,12 @@
             <button onclick="showTab('report')" id="tabReport" class="btn w-full sm:w-auto text-muted-foreground" data-variant="ghost" data-size="sm">
                 <i data-lucide="file-text" class="w-4 h-4 mr-1.5"></i> Generate Report
             </button>
+            <button onclick="showTab('instructor')" id="tabInstructor" class="btn w-full sm:w-auto text-muted-foreground" data-variant="ghost" data-size="sm">
+                <i data-lucide="users" class="w-4 h-4 mr-1.5"></i> Instructor
+            </button>
+            <button onclick="showTab('duty')" id="tabDuty" class="btn w-full sm:w-auto text-muted-foreground" data-variant="ghost" data-size="sm">
+                <i data-lucide="clipboard-list" class="w-4 h-4 mr-1.5"></i> Duty Schedule
+            </button>
         </div>
 
         <!-- ============================================ -->
@@ -512,6 +518,122 @@
                         </p>
                     </div>
                 </section>
+            </div>
+        </div>
+        <!-- TAB: INSTRUCTOR -->
+        <div id="tabContentInstructor" class="hidden space-y-4">
+            <!-- Add Instructor Form -->
+            <div class="card p-4 border">
+                <h3 class="font-semibold mb-3 flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Add Instructor
+                </h3>
+                <form id="instructorForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid gap-1.5">
+                        <label class="label text-sm">Full Name *</label>
+                        <input type="text" id="instructorName" required class="input" placeholder="e.g., Ahmad bin Ali">
+                    </div>
+                    <div class="grid gap-1.5">
+                        <label class="label text-sm">IC Number *</label>
+                        <input type="text" id="instructorIc" required class="input" placeholder="e.g., 820101101234">
+                    </div>
+                    <div class="grid gap-1.5">
+                        <label class="label text-sm">Class Qualified</label>
+                        <div class="flex gap-4 items-center h-full pt-1">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="instructorClassB" value="B" checked> Class B
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="instructorClassB2" value="B2" checked> Class B2
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-span-full">
+                        <button type="submit" class="btn gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Add Instructor
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Instructor List -->
+            <div class="card overflow-hidden border">
+                <div class="p-4 border-b bg-muted/20 flex justify-between items-center">
+                    <h3 class="font-semibold flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4"></i> Instructor List
+                    </h3>
+                    <span id="instructorCount" class="text-sm text-muted-foreground">0 instructors</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-muted text-xs font-semibold text-muted-foreground uppercase border-b">
+                                <th class="p-3">#</th>
+                                <th class="p-3">Name</th>
+                                <th class="p-3">IC No</th>
+                                <th class="p-3">Class</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="instructorTableBody">
+                            <tr><td colspan="6" class="text-center text-muted-foreground p-8">Loading instructors...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TAB: DUTY SCHEDULE REPORT -->
+        <div id="tabContentDuty" class="hidden space-y-4">
+            <div class="card p-4 border">
+                <div class="flex flex-wrap gap-4 items-end">
+                    <div class="grid gap-1.5">
+                        <label class="label text-sm">Select Date</label>
+                        <input type="date" id="dutyDate" class="input" value="">
+                    </div>
+                    <button onclick="generateDutyReport()" class="btn gap-2">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Generate Report
+                    </button>
+                    <button onclick="exportDutyPDF()" class="btn gap-2" data-variant="secondary">
+                        <i data-lucide="file-down" class="w-4 h-4"></i> Export PDF
+                    </button>
+                </div>
+                
+                <!-- Quick Assign Duty -->
+                <div class="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="grid gap-1.5">
+                        <label class="label text-xs">Instructor</label>
+                        <select id="dutyInstructor" class="input"></select>
+                    </div>
+                    <div class="grid gap-1.5">
+                        <label class="label text-xs">Session</label>
+                        <select id="dutySession" class="input">
+                            <option value="9am-12pm">9am - 12pm</option>
+                            <option value="1pm-4pm">1pm - 4pm</option>
+                        </select>
+                    </div>
+                    <div class="grid gap-1.5">
+                        <label class="label text-xs">Class</label>
+                        <select id="dutyClass" class="input">
+                            <option value="B">Class B</option>
+                            <option value="B2">Class B2</option>
+                        </select>
+                    </div>
+                    <div class="grid gap-1.5">
+                        <label class="label text-xs">Students</label>
+                        <input type="number" id="dutyStudents" class="input" placeholder="0" min="0">
+                    </div>
+                    <div class="col-span-full">
+                        <button onclick="assignDuty()" class="btn gap-2" data-variant="secondary">
+                            <i data-lucide="calendar-plus" class="w-4 h-4"></i> Assign Duty
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Duty Report Display -->
+            <div id="dutyReportContainer" class="hidden">
+                <!-- Report content will be rendered here -->
             </div>
         </div>
 
