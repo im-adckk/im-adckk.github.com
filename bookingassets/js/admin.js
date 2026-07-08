@@ -1885,79 +1885,243 @@ async function exportDutyPDF() {
 
         // Get the report content
         const content = container.querySelector('.bg-white').cloneNode(true);
+        
+        // Remove any buttons from the content
         content.querySelectorAll('button').forEach(btn => btn.remove());
 
-        // Create a clean container with safe colors
-        const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'padding: 20px; background: white; max-width: 1100px; margin: 0 auto; font-family: Arial, sans-serif; color: #000000;';
-        
-        // Replace any oklch colors with safe equivalents
-        const styleFix = document.createElement('style');
-        styleFix.textContent = `
-            .bg-blue-100 { background: #dbeafe !important; }
-            .text-blue-700 { color: #1e40af !important; }
-            .bg-purple-100 { background: #f3e8ff !important; }
-            .text-purple-700 { color: #6b21a8 !important; }
-            .text-emerald-600 { color: #059669 !important; }
-            .text-amber-600 { color: #d97706 !important; }
-            .bg-muted { background: #f3f4f6 !important; }
-            .bg-white { background: #ffffff !important; }
-            .border { border-color: #e5e7eb !important; }
-            .rounded-lg { border-radius: 8px !important; }
-            .rounded-xl { border-radius: 12px !important; }
-            .text-muted-foreground { color: #6b7280 !important; }
-            .font-bold { font-weight: bold !important; }
-            .font-medium { font-weight: 500 !important; }
-            .text-sm { font-size: 13px !important; }
-            .text-xs { font-size: 11px !important; }
-            .p-2 { padding: 8px !important; }
-            .p-2.5 { padding: 10px !important; }
-            .p-3 { padding: 12px !important; }
-            .p-4 { padding: 16px !important; }
-            .p-6 { padding: 24px !important; }
-            .space-y-6 > * + * { margin-top: 24px !important; }
-            .space-y-4 > * + * { margin-top: 16px !important; }
-            .space-y-2 > * + * { margin-top: 8px !important; }
-            table { width: 100%; border-collapse: collapse; }
-            th { background: #34495e !important; color: white !important; padding: 8px !important; text-align: left; border: 1px solid #34495e !important; }
-            td { padding: 8px !important; border: 1px solid #ddd !important; }
-            tr:nth-child(even) { background: #f9fafb !important; }
-        `;
-        tempDiv.appendChild(styleFix);
-        tempDiv.appendChild(content);
+        // Build clean HTML with inline styles (no oklch colors)
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Duty Schedule Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #ffffff;
+            padding: 30px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #000000;
+        }
+        .report-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000000;
+        }
+        .header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 5px;
+            color: #000000;
+        }
+        .header .info {
+            font-size: 13px;
+            color: #555555;
+            margin-top: 8px;
+        }
+        .header .info span {
+            margin: 0 10px;
+        }
+        .header .info .label {
+            font-weight: bold;
+            color: #000000;
+        }
+        .session-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            padding: 8px 15px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .session-title.blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .session-title.purple {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+        thead th {
+            background: #34495e;
+            color: #ffffff;
+            padding: 8px 10px;
+            text-align: left;
+            border: 1px solid #34495e;
+        }
+        thead th.center {
+            text-align: center;
+        }
+        tbody td {
+            padding: 7px 10px;
+            border: 1px solid #dddddd;
+        }
+        tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-muted {
+            color: #6b7280;
+        }
+        .status-signed {
+            color: #059669;
+            font-weight: bold;
+        }
+        .status-pending {
+            color: #d97706;
+            font-weight: bold;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #f3f4f6;
+            font-size: 11px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            color: #95a5a6;
+            border-top: 1px solid #dddddd;
+            padding-top: 15px;
+            margin-top: 20px;
+        }
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #999999;
+            font-style: italic;
+        }
+        .signature-area {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dddddd;
+            display: flex;
+            justify-content: space-around;
+        }
+        .signature-box {
+            text-align: center;
+        }
+        .signature-box .line {
+            width: 150px;
+            border-bottom: 1px solid #000000;
+            margin: 30px 0 5px 0;
+        }
+        .signature-box .label {
+            font-size: 11px;
+            color: #555555;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <!-- Header -->
+        <div class="header">
+            <h2>API-API DRIVING CENTRE SDN BHD (723723T)</h2>
+            <h3>INSTRUCTOR RECORD TIMETABLE (DUTY SCHEDULE)</h3>
+            <div class="info">
+                <span><span class="label">DAY:</span> ${getDayName(date)}</span>
+                <span><span class="label">DATE:</span> ${formatDateForReport(date)}</span>
+            </div>
+            <div class="info">
+                <span class="label">SESSION:</span> (9AM-12PM) | (1PM-4PM)
+            </div>
+        </div>
 
-        document.body.appendChild(tempDiv);
+        <!-- Content -->
+        ${content.innerHTML}
 
-        // Use html2pdf with safe options
-        const opt = {
-            margin: [10, 10, 10, 10],
-            filename: `${filename}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-                scale: 2, 
-                useCORS: true, 
-                logging: false,
-                backgroundColor: '#ffffff',
-                allowTaint: true
-            },
-            jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
-                orientation: 'portrait' 
-            }
+        <!-- Signature Area -->
+        <div class="signature-area">
+            <div class="signature-box">
+                <div class="line"></div>
+                <div class="label">Instructor's Signature</div>
+            </div>
+            <div class="signature-box">
+                <div class="line"></div>
+                <div class="label">Admin's Signature</div>
+            </div>
+            <div class="signature-box">
+                <div class="line"></div>
+                <div class="label">Date</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            This report is auto-generated by the Motorcycle Booking System.
+            <br>© ${new Date().getFullYear()} - All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        // Auto-print or download
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
         };
+    <\/script>
+</body>
+</html>`;
 
-        // Generate PDF and download
-        await html2pdf().set(opt).from(tempDiv).save();
+        // Open in new tab
+        const newTab = window.open('', '_blank');
+        if (!newTab) {
+            throw new Error('Popup blocked. Please allow popups for this site.');
+        }
 
-        // Clean up
-        document.body.removeChild(tempDiv);
-        showMessage('✅ PDF exported successfully!', 'success');
+        newTab.document.write(htmlContent);
+        newTab.document.close();
+
+        showMessage('✅ Report opened in new tab. Use Print (Ctrl+P) to save as PDF.', 'success');
 
     } catch (error) {
         console.error('Error exporting PDF:', error);
         showMessage('Error exporting PDF: ' + error.message, 'error');
     }
+}
+
+// Helper function to get day name
+function getDayName(dateString) {
+    const date = new Date(dateString + 'T00:00:00');
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return dayNames[date.getDay()];
+}
+
+// Helper function to format date
+function formatDateForReport(dateString) {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('en-MY', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
 }
 // ============================================
 // ADMIN INITIALIZATION
