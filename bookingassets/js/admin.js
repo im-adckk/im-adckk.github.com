@@ -197,22 +197,19 @@ document.getElementById('adminPassword').addEventListener('keypress', (e) => {
 
 async function loadStats() {
     try {
-        const { count: total, error: totalError } = await supabaseClient
-            .from('bookings')
-            .select('*', { count: 'exact', head: true });
-
-        if (totalError) throw totalError;
-        document.getElementById('totalBookings').textContent = total || 0;
-
         const today = getMalaysiaToday();
+        
+        // Today's bookings (all confirmed bookings for today)
         const { count: todayCount, error: todayError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
-            .eq('booking_date', today);
+            .eq('booking_date', today)
+            .eq('status', 'confirmed');
 
         if (todayError) throw todayError;
         document.getElementById('todayBookings').textContent = todayCount || 0;
 
+        // Upcoming bookings (tomorrow onwards, confirmed only)
         const { count: upcoming, error: upcomingError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
@@ -222,27 +219,33 @@ async function loadStats() {
         if (upcomingError) throw upcomingError;
         document.getElementById('upcomingBookings').textContent = upcoming || 0;
 
+        // Class B - Today only
         const { count: bCount, error: bError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
+            .eq('booking_date', today)
             .eq('class', 'B')
             .eq('status', 'confirmed');
 
         if (bError) throw bError;
         document.getElementById('classBBookings').textContent = bCount || 0;
 
+        // Class B2 - Today only
         const { count: b2Count, error: b2Error } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
+            .eq('booking_date', today)
             .eq('class', 'B2')
             .eq('status', 'confirmed');
 
         if (b2Error) throw b2Error;
         document.getElementById('classB2Bookings').textContent = b2Count || 0;
 
+        // Cancelled bookings - Current and future only (today and onwards)
         const { count: cancelled, error: cancelledError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
+            .gte('booking_date', today)
             .eq('status', 'cancelled');
 
         if (cancelledError) throw cancelledError;
@@ -253,7 +256,6 @@ async function loadStats() {
         showMessage('Error loading stats: ' + error.message, 'error');
     }
 }
-
 // ============================================
 // ALL BOOKINGS TABLE
 // ============================================
