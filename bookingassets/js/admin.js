@@ -314,57 +314,79 @@ function renderBookingsTable(bookings, isLoading = false) {
 
 async function loadAllBookings() {
     renderBookingsTable([], true);
-
+    
     try {
         const dateFrom = document.getElementById('filterDateFrom').value;
         const dateTo = document.getElementById('filterDateTo').value;
         const status = document.getElementById('filterStatus').value;
         const classType = document.getElementById('filterClass').value;
-
+        
+        const today = getMalaysiaToday();
+        
         let query = supabaseClient
             .from('bookings')
             .select('*', { count: 'exact' });
-
-        if (dateFrom) {
-            query = query.gte('booking_date', dateFrom);
+        
+        // Default: Show today and future bookings only
+        // If date filters are not set, use today as default
+        if (!dateFrom && !dateTo) {
+            // Only show today and future
+            query = query.gte('booking_date', today);
+        } else {
+            // User has set custom date range
+            if (dateFrom) {
+                query = query.gte('booking_date', dateFrom);
+            }
+            if (dateTo) {
+                query = query.lte('booking_date', dateTo);
+            }
         }
-        if (dateTo) {
-            query = query.lte('booking_date', dateTo);
-        }
+        
         if (status && status !== 'all') {
             query = query.eq('status', status);
         }
         if (classType && classType !== 'all') {
             query = query.eq('class', classType);
         }
-
+        
         const fromRow = (currentPage - 1) * rowsPerPage;
         const toRow = fromRow + rowsPerPage - 1;
-
+        
         query = query
-            .order('booking_date', { ascending: false })
+            .order('booking_date', { ascending: true })
             .order('session_time', { ascending: true })
             .range(fromRow, toRow);
-
+            
         const { data, error, count } = await query;
-
+        
         if (error) throw error;
-
+        
         allBookingsData = data || [];
         totalDBCount = count || 0;
-
-        document.getElementById('resultCount').textContent = `${totalDBCount} bookings found`;
-
+        
+        // Show info about which dates are being shown
+        let filterInfo = '';
+        if (!dateFrom && !dateTo) {
+            filterInfo = ` (Today: ${formatMalaysiaDate(today)} onwards)`;
+        } else if (dateFrom && dateTo) {
+            filterInfo = ` (${formatMalaysiaDate(dateFrom)} to ${formatMalaysiaDate(dateTo)})`;
+        } else if (dateFrom) {
+            filterInfo = ` (From ${formatMalaysiaDate(dateFrom)})`;
+        } else if (dateTo) {
+            filterInfo = ` (Until ${formatMalaysiaDate(dateTo)})`;
+        }
+        
+        document.getElementById('resultCount').textContent = `${totalDBCount} bookings found${filterInfo}`;
+        
         renderBookingsTable(allBookingsData);
         updatePaginationServerSide();
-
+        
     } catch (error) {
         console.error('Error loading server bookings:', error);
         showMessage('Failed to load bookings from database.', 'error');
         renderBookingsTable([]);
     }
 }
-
 function updatePaginationServerSide() {
     totalPages = Math.ceil(totalDBCount / rowsPerPage) || 1;
 
@@ -463,6 +485,15 @@ async function changeRowsPerPage() {
 }
 
 function clearDateFilters() {
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterStatus').value = 'all';
+    document.getElementById('filterClass').value = 'all';
+    currentPage = 1;
+    loadAllBookings(); 
+}
+
+function resetToToday() {
     document.getElementById('filterDateFrom').value = '';
     document.getElementById('filterDateTo').value = '';
     document.getElementById('filterStatus').value = 'all';
