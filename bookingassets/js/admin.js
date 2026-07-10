@@ -719,7 +719,7 @@ async function applyQuotaToDateFromCalendar(dateStr) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - BOOKING REPORT (PORTRAIT FIXED)
+// PDF REPORT GENERATION - BOOKING REPORT (IMPROVED LAYOUT)
 // ============================================
 
 function buildBookingReportHTML(data) {
@@ -782,8 +782,8 @@ function buildBookingReportHTML(data) {
             });
 
             html += `
-                <tr class="class-separator">
-                    <td colspan="9" style="padding:4px 8px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;font-size:9px;text-align:left;">
+                <tr class="session-header">
+                    <td colspan="9" style="padding:6px 10px;border:1px solid #d1d5db;background:#f3f4f6;font-weight:600;color:#374151;font-size:12px;text-align:left;">
                         📅 ${sessionTime}
                     </td>
                 </tr>
@@ -797,26 +797,26 @@ function buildBookingReportHTML(data) {
                 }
 
                 html += `
-                    <tr>
-                        <td style="text-align:center;padding:3px 4px;border:1px solid #ddd;font-size:8px;">${counter}</td>
-                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.name || ''}</td>
-                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.icno || ''}</td>
-                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.remark || ''}</td>
-                        <td style="text-align:center;padding:3px 4px;border:1px solid #ddd;font-size:8px;">${b.class || ''}</td>
-                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${lessonDisplay}</td>
-                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.plate_no || ''}</td>
-                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.sign_in || ''}</td>
-                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.sign_out || ''}</td>
+                    <tr class="data-row">
+                        <td style="text-align:center;padding:6px 4px;border:1px solid #e5e7eb;font-size:12px;font-weight:500;color:#374151;">${counter}</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.name || ''}</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.icno || ''}</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.remark || ''}</td>
+                        <td style="text-align:center;padding:6px 4px;border:1px solid #e5e7eb;font-size:12px;font-weight:500;color:#374151;">${b.class || ''}</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${lessonDisplay}</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.plate_no || ''}</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.sign_in || ''}</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.sign_out || ''}</td>
                     </tr>
                 `;
             });
 
             html += `
-                <tr style="background:#f8fafc;font-weight:bold;">
-                    <td colspan="8" style="padding:4px 8px;border:1px solid #ddd;text-align:right;color:#2c3e50;font-size:8px;">
+                <tr class="session-subtotal">
+                    <td colspan="8" style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;color:#374151;font-size:12px;font-weight:600;background:#f9fafb;">
                         Subtotal (${sessionTime}):
                     </td>
-                    <td style="padding:4px;border:1px solid #ddd;text-align:center;color:#2c3e50;font-size:8px;">
+                    <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;color:#374151;font-size:12px;font-weight:600;background:#f9fafb;">
                         ${items.length}
                     </td>
                 </tr>
@@ -826,54 +826,60 @@ function buildBookingReportHTML(data) {
         return html;
     }
 
-    function renderClassPage(bookingsList, className, classBadge, totalCount) {
+    function renderClassPage(bookingsList, className, classColor, classBgColor, totalCount) {
         if (bookingsList.length === 0) {
             return `
-                <div style="page-break-after:always;padding:30px 0;text-align:center;color:#999;font-style:italic;font-size:11px;">
+                <div style="page-break-after:always;padding:40px 20px;text-align:center;color:#9ca3af;font-style:italic;font-size:12px;">
                     No ${className} bookings found for this period.
                 </div>
             `;
         }
 
         return `
-            <div style="page-break-after:always;padding:5px 8px;">
-                <h3 style="margin:0 0 6px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:5px;">
-                    <span style="display:inline-block;padding:2px 10px;border-radius:4px;font-weight:bold;font-size:10px;background:${classBadge === 'class-badge-b' ? '#dbeafe' : '#fce7f3'};color:${classBadge === 'class-badge-b' ? '#1e40af' : '#9d174d'};">${className}</span>
-                    <span style="margin-left:10px;font-weight:normal;font-size:10px;color:#666;">Total: ${totalCount} participants</span>
-                </h3>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:8px;margin-top:6px;table-layout:fixed;">
-                        <colgroup>
-                            <col style="width:5%;">
-                            <col style="width:15%;">
-                            <col style="width:12%;">
-                            <col style="width:10%;">
-                            <col style="width:6%;">
-                            <col style="width:12%;">
-                            <col style="width:12%;">
-                            <col style="width:10%;">
-                            <col style="width:10%;">
-                        </colgroup>
-                        <thead>
-                            <tr>
-                                <th style="text-align:center;padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">NO</th>
-                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">NAME</th>
-                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">IC/PASSPORT</th>
-                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">REMARK</th>
-                                <th style="text-align:center;padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">CLASS</th>
-                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">LESSON</th>
-                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">PLATE NO</th>
-                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">SIGN IN</th>
-                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">SIGN OUT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${renderGroupedTableRows(bookingsList, 0)}
-                        </tbody>
-                    </table>
+            <div style="page-break-after:always;padding:20px;">
+                <div style="margin-bottom:16px;">
+                    <h2 style="margin:0;font-size:14px;color:#111827;font-weight:700;letter-spacing:-0.3px;">
+                        <span style="display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;font-size:12px;background:${classBgColor};color:${classColor};margin-right:12px;">${className}</span>
+                    </h2>
+                    <p style="margin:8px 0 0 0;font-size:12px;color:#6b7280;font-weight:500;">
+                        ${totalCount} participants in this class
+                    </p>
                 </div>
-                <div style="margin-top:6px;padding:5px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;text-align:right;font-size:9px;">
-                    <span style="font-weight:bold;">Total ${className}: ${totalCount} participants</span>
+
+                <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;">
+                    <colgroup>
+                        <col style="width:5%;">
+                        <col style="width:16%;">
+                        <col style="width:12%;">
+                        <col style="width:10%;">
+                        <col style="width:6%;">
+                        <col style="width:12%;">
+                        <col style="width:12%;">
+                        <col style="width:10%;">
+                        <col style="width:10%;">
+                    </colgroup>
+                    <thead>
+                        <tr style="background:#1f2937;height:32px;">
+                            <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">NO</th>
+                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">NAME</th>
+                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">IC/PASSPORT</th>
+                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">REMARK</th>
+                            <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">CLASS</th>
+                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">LESSON</th>
+                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">PLATE NO</th>
+                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN IN</th>
+                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN OUT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${renderGroupedTableRows(bookingsList, 0)}
+                    </tbody>
+                </table>
+
+                <div style="padding:10px 12px;background:${classBgColor};border:1px solid ${classColor};border-radius:6px;text-align:right;">
+                    <span style="font-weight:600;font-size:12px;color:${classColor};">
+                        Total ${className}: ${totalCount} participants
+                    </span>
                 </div>
             </div>
         `;
@@ -886,223 +892,337 @@ function buildBookingReportHTML(data) {
     <meta charset="UTF-8">
     <title>Booking Report</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        html, body { 
+            width: 100%; 
+            height: 100%;
+        }
+        
         body { 
-            font-family: Arial, Helvetica, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
             background: #ffffff; 
-            color: #000000; 
-            padding: 8px; 
-            font-size: 10px; 
-            line-height: 1.3;
+            color: #111827; 
+            font-size: 12px; 
+            line-height: 1.5;
         }
+        
         .report-container { 
-            max-width: 100%; 
-            margin: 0 auto; 
-            padding: 5px;
+            width: 100%; 
+            margin: 0; 
+            padding: 0;
         }
+        
         .page-break { 
             page-break-after: always; 
         }
+        
         .page-break:last-child { 
             page-break-after: avoid; 
         }
         
-        /* Cover Page */
+        /* COVER PAGE */
         .cover-page { 
             text-align: center; 
-            padding: 30px 20px; 
+            padding: 50px 30px; 
             page-break-after: always;
-            min-height: 70vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-        }
-        .cover-page .logo { 
-            font-size: 40px; 
-            margin-bottom: 15px; 
-        }
-        .cover-page h1 { 
-            font-size: 22px; 
-            color: #2c3e50; 
-            margin-bottom: 12px; 
-            font-weight: bold;
-        }
-        .cover-page .subtitle { 
-            font-size: 14px; 
-            color: #7f8c8d; 
-            margin-bottom: 25px; 
-        }
-        .cover-page .info { 
-            font-size: 11px; 
-            color: #95a5a6; 
-            line-height: 1.8; 
-        }
-        .cover-page .info strong { 
-            color: #2c3e50; 
-        }
-        .cover-page .info-grid {
-            display: grid;
-            grid-template-columns: auto auto;
-            gap: 4px 20px;
-            margin: 8px auto;
-            text-align: left;
-        }
-        .cover-page .info-grid .label {
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        .cover-page .info-grid .value {
-            color: #555;
+            background: #ffffff;
         }
         
-        /* Tables */
+        .cover-page .logo { 
+            font-size: 48px; 
+            margin-bottom: 24px; 
+            line-height: 1;
+        }
+        
+        .cover-page h1 { 
+            font-size: 28px; 
+            color: #111827; 
+            margin-bottom: 8px; 
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .cover-page .subtitle { 
+            font-size: 12px; 
+            color: #6b7280; 
+            margin-bottom: 32px; 
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        
+        .cover-page .info-section {
+            margin-top: 28px;
+            padding: 24px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .cover-page .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 24px;
+            text-align: left;
+        }
+        
+        .cover-page .info-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .cover-page .info-label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .cover-page .info-value {
+            color: #111827;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .cover-page .generated {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 11px;
+        }
+        
+        /* TABLES */
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            table-layout: fixed;
         }
+        
         thead th { 
-            background: #34495e; 
-            color: #fff; 
-            padding: 4px 3px; 
+            background: #1f2937; 
+            color: #ffffff; 
+            padding: 8px 10px; 
             text-align: left; 
-            border: 1px solid #34495e; 
-            font-size: 7px;
+            border: 1px solid #1f2937; 
+            font-size: 12px;
+            font-weight: 600;
         }
+        
         thead th.center { 
             text-align: center; 
         }
+        
         tbody td { 
-            padding: 3px 4px; 
-            border: 1px solid #ddd; 
-            font-size: 8px;
+            padding: 6px 10px; 
+            border: 1px solid #e5e7eb; 
+            font-size: 12px;
+            color: #374151;
             word-break: break-word;
             overflow-wrap: break-word;
         }
-        tbody tr:nth-child(even) { 
-            background: #f8f9fa; 
-        }
+        
         tbody tr:nth-child(odd) { 
             background: #ffffff; 
         }
-        .class-separator td { 
-            padding: 4px 8px; 
-            border: 1px solid #ccc; 
-            background: #e8ecf1 !important; 
-            font-size: 9px;
+        
+        tbody tr:nth-child(even) { 
+            background: #f9fafb; 
         }
         
-        /* Summary Cards */
+        .session-header td { 
+            padding: 6px 10px !important; 
+            border: 1px solid #d1d5db !important; 
+            background: #f3f4f6 !important; 
+            font-weight: 600 !important;
+            color: #374151 !important;
+            font-size: 12px !important;
+        }
+        
+        .session-subtotal td {
+            background: #f9fafb !important;
+            font-weight: 600 !important;
+            color: #374151 !important;
+            font-size: 12px !important;
+        }
+        
+        .data-row td {
+            padding: 6px 10px;
+            border: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #374151;
+        }
+        
+        /* SUMMARY CARDS */
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 12px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
+        
         .summary-card {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
             text-align: center;
-            background: #f8f9fa;
+            background: #ffffff;
         }
+        
         .summary-card .number {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2c3e50;
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1;
+            margin-bottom: 6px;
         }
+        
         .summary-card .label {
-            font-size: 9px;
-            color: #7f8c8d;
-            margin-top: 3px;
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
         }
+        
         .summary-card.blue {
             background: #eff6ff;
-            border-color: #dbeafe;
+            border-color: #bfdbfe;
         }
+        
         .summary-card.blue .number {
             color: #1e40af;
         }
+        
+        .summary-card.blue .label {
+            color: #1e40af;
+        }
+        
         .summary-card.pink {
             background: #fdf2f8;
-            border-color: #fce7f3;
+            border-color: #fbcfe8;
         }
+        
         .summary-card.pink .number {
             color: #9d174d;
         }
         
-        /* Session Breakdown */
+        .summary-card.pink .label {
+            color: #9d174d;
+        }
+        
+        /* SESSION BREAKDOWN */
         .session-breakdown {
-            margin-top: 12px;
-            padding: 10px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            background: #f8fafc;
+            margin-bottom: 20px;
+            padding: 12px 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
         }
+        
         .session-breakdown h4 {
-            margin-bottom: 8px;
-            color: #2c3e50;
-            font-size: 11px;
+            margin: 0 0 10px 0;
+            color: #111827;
+            font-size: 14px;
+            font-weight: 700;
         }
+        
         .session-item {
             display: flex;
             justify-content: space-between;
-            padding: 4px 8px;
+            padding: 6px 10px;
             background: white;
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 3px;
-            font-size: 9px;
-        }
-        .session-item .count {
-            font-weight: bold;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: #374151;
         }
         
-        /* Footer */
+        .session-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .session-item .label {
+            font-weight: 500;
+        }
+        
+        .session-item .count {
+            font-weight: 700;
+            color: #111827;
+        }
+        
+        /* FOOTER */
         .footer { 
-            margin-top: 15px; 
-            padding-top: 10px; 
-            border-top: 1px solid #ddd; 
-            font-size: 8px; 
-            color: #95a5a6; 
+            margin-top: 24px; 
+            padding-top: 16px; 
+            border-top: 1px solid #e5e7eb; 
+            font-size: 11px; 
+            color: #9ca3af; 
             text-align: center; 
         }
+        
         .footer p {
-            margin: 2px 0;
+            margin: 3px 0;
+            line-height: 1.4;
         }
         
-        /* Loading */
+        /* LOADING */
         .loading { 
             text-align: center; 
-            padding: 30px; 
+            padding: 40px 20px; 
             font-size: 12px; 
-            color: #666; 
+            color: #6b7280; 
         }
+        
         .spinner { 
             display: inline-block; 
-            width: 25px; 
-            height: 25px; 
-            border: 3px solid #f3f3f3; 
-            border-top: 3px solid #3498db; 
+            width: 32px; 
+            height: 32px; 
+            border: 3px solid #e5e7eb; 
+            border-top: 3px solid #3b82f6; 
             border-radius: 50%; 
             animation: spin 1s linear infinite; 
         }
+        
         @keyframes spin { 
             0% { transform: rotate(0deg); } 
             100% { transform: rotate(360deg); } 
         }
         
         @media print {
-            body { padding: 5px; }
-            .cover-page { min-height: 60vh; }
+            body { 
+                margin: 0;
+                padding: 0;
+            }
+            .report-container {
+                margin: 0;
+                padding: 0;
+            }
+            .cover-page { 
+                margin: 0;
+                padding: 40px 25px;
+            }
+            .page-break {
+                margin: 0;
+                padding: 0;
+            }
         }
     </style>
 </head>
 <body>
     <div id="loading" class="loading">
         <div class="spinner"></div>
-        <p style="margin-top: 12px;font-size:11px;">Generating PDF report...</p>
+        <p style="margin-top: 16px;font-size:12px;">Generating PDF report...</p>
     </div>
     
     <div id="reportContent" class="report-container" style="display:none;">
@@ -1111,35 +1231,45 @@ function buildBookingReportHTML(data) {
             <div class="logo">🏍️</div>
             <h1>Motorcycle Booking Report</h1>
             <p class="subtitle">${classLabel} • ${statusLabel}</p>
-            <div class="info">
+            
+            <div class="info-section">
                 <div class="info-grid">
-                    <span class="label">Period:</span>
-                    <span class="value">${formatDate(dateFrom)} to ${formatDate(dateTo)}</span>
-                    <span class="label">Total Bookings:</span>
-                    <span class="value">${totalAll} participants</span>
-                    <span class="label">Class B:</span>
-                    <span class="value">${totalB} participants</span>
-                    <span class="label">Class B2:</span>
-                    <span class="value">${totalB2} participants</span>
-                    <span class="label">Generated:</span>
-                    <span class="value">${formatDateTimeLocal(new Date().toISOString())}</span>
+                    <div class="info-row">
+                        <span class="info-label">Period</span>
+                        <span class="info-value">${formatDate(dateFrom)} to ${formatDate(dateTo)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Bookings</span>
+                        <span class="info-value">${totalAll} participants</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Class B</span>
+                        <span class="info-value">${totalB} participants</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Class B2</span>
+                        <span class="info-value">${totalB2} participants</span>
+                    </div>
                 </div>
+            </div>
+            
+            <div class="generated">
+                Generated on ${formatDateTimeLocal(new Date().toISOString())}
             </div>
         </div>
         
         <!-- CLASS B PAGE -->
-        <div class="page-break">
-            ${renderClassPage(classBBookings, 'CLASS B', 'class-badge-b', totalB)}
-        </div>
+        ${renderClassPage(classBBookings, 'CLASS B', '#1e40af', '#eff6ff', totalB)}
         
         <!-- CLASS B2 PAGE -->
-        <div class="page-break">
-            ${renderClassPage(classB2Bookings, 'CLASS B2', 'class-badge-b2', totalB2)}
-        </div>
+        ${renderClassPage(classB2Bookings, 'CLASS B2', '#9d174d', '#fdf2f8', totalB2)}
         
         <!-- SUMMARY PAGE -->
-        <div style="page-break-after:avoid;padding:10px 5px;">
-            <h3 style="margin:0 0 8px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:5px;">📊 Summary</h3>
+        <div style="page-break-after:avoid;padding:20px;">
+            <h2 style="margin:0 0 20px 0;font-size:14px;color:#111827;font-weight:700;letter-spacing:-0.3px;border-bottom:2px solid #1f2937;padding-bottom:12px;">
+                📊 Summary
+            </h2>
+            
             <div class="summary-grid">
                 <div class="summary-card">
                     <div class="number">${totalAll}</div>
@@ -1165,21 +1295,23 @@ function buildBookingReportHTML(data) {
                         sessionCounts[key]++;
                     });
                     let html = '';
-                    for (const [session, count] of Object.entries(sessionCounts)) {
-                        html += `
+                    const sortedSessions = Object.keys(sessionCounts).sort();
+                    sortedSessions.forEach(session => {
+                        const count = sessionCounts[session];
+                        html += \`
                             <div class="session-item">
-                                <span>${session}</span>
-                                <span class="count">${count}</span>
+                                <span class="label">\${session}</span>
+                                <span class="count">\${count}</span>
                             </div>
-                        `;
-                    }
+                        \`;
+                    });
                     return html;
                 })()}
             </div>
             
             <div class="footer">
-                <p>This report is auto-generated by the Motorcycle Booking System.</p>
-                <p>© ${new Date().getFullYear()} - All rights reserved.</p>
+                <p>This report was auto-generated by the Motorcycle Booking System.</p>
+                <p>© ${new Date().getFullYear()} • All rights reserved</p>
             </div>
         </div>
     </div>
@@ -1193,7 +1325,7 @@ function buildBookingReportHTML(data) {
                 
                 const element = document.getElementById('reportContent');
                 const opt = {
-                    margin: 5,
+                    margin: [10, 10, 10, 10],
                     filename: '${filename}.pdf',
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { 
@@ -1202,11 +1334,9 @@ function buildBookingReportHTML(data) {
                         logging: false, 
                         backgroundColor: '#ffffff',
                         allowTaint: true,
-                        scrollY: 0,
-                        width: element.scrollWidth,
-                        height: element.scrollHeight,
-                        windowWidth: element.scrollWidth,
-                        windowHeight: element.scrollHeight
+                        letterRendering: true,
+                        width: 794,
+                        height: 1123
                     },
                     jsPDF: { 
                         unit: 'mm', 
@@ -1223,8 +1353,8 @@ function buildBookingReportHTML(data) {
                 }).catch(function(err) {
                     console.error('PDF generation error:', err);
                     document.body.innerHTML += 
-                        '<p style="color:red;margin-top:20px;text-align:center;font-size:14px;">❌ Error generating PDF. Please use Print (Ctrl+P) to save as PDF.</p>' +
-                        '<p style="text-align:center;margin-top:10px;"><button onclick="window.print()" style="padding:10px 20px;font-size:14px;cursor:pointer;">Print / Save as PDF</button></p>';
+                        '<p style="color:#dc2626;margin-top:24px;text-align:center;font-size:14px;font-weight:500;">❌ Error generating PDF. Please use Print to save as PDF.</p>' +
+                        '<p style="text-align:center;margin-top:16px;"><button onclick="window.print()" style="padding:10px 20px;font-size:12px;cursor:pointer;background:#3b82f6;color:white;border:none;border-radius:6px;font-weight:500;">Print / Save as PDF</button></p>';
                 });
             }, 800);
         })();
