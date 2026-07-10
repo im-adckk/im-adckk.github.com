@@ -783,7 +783,7 @@ function buildBookingReportHTML(data) {
 
             html += `
                 <tr class="class-separator">
-                    <td colspan="9" style="padding:6px 10px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;font-size:10px;">
+                    <td colspan="9" style="padding:4px 8px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;font-size:9px;">
                         📅 ${sessionTime}
                     </td>
                 </tr>
@@ -798,25 +798,25 @@ function buildBookingReportHTML(data) {
 
                 html += `
                     <tr>
-                        <td style="text-align:center;padding:5px 6px;border:1px solid #ddd;font-size:9px;">${counter}</td>
-                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.name || ''}</td>
-                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.icno || ''}</td>
-                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.remark || ''}</td>
-                        <td style="text-align:center;padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.class || ''}</td>
-                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${lessonDisplay}</td>
-                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.plate_no || ''}</td>
-                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.sign_in || ''}</td>
-                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.sign_out || ''}</td>
+                        <td style="text-align:center;padding:4px 5px;border:1px solid #ddd;font-size:8px;">${counter}</td>
+                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.name || ''}</td>
+                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.icno || ''}</td>
+                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.remark || ''}</td>
+                        <td style="text-align:center;padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.class || ''}</td>
+                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${lessonDisplay}</td>
+                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.plate_no || ''}</td>
+                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.sign_in || ''}</td>
+                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.sign_out || ''}</td>
                     </tr>
                 `;
             });
 
             html += `
                 <tr style="background:#f8fafc;font-weight:bold;">
-                    <td colspan="8" style="padding:5px 10px;border:1px solid #ddd;text-align:right;color:#2c3e50;font-size:9px;">
+                    <td colspan="8" style="padding:4px 8px;border:1px solid #ddd;text-align:right;color:#2c3e50;font-size:8px;">
                         Subtotal (${sessionTime}):
                     </td>
-                    <td style="padding:5px;border:1px solid #ddd;text-align:center;color:#2c3e50;font-size:9px;">
+                    <td style="padding:4px;border:1px solid #ddd;text-align:center;color:#2c3e50;font-size:8px;">
                         ${items.length}
                     </td>
                 </tr>
@@ -829,37 +829,37 @@ function buildBookingReportHTML(data) {
     function renderClassPage(bookingsList, className, classBadge, totalCount) {
         if (bookingsList.length === 0) {
             return `
-                <div style="page-break-after:always;padding:40px 0;text-align:center;color:#999;font-style:italic;font-size:12px;">
+                <div style="page-break-after:always;padding:30px 0;text-align:center;color:#999;font-style:italic;font-size:11px;">
                     No ${className} bookings found for this period.
                 </div>
             `;
         }
 
         return `
-            <div style="page-break-after:always;padding:10px 15px;">
-                <h3 class="section-title" style="margin-top:0;font-size:14px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:8px;">
-                    <span class="class-badge ${classBadge}" style="display:inline-block;padding:2px 10px;border-radius:4px;font-weight:bold;font-size:11px;background:${classBadge === 'class-badge-b' ? '#dbeafe' : '#fce7f3'};color:${classBadge === 'class-badge-b' ? '#1e40af' : '#9d174d'};">${className}</span>
-                    <span style="margin-left:15px;font-weight:normal;font-size:11px;color:#666;">Total: ${totalCount} participants</span>
+            <div style="page-break-after:always;padding:5px 10px;">
+                <h3 style="margin:0 0 8px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:6px;">
+                    <span style="display:inline-block;padding:2px 10px;border-radius:4px;font-weight:bold;font-size:10px;background:${classBadge === 'class-badge-b' ? '#dbeafe' : '#fce7f3'};color:${classBadge === 'class-badge-b' ? '#1e40af' : '#9d174d'};">${className}</span>
+                    <span style="margin-left:12px;font-weight:normal;font-size:10px;color:#666;">Total: ${totalCount} participants</span>
                 </h3>
-                <table style="width:100%;border-collapse:collapse;font-size:9px;margin-top:10px;">
+                <table style="width:100%;border-collapse:collapse;font-size:8px;margin-top:8px;">
                     <thead>
                         <tr>
-                            <th style="text-align:center;padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;width:30px;">NO</th>
-                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:100px;">NAME</th>
-                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:80px;">IC/PASSPORT</th>
-                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:60px;">REMARK</th>
-                            <th style="text-align:center;padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;width:40px;">CLASS</th>
-                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:70px;">LESSON</th>
-                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:70px;">PLATE NO</th>
-                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:60px;">SIGN IN</th>
-                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:60px;">SIGN OUT</th>
+                            <th style="text-align:center;padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;width:25px;">NO</th>
+                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:90px;">NAME</th>
+                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:70px;">IC/PASSPORT</th>
+                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:50px;">REMARK</th>
+                            <th style="text-align:center;padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;width:35px;">CLASS</th>
+                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:60px;">LESSON</th>
+                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:60px;">PLATE NO</th>
+                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:50px;">SIGN IN</th>
+                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:50px;">SIGN OUT</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${renderGroupedTableRows(bookingsList, 0)}
                     </tbody>
                 </table>
-                <div style="margin-top:10px;padding:8px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;text-align:right;font-size:10px;">
+                <div style="margin-top:8px;padding:6px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;text-align:right;font-size:9px;">
                     <span style="font-weight:bold;">Total ${className}: ${totalCount} participants</span>
                 </div>
             </div>
@@ -878,14 +878,14 @@ function buildBookingReportHTML(data) {
             font-family: Arial, Helvetica, sans-serif; 
             background: #ffffff; 
             color: #000000; 
-            padding: 20px; 
+            padding: 10px; 
             font-size: 10px; 
-            line-height: 1.4;
+            line-height: 1.3;
         }
         .report-container { 
             max-width: 100%; 
             margin: 0 auto; 
-            padding: 10px;
+            padding: 5px;
         }
         .page-break { 
             page-break-after: always; 
@@ -897,43 +897,42 @@ function buildBookingReportHTML(data) {
         /* Cover Page */
         .cover-page { 
             text-align: center; 
-            padding: 40px 30px; 
+            padding: 30px 20px; 
             page-break-after: always;
-            min-height: 80vh;
+            min-height: 70vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
         }
         .cover-page .logo { 
-            font-size: 48px; 
-            margin-bottom: 20px; 
+            font-size: 40px; 
+            margin-bottom: 15px; 
         }
         .cover-page h1 { 
-            font-size: 26px; 
+            font-size: 22px; 
             color: #2c3e50; 
-            margin-bottom: 15px; 
+            margin-bottom: 12px; 
             font-weight: bold;
         }
         .cover-page .subtitle { 
-            font-size: 16px; 
+            font-size: 14px; 
             color: #7f8c8d; 
-            margin-bottom: 30px; 
+            margin-bottom: 25px; 
         }
         .cover-page .info { 
-            font-size: 12px; 
+            font-size: 11px; 
             color: #95a5a6; 
-            line-height: 2; 
+            line-height: 1.8; 
         }
         .cover-page .info strong { 
             color: #2c3e50; 
         }
         .cover-page .info-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px 30px;
-            max-width: 500px;
-            margin: 10px auto;
+            grid-template-columns: auto auto;
+            gap: 5px 20px;
+            margin: 8px auto;
             text-align: left;
         }
         .cover-page .info-grid .label {
@@ -949,51 +948,30 @@ function buildBookingReportHTML(data) {
             color: #2c3e50; 
             border-bottom: 2px solid #333; 
             padding-bottom: 6px; 
-            font-size: 14px; 
-            margin: 15px 0 10px 0; 
-        }
-        .section-title:first-of-type { 
-            margin-top: 0; 
-        }
-        
-        /* Class Badges */
-        .class-badge { 
-            display: inline-block; 
-            padding: 2px 10px; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            font-size: 11px; 
-        }
-        .class-badge-b { 
-            background: #dbeafe; 
-            color: #1e40af; 
-        }
-        .class-badge-b2 { 
-            background: #fce7f3; 
-            color: #9d174d; 
+            font-size: 13px; 
+            margin: 12px 0 8px 0; 
         }
         
         /* Tables */
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            font-size: 9px; 
         }
         thead th { 
             background: #34495e; 
             color: #fff; 
-            padding: 5px 6px; 
+            padding: 4px 5px; 
             text-align: left; 
             border: 1px solid #34495e; 
-            font-size: 9px;
+            font-size: 8px;
         }
         thead th.center { 
             text-align: center; 
         }
         tbody td { 
-            padding: 4px 6px; 
+            padding: 3px 5px; 
             border: 1px solid #ddd; 
-            font-size: 9px;
+            font-size: 8px;
         }
         tbody tr:nth-child(even) { 
             background: #f8f9fa; 
@@ -1002,33 +980,33 @@ function buildBookingReportHTML(data) {
             background: #ffffff; 
         }
         .class-separator td { 
-            padding: 5px 10px; 
+            padding: 4px 8px; 
             border: 1px solid #ccc; 
             background: #e8ecf1 !important; 
-            font-size: 10px;
+            font-size: 9px;
         }
         
         /* Summary Cards */
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-top: 15px;
+            gap: 10px;
+            margin-top: 12px;
         }
         .summary-card {
-            padding: 15px;
+            padding: 12px;
             border: 1px solid #ddd;
             border-radius: 6px;
             text-align: center;
             background: #f8f9fa;
         }
         .summary-card .number {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #2c3e50;
         }
         .summary-card .label {
-            font-size: 10px;
+            font-size: 9px;
             color: #7f8c8d;
             margin-top: 3px;
         }
@@ -1049,26 +1027,26 @@ function buildBookingReportHTML(data) {
         
         /* Session Breakdown */
         .session-breakdown {
-            margin-top: 15px;
-            padding: 12px 15px;
+            margin-top: 12px;
+            padding: 10px 12px;
             border: 1px solid #e2e8f0;
             border-radius: 6px;
             background: #f8fafc;
         }
         .session-breakdown h4 {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: #2c3e50;
-            font-size: 12px;
+            font-size: 11px;
         }
         .session-item {
             display: flex;
             justify-content: space-between;
-            padding: 5px 10px;
+            padding: 4px 8px;
             background: white;
             border-radius: 4px;
             border: 1px solid #e2e8f0;
-            margin-bottom: 4px;
-            font-size: 10px;
+            margin-bottom: 3px;
+            font-size: 9px;
         }
         .session-item .count {
             font-weight: bold;
@@ -1076,25 +1054,28 @@ function buildBookingReportHTML(data) {
         
         /* Footer */
         .footer { 
-            margin-top: 20px; 
-            padding-top: 15px; 
+            margin-top: 15px; 
+            padding-top: 12px; 
             border-top: 1px solid #ddd; 
-            font-size: 9px; 
+            font-size: 8px; 
             color: #95a5a6; 
             text-align: center; 
+        }
+        .footer p {
+            margin: 2px 0;
         }
         
         /* Loading */
         .loading { 
             text-align: center; 
-            padding: 40px; 
-            font-size: 14px; 
+            padding: 30px; 
+            font-size: 12px; 
             color: #666; 
         }
         .spinner { 
             display: inline-block; 
-            width: 30px; 
-            height: 30px; 
+            width: 25px; 
+            height: 25px; 
             border: 3px solid #f3f3f3; 
             border-top: 3px solid #3498db; 
             border-radius: 50%; 
@@ -1106,15 +1087,15 @@ function buildBookingReportHTML(data) {
         }
         
         @media print {
-            body { padding: 10px; }
-            .cover-page { min-height: 70vh; }
+            body { padding: 5px; }
+            .cover-page { min-height: 60vh; }
         }
     </style>
 </head>
 <body>
     <div id="loading" class="loading">
         <div class="spinner"></div>
-        <p style="margin-top: 15px;font-size:12px;">Generating PDF report...</p>
+        <p style="margin-top: 12px;font-size:11px;">Generating PDF report...</p>
     </div>
     
     <div id="reportContent" class="report-container" style="display:none;">
@@ -1150,8 +1131,8 @@ function buildBookingReportHTML(data) {
         </div>
         
         <!-- SUMMARY PAGE -->
-        <div style="page-break-after:avoid;padding:15px 10px;">
-            <h3 class="section-title" style="margin-top:0;font-size:14px;">📊 Summary</h3>
+        <div style="page-break-after:avoid;padding:10px 5px;">
+            <h3 style="margin:0 0 8px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:6px;">📊 Summary</h3>
             <div class="summary-grid">
                 <div class="summary-card">
                     <div class="number">${totalAll}</div>
@@ -1199,19 +1180,13 @@ function buildBookingReportHTML(data) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
     <script>
         (function() {
-            // Hide loading, show content
             setTimeout(function() {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('reportContent').style.display = 'block';
                 
                 const element = document.getElementById('reportContent');
                 const opt = {
-                    margin: {
-                        top: 8,
-                        bottom: 8,
-                        left: 8,
-                        right: 8
-                    },
+                    margin: 5,
                     filename: '${filename}.pdf',
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { 
@@ -1229,9 +1204,7 @@ function buildBookingReportHTML(data) {
                         orientation: 'landscape'
                     },
                     pagebreak: { 
-                        mode: ['avoid-all', 'css', 'legacy'],
-                        before: '.page-break',
-                        after: '.page-break-after'
+                        mode: ['avoid-all', 'css', 'legacy']
                     }
                 };
                 
