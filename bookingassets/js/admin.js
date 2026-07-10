@@ -545,14 +545,14 @@ async function loadQuotaSettings(date) {
         if (error) throw error;
         
         if (data) {
-            document.getElementById('quotaClassB').value = data.class_b_quota || 5;
-            document.getElementById('quotaClassB2').value = data.class_b2_quota || 15;
+            document.getElementById('quotaClassB').value = data.class_b_quota || 3;
+            document.getElementById('quotaClassB2').value = data.class_b2_quota || 10;
             document.getElementById('quotaStatus').textContent = `✅ Custom quota loaded for ${formatMalaysiaDate(date)}`;
             document.getElementById('quotaStatus').className = 'text-sm text-emerald-600 font-medium';
         } else {
-            document.getElementById('quotaClassB').value = 5;
-            document.getElementById('quotaClassB2').value = 15;
-            document.getElementById('quotaStatus').textContent = `📋 Using default quotas (B: 5, B2: 15) for ${formatMalaysiaDate(date)}`;
+            document.getElementById('quotaClassB').value = 3;
+            document.getElementById('quotaClassB2').value = 10;
+            document.getElementById('quotaStatus').textContent = `📋 Using default quotas (B: 3, B2: 10) for ${formatMalaysiaDate(date)}`;
             document.getElementById('quotaStatus').className = 'text-sm text-muted-foreground';
         }
     } catch (error) {
@@ -563,8 +563,8 @@ async function loadQuotaSettings(date) {
 
 async function saveQuotaSettings() {
     const date = document.getElementById('quotaDateSelect').value;
-    const classBQuota = parseInt(document.getElementById('quotaClassB').value) || 5;
-    const classB2Quota = parseInt(document.getElementById('quotaClassB2').value) || 15;
+    const classBQuota = parseInt(document.getElementById('quotaClassB').value) || 3;
+    const classB2Quota = parseInt(document.getElementById('quotaClassB2').value) || 10;
     const applyMode = document.getElementById('quotaApplyMode').value;
     const rangeEnd = document.getElementById('quotaRangeEnd').value;
 
