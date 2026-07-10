@@ -19,6 +19,9 @@ let rowsPerPage = 10;
 let totalPages = 1;
 let totalDBCount = 0;
 let editingDutyId = null;
+let quotaEditMode = null; // 'single' or 'range'
+let quotaRangeStart = null;
+let quotaRangeEnd = null;
 
 // DOM Elements
 const adminLogin = document.getElementById('adminLogin');
@@ -523,6 +526,196 @@ function setDateRange(range) {
     }
     currentPage = 1;
     loadAllBookings();
+}
+
+// ============================================
+// QUOTA MANAGEMENT
+// ============================================
+
+async function loadQuotaSettings(date) {
+    if (!date) return;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('quota_settings')
+            .select('*')
+            .eq('target_date', date)
+            .maybeSingle();
+            
+        if (error) throw error;
+        
+        if (data) {
+            document.getElementById('quotaClassB').value = data.class_b_quota || 5;
+            document.getElementById('quotaClassB2').value = data.class_b2_quota || 15;
+            document.getElementById('quotaStatus').textContent = `✅ Custom quota loaded for ${formatMalaysiaDate(date)}`;
+            document.getElementById('quotaStatus').className = 'text-sm text-emerald-600 font-medium';
+        } else {
+            document.getElementById('quotaClassB').value = 5;
+            document.getElementById('quotaClassB2').value = 15;
+            document.getElementById('quotaStatus').textContent = `📋 Using default quotas (B: 5, B2: 15) for ${formatMalaysiaDate(date)}`;
+            document.getElementById('quotaStatus').className = 'text-sm text-muted-foreground';
+        }
+    } catch (error) {
+        console.error('Error loading quota settings:', error);
+        showMessage('Error loading quota settings: ' + error.message, 'error');
+    }
+}
+
+async function saveQuotaSettings() {
+    const date = document.getElementById('quotaDateSelect').value;
+    const classBQuota = parseInt(document.getElementById('quotaClassB').value) || 5;
+    const classB2Quota = parseInt(document.getElementById('quotaClassB2').value) || 15;
+    const applyMode = document.getElementById('quotaApplyMode').value;
+    const rangeEnd = document.getElementById('quotaRangeEnd').value;
+
+    if (!date) {
+        showMessage('Please select a date first.', 'error');
+        return;
+    }
+
+    if (classBQuota < 0 || classB2Quota < 0) {
+        showMessage('Quota values cannot be negative.', 'error');
+        return;
+    }
+
+    let datesToUpdate = [];
+
+    if (applyMode === 'single') {
+        datesToUpdate = [date];
+    } else if (applyMode === 'range') {
+        if (!rangeEnd) {
+            showMessage('Please select an end date for the range.', 'error');
+            return;
+        }
+        if (rangeEnd < date) {
+            showMessage('End date must be after or equal to start date.', 'error');
+            return;
+        }
+        
+        // Generate all dates in range
+        let current = new Date(date + 'T00:00:00');
+        const end = new Date(rangeEnd + 'T00:00:00');
+        while (current <= end) {
+            datesToUpdate.push(toMalaysiaDateStr(current));
+            current.setDate(current.getDate() + 1);
+        }
+    }
+
+    if (datesToUpdate.length === 0) {
+        showMessage('No dates to update.', 'error');
+        return;
+    }
+
+    const progressDiv = document.getElementById('quotaProgress');
+    if (progressDiv) progressDiv.style.display = 'block';
+
+    try {
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const targetDate of datesToUpdate) {
+            // Check if quota exists
+            const { data: existing, error: checkError } = await supabaseClient
+                .from('quota_settings')
+                .select('id')
+                .eq('target_date', targetDate)
+                .maybeSingle();
+
+            if (checkError && checkError.code !== 'PGRST116') throw checkError;
+
+            if (existing) {
+                // Update existing
+                const { error: updateError } = await supabaseClient
+                    .from('quota_settings')
+                    .update({
+                        class_b_quota: classBQuota,
+                        class_b2_quota: classB2Quota,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existing.id);
+
+                if (updateError) throw updateError;
+            } else {
+                // Insert new
+                const { error: insertError } = await supabaseClient
+                    .from('quota_settings')
+                    .insert([{
+                        target_date: targetDate,
+                        class_b_quota: classBQuota,
+                        class_b2_quota: classB2Quota
+                    }]);
+
+                if (insertError) throw insertError;
+            }
+            successCount++;
+        }
+
+        const modeText = applyMode === 'single' ? 'date' : 'date range';
+        showMessage(`✅ Quota updated successfully for ${successCount} ${modeText}(s)!`, 'success');
+        
+        // Refresh calendar and date details
+        await loadQuotaSettings(date);
+        await loadAdminCalendarData();
+        
+        // If a date is selected in calendar, refresh its details
+        if (selectedAdminDate) {
+            await onAdminDateClick(selectedAdminDate);
+        }
+
+    } catch (error) {
+        console.error('Error saving quota settings:', error);
+        showMessage('Error saving quota settings: ' + error.message, 'error');
+    } finally {
+        if (progressDiv) progressDiv.style.display = 'none';
+    }
+}
+
+async function resetQuotaToDefault() {
+    const date = document.getElementById('quotaDateSelect').value;
+    
+    if (!date) {
+        showMessage('Please select a date first.', 'error');
+        return;
+    }
+
+    if (!confirm(`Reset quota for ${formatMalaysiaDate(date)} to default values (B: 5, B2: 15)?`)) {
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('quota_settings')
+            .delete()
+            .eq('target_date', date);
+
+        if (error) throw error;
+
+        showMessage(`✅ Quota reset to default for ${formatMalaysiaDate(date)}`, 'success');
+        await loadQuotaSettings(date);
+        await loadAdminCalendarData();
+        
+        if (selectedAdminDate) {
+            await onAdminDateClick(selectedAdminDate);
+        }
+
+    } catch (error) {
+        console.error('Error resetting quota:', error);
+        showMessage('Error resetting quota: ' + error.message, 'error');
+    }
+}
+
+async function applyQuotaToDateFromCalendar(dateStr) {
+    if (!dateStr) return;
+    
+    document.getElementById('quotaDateSelect').value = dateStr;
+    document.getElementById('quotaRangeEnd').value = '';
+    document.getElementById('quotaApplyMode').value = 'single';
+    await loadQuotaSettings(dateStr);
+    
+    // Scroll to quota section
+    document.getElementById('quotaManagement').scrollIntoView({ behavior: 'smooth' });
+    
+    showMessage(`📅 Quota settings loaded for ${formatMalaysiaDate(dateStr)}`, 'info');
 }
 
 // ============================================
@@ -1218,6 +1411,14 @@ async function loadAdminCalendarData() {
 
         if (statusError) throw statusError;
 
+        const { data: quotas, error: quotaError } = await supabaseClient
+            .from('quota_settings')
+            .select('*')
+            .gte('target_date', startDateStr)
+            .lte('target_date', endDateStr);
+
+        if (quotaError) throw quotaError;
+
         const sessionMap = {};
         sessions.forEach(s => {
             if (!sessionMap[s.session_date]) {
@@ -1231,13 +1432,18 @@ async function loadAdminCalendarData() {
             statusMap[s.target_date] = s;
         });
 
+        const quotaMap = {};
+        quotas.forEach(q => {
+            quotaMap[q.target_date] = q;
+        });
+
         const cells = document.querySelectorAll('#adminCalendar div[data-date]');
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
             const sessions = sessionMap[dateStr] || [];
             const status = statusMap[dateStr];
+            const quota = quotaMap[dateStr];
             const isToday = dateStr === today;
-            const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
             const isActive = status ? status.is_active : true;
 
             let bgColor = '#95a5a6';
@@ -1257,30 +1463,52 @@ async function loadAdminCalendarData() {
                 bgColor = '#95a5a6';
                 textColor = 'white';
                 cursor = 'pointer';
-            } else if (hasAvailable) {
-                bgColor = '#2ecc71';
-                textColor = 'white';
-                cursor = 'pointer';
-            } else if (sessions.length > 0) {
-                bgColor = '#e74c3c';
-                textColor = 'white';
-                cursor = 'pointer';
             } else {
-                bgColor = '#f5f5f5';
-                textColor = '#999';
-                cursor = 'default';
+                // Check if custom quota exists
+                const hasQuota = quota !== undefined && quota !== null;
+                // Check availability based on actual sessions
+                const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+                
+                if (hasAvailable) {
+                    bgColor = '#2ecc71';
+                    textColor = 'white';
+                    cursor = 'pointer';
+                } else if (sessions.length > 0) {
+                    bgColor = '#e74c3c';
+                    textColor = 'white';
+                    cursor = 'pointer';
+                } else {
+                    bgColor = '#f5f5f5';
+                    textColor = '#999';
+                    cursor = 'default';
+                }
             }
 
             cell.dataset.sessions = JSON.stringify(sessions);
             cell.dataset.status = JSON.stringify(status);
+            cell.dataset.quota = JSON.stringify(quota);
             cell.style.backgroundColor = bgColor;
             cell.style.color = textColor;
             cell.style.cursor = cursor;
 
+            // Remove existing indicators
             const existingDot = cell.querySelector('.availability-dot');
             if (existingDot) existingDot.remove();
+            const existingQuotaBadge = cell.querySelector('.quota-badge');
+            if (existingQuotaBadge) existingQuotaBadge.remove();
 
-            if (hasAvailable && dateStr >= today) {
+            // Add custom quota indicator
+            if (quota && dateStr >= today) {
+                const badge = document.createElement('span');
+                badge.className = 'quota-badge';
+                badge.style.cssText = 'position:absolute;bottom:2px;left:4px;font-size:7px;background:rgba(0,0,0,0.7);color:white;padding:1px 4px;border-radius:3px;';
+                badge.textContent = '⚡';
+                cell.appendChild(badge);
+            }
+
+            // Add availability dot
+            const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+            if (hasAvailable && dateStr >= today && isActive) {
                 const dot = document.createElement('span');
                 dot.className = 'availability-dot';
                 dot.style.cssText = 'position:absolute;bottom:4px;right:6px;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);';
@@ -1361,9 +1589,21 @@ async function onAdminDateClick(dateStr) {
 
         if (statusError && statusError.code !== 'PGRST116') throw statusError;
 
+        const { data: quotaData, error: quotaError } = await supabaseClient
+            .from('quota_settings')
+            .select('*')
+            .eq('target_date', dateStr)
+            .maybeSingle();
+
+        if (quotaError && quotaError.code !== 'PGRST116') throw quotaError;
+
         const detailsDiv = document.getElementById('adminDateSessions');
         const detailsContainer = document.getElementById('adminDateDetails');
         const fallbackPrompt = document.getElementById('calendarFallbackPrompt');
+
+        // Get quotas (custom or default)
+        const classBQuota = quotaData ? quotaData.class_b_quota : 5;
+        const classB2Quota = quotaData ? quotaData.class_b2_quota : 15;
 
         const classBData = sessionData ? sessionData.filter(s => s.class === 'B') : [];
         const classB2Data = sessionData ? sessionData.filter(s => s.class === 'B2') : [];
@@ -1373,13 +1613,17 @@ async function onAdminDateClick(dateStr) {
                 <p class="font-medium"><strong>Status:</strong> ${statusData ? (statusData.is_active ? '🟢 Active' : '🔴 Inactive') : '🟢 Active (default)'}</p>
                 ${statusData && statusData.reason ? `<p class="mt-1 text-xs text-muted-foreground"><strong>Reason:</strong> ${statusData.reason}</p>` : ''}
                 ${statusData && !statusData.is_active ? `<p class="mt-1 text-xs text-destructive font-semibold">⚠️ This date is closed for bookings.</p>` : ''}
+                ${quotaData ? `<p class="mt-1 text-xs text-blue-600 font-medium">⚡ Custom Quota: B=${classBQuota}, B2=${classB2Quota}</p>` : `<p class="mt-1 text-xs text-muted-foreground">📋 Default Quota: B=5, B2=15</p>`}
+                <button onclick="applyQuotaToDateFromCalendar('${dateStr}')" class="mt-2 text-xs text-blue-600 hover:text-blue-800 underline">
+                    <i data-lucide="edit" class="w-3 h-3 inline"></i> Edit Quota
+                </button>
             </div>
         `;
 
         html += `
             <div class="space-y-2">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
-                    <span>🏍️ Class B</span> <span class="text-xs text-muted-foreground font-normal">Quota: 5</span>
+                    <span>🏍️ Class B</span> <span class="text-xs text-muted-foreground font-normal">Quota: ${classBQuota}</span>
                 </h4>
                 ${classBData.length > 0 ? `
                     <div class="border rounded-lg overflow-hidden bg-card text-xs">
@@ -1397,7 +1641,7 @@ async function onAdminDateClick(dateStr) {
                                     <tr>
                                         <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
                                         <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
-                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || 5}</td>
+                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || classBQuota}</td>
                                         <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
                                             ${s.current_bookings < s.max_bookings ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
                                         </td>
@@ -1413,7 +1657,7 @@ async function onAdminDateClick(dateStr) {
         html += `
             <div class="space-y-2 mt-4">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
-                    <span>🏍️ Class B2</span> <span class="text-xs text-muted-foreground font-normal">Quota: 15</span>
+                    <span>🏍️ Class B2</span> <span class="text-xs text-muted-foreground font-normal">Quota: ${classB2Quota}</span>
                 </h4>
                 ${classB2Data.length > 0 ? `
                     <div class="border rounded-lg overflow-hidden bg-card text-xs">
@@ -1431,7 +1675,7 @@ async function onAdminDateClick(dateStr) {
                                     <tr>
                                         <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
                                         <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
-                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || 15}</td>
+                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || classB2Quota}</td>
                                         <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
                                             ${s.current_bookings < s.max_bookings ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
                                         </td>
@@ -1465,6 +1709,9 @@ async function onAdminDateClick(dateStr) {
         }
 
         document.getElementById('adminDateSelect').value = dateStr;
+
+        // Refresh icons
+        refreshIcons();
 
     } catch (error) {
         console.error('Error loading date details:', error);
@@ -1713,7 +1960,6 @@ async function assignDuty() {
         return;
     }
 
-    // Check for duplicate instructor on same day and same session
     try {
         const { data: existing, error: checkError } = await supabaseClient
             .from('duty_schedule')
@@ -1725,9 +1971,8 @@ async function assignDuty() {
         if (checkError) throw checkError;
 
         if (existing && existing.length > 0) {
-            // If editing, allow update only if it's the same record
             if (editingDutyId && existing[0].id === editingDutyId) {
-                // Allow update - continue
+                // Allow update
             } else {
                 showMessage('⚠️ This instructor is already assigned to this session on this day.', 'error');
                 return;
@@ -1736,7 +1981,6 @@ async function assignDuty() {
 
         let result;
         if (editingDutyId) {
-            // Update existing duty
             const { data, error } = await supabaseClient
                 .from('duty_schedule')
                 .update({
@@ -1756,7 +2000,6 @@ async function assignDuty() {
             editingDutyId = null;
             document.getElementById('assignDutyBtn').textContent = 'Assign Duty';
         } else {
-            // Insert new duty
             const { data, error } = await supabaseClient
                 .from('duty_schedule')
                 .insert([{
@@ -1805,7 +2048,6 @@ async function editDuty(id) {
             editingDutyId = id;
             document.getElementById('assignDutyBtn').textContent = 'Update Duty';
             
-            // Scroll to form
             document.querySelector('.card.p-4.border').scrollIntoView({ behavior: 'smooth' });
             
             showMessage('✏️ Editing duty assignment. Click "Update Duty" to save changes.', 'info');
@@ -2171,6 +2413,10 @@ async function initializeAdmin() {
     document.getElementById('reportDateFrom').value = firstDayStr;
     document.getElementById('reportDateTo').value = today;
     document.getElementById('dutyDate').value = today;
+    document.getElementById('quotaDateSelect').value = today;
+
+    // Load quota for today
+    await loadQuotaSettings(today);
 
     await loadStats();
     await loadAllBookings();
@@ -2185,6 +2431,35 @@ async function initializeAdmin() {
         generateDutyReport();
     }, 200);
 }
+
+// ============================================
+// QUOTA DATE SELECT EVENT
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const quotaDateSelect = document.getElementById('quotaDateSelect');
+    if (quotaDateSelect) {
+        quotaDateSelect.addEventListener('change', function() {
+            loadQuotaSettings(this.value);
+        });
+    }
+
+    const applyModeSelect = document.getElementById('quotaApplyMode');
+    if (applyModeSelect) {
+        applyModeSelect.addEventListener('change', function() {
+            const rangeEnd = document.getElementById('quotaRangeEnd');
+            if (this.value === 'range') {
+                rangeEnd.style.display = 'block';
+                rangeEnd.parentElement.style.display = 'block';
+            } else {
+                rangeEnd.style.display = 'none';
+                rangeEnd.parentElement.style.display = 'none';
+            }
+        });
+        // Initialize
+        applyModeSelect.dispatchEvent(new Event('change'));
+    }
+});
 
 // ============================================
 // EXPOSE FUNCTIONS TO GLOBAL SCOPE
@@ -2226,6 +2501,12 @@ window.editDuty = editDuty;
 window.deleteDuty = deleteDuty;
 window.generateDutyReport = generateDutyReport;
 window.exportDutyPDF = exportDutyPDF;
+
+// Quota Management
+window.loadQuotaSettings = loadQuotaSettings;
+window.saveQuotaSettings = saveQuotaSettings;
+window.resetQuotaToDefault = resetQuotaToDefault;
+window.applyQuotaToDateFromCalendar = applyQuotaToDateFromCalendar;
 
 // ============================================
 // INITIALIZE PAGE
