@@ -1943,6 +1943,8 @@ async function deleteInstructor(id) {
 // DUTY SCHEDULE FUNCTIONS
 // ============================================
 
+let editingDutyId = null;
+
 async function assignDuty() {
     const instructor_id = document.getElementById('dutyInstructor').value;
     const dutyDate = document.getElementById('dutyDate').value;
@@ -1961,19 +1963,18 @@ async function assignDuty() {
     }
 
     try {
-        const { data: existing, error: checkError } = await supabaseClient
-            .from('duty_schedule')
-            .select('id, instructor_id, duty_date, session_time')
-            .eq('duty_date', dutyDate)
-            .eq('session_time', session_time)
-            .eq('instructor_id', instructor_id);
+        // Check for duplicate instructor on same day and same session (only for new assignments)
+        if (!editingDutyId) {
+            const { data: existing, error: checkError } = await supabaseClient
+                .from('duty_schedule')
+                .select('id')
+                .eq('duty_date', dutyDate)
+                .eq('session_time', session_time)
+                .eq('instructor_id', instructor_id);
 
-        if (checkError) throw checkError;
+            if (checkError) throw checkError;
 
-        if (existing && existing.length > 0) {
-            if (editingDutyId && existing[0].id === editingDutyId) {
-                // Allow update
-            } else {
+            if (existing && existing.length > 0) {
                 showMessage('⚠️ This instructor is already assigned to this session on this day.', 'error');
                 return;
             }
@@ -1981,6 +1982,7 @@ async function assignDuty() {
 
         let result;
         if (editingDutyId) {
+            // Update existing duty
             const { data, error } = await supabaseClient
                 .from('duty_schedule')
                 .update({
@@ -1997,9 +1999,9 @@ async function assignDuty() {
             if (error) throw error;
             result = data;
             showMessage('✅ Duty updated successfully!', 'success');
-            editingDutyId = null;
-            document.getElementById('assignDutyBtn').textContent = 'Assign Duty';
+            cancelEditDuty(); // Reset edit mode
         } else {
+            // Insert new duty
             const { data, error } = await supabaseClient
                 .from('duty_schedule')
                 .insert([{
@@ -2017,8 +2019,11 @@ async function assignDuty() {
             showMessage('✅ Duty assigned successfully!', 'success');
         }
 
+        // Reset form
         document.getElementById('dutyStudents').value = '';
         document.getElementById('dutyInstructor').value = '';
+        
+        // Refresh the report
         await generateDutyReport();
         await loadInstructors();
 
@@ -2039,23 +2044,62 @@ async function editDuty(id) {
         if (error) throw error;
 
         if (data) {
+            // Set the form values
             document.getElementById('dutyDate').value = data.duty_date;
             document.getElementById('dutyInstructor').value = data.instructor_id;
             document.getElementById('dutySession').value = data.session_time;
             document.getElementById('dutyClass').value = data.class;
             document.getElementById('dutyStudents').value = data.total_students || 0;
             
+            // Set editing mode
             editingDutyId = id;
-            document.getElementById('assignDutyBtn').textContent = 'Update Duty';
             
-            document.querySelector('.card.p-4.border').scrollIntoView({ behavior: 'smooth' });
+            // Update button text
+            const assignBtn = document.getElementById('assignDutyBtn');
+            if (assignBtn) {
+                assignBtn.textContent = 'Update Duty';
+            }
+            
+            // Show cancel button
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            if (cancelBtn) {
+                cancelBtn.classList.remove('hidden');
+            }
+            
+            // Scroll to form
+            const formCard = document.querySelector('.card.p-4.border');
+            if (formCard) {
+                formCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             
             showMessage('✏️ Editing duty assignment. Click "Update Duty" to save changes.', 'info');
         }
     } catch (error) {
         console.error('Error loading duty for edit:', error);
-        showMessage('Error: ' + error.message, 'error');
+        showMessage('Error loading duty: ' + error.message, 'error');
     }
+}
+
+function cancelEditDuty() {
+    editingDutyId = null;
+    
+    // Reset button text
+    const assignBtn = document.getElementById('assignDutyBtn');
+    if (assignBtn) {
+        assignBtn.textContent = 'Assign Duty';
+    }
+    
+    // Hide cancel button
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    if (cancelBtn) {
+        cancelBtn.classList.add('hidden');
+    }
+    
+    // Reset form (optional - keep values or clear them)
+    // document.getElementById('dutyInstructor').value = '';
+    // document.getElementById('dutyStudents').value = '';
+    
+    showMessage('Edit cancelled.', 'info');
 }
 
 async function deleteDuty(id) {
@@ -2070,10 +2114,12 @@ async function deleteDuty(id) {
         if (error) throw error;
 
         showMessage('Duty assignment deleted successfully.', 'success');
+        
+        // If we were editing this record, cancel edit mode
         if (editingDutyId === id) {
-            editingDutyId = null;
-            document.getElementById('assignDutyBtn').textContent = 'Assign Duty';
+            cancelEditDuty();
         }
+        
         await generateDutyReport();
         await loadInstructors();
 
@@ -2092,20 +2138,69 @@ async function generateDutyReport() {
     }
 
     try {
-        const { data, error } = await supabaseClient
+        // Try to use the view first
+        let { data, error } = await supabaseClient
             .from('duty_report_view')
             .select('*')
             .eq('duty_date', date)
             .order('session_time', { ascending: true })
             .order('instructor_name', { ascending: true });
 
-        if (error) throw error;
+        // If view doesn't exist or fails, fallback to direct query
+        if (error && error.message.includes('does not exist')) {
+            // Fallback: Direct query with join
+            const { data: dutyData, error: dutyError } = await supabaseClient
+                .from('duty_schedule')
+                .select(`
+                    *,
+                    instructors:instructor_id (
+                        id,
+                        name,
+                        ic_no,
+                        class_qualified,
+                        is_active
+                    )
+                `)
+                .eq('duty_date', date)
+                .order('session_time', { ascending: true });
+
+            if (dutyError) throw dutyError;
+            
+            // Transform data to match view format
+            data = dutyData.map(item => ({
+                id: item.id,
+                duty_date: item.duty_date,
+                session_time: item.session_time,
+                class: item.class,
+                total_students: item.total_students,
+                sign: item.sign,
+                signature: item.signature,
+                notes: item.notes,
+                created_at: item.created_at,
+                updated_at: item.updated_at,
+                instructor_id: item.instructors?.id,
+                instructor_name: item.instructors?.name,
+                instructor_ic: item.instructors?.ic_no,
+                class_qualified: item.instructors?.class_qualified,
+                instructor_active: item.instructors?.is_active
+            }));
+            
+            // Sort by session_time and instructor_name
+            data.sort((a, b) => {
+                if (a.session_time !== b.session_time) {
+                    return a.session_time.localeCompare(b.session_time);
+                }
+                return (a.instructor_name || '').localeCompare(b.instructor_name || '');
+            });
+        } else if (error) {
+            throw error;
+        }
 
         renderDutyReport(data || [], date);
 
     } catch (error) {
         console.error('Error generating duty report:', error);
-        showMessage('Error: ' + error.message, 'error');
+        showMessage('Error generating report: ' + error.message, 'error');
     }
 }
 
@@ -2150,6 +2245,7 @@ function renderDutyReport(data, date) {
                     <td class="p-2.5 font-medium">${item.total_students || 0}</td>
                     <td class="p-2.5 font-medium">${item.instructor_name || ''}</td>
                     <td class="p-2.5">
+                        <!-- Sign column - left empty for manual signature -->
                         <span style="color: transparent;">.</span>
                     </td>
                     <td class="p-2.5">
@@ -2498,6 +2594,7 @@ window.deleteInstructor = deleteInstructor;
 // Duty Schedule
 window.assignDuty = assignDuty;
 window.editDuty = editDuty;
+window.cancelEditDuty = cancelEditDuty;
 window.deleteDuty = deleteDuty;
 window.generateDutyReport = generateDutyReport;
 window.exportDutyPDF = exportDutyPDF;
