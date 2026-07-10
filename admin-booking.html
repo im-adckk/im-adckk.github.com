@@ -274,6 +274,67 @@
                 <!-- Current Date Status Display -->
                 <div id="currentDateStatus" class="mt-3 text-sm"></div>
             </section>
+
+            <!-- Quota Management -->
+            <div class="card" id="quotaManagement">
+                <header>
+                    <h2 class="font-semibold flex items-center gap-2">
+                        <i data-lucide="gauge" class="w-5 h-5"></i>
+                        Quota Management
+                    </h2>
+                    <p class="text-sm text-muted-foreground">Customize booking quotas for Class B and Class B2</p>
+                </header>
+                <section>
+                    <div class="flex flex-wrap gap-3 items-end">
+                        <div class="grid gap-1.5 flex-1 min-w-[150px]">
+                            <label for="quotaDateSelect" class="label text-sm">Select Date</label>
+                            <input type="date" id="quotaDateSelect" class="input">
+                        </div>
+                        <div class="grid gap-1.5 flex-1 min-w-[150px]">
+                            <label for="quotaApplyMode" class="label text-sm">Apply Mode</label>
+                            <select id="quotaApplyMode" class="input">
+                                <option value="single">Single Date</option>
+                                <option value="range">Date Range</option>
+                            </select>
+                        </div>
+                        <div class="grid gap-1.5 flex-1 min-w-[150px]" style="display:none;">
+                            <label for="quotaRangeEnd" class="label text-sm">End Date</label>
+                            <input type="date" id="quotaRangeEnd" class="input">
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 items-end mt-3">
+                        <div class="grid gap-1.5 flex-1 min-w-[120px]">
+                            <label for="quotaClassB" class="label text-sm">Class B Quota</label>
+                            <input type="number" id="quotaClassB" class="input" value="5" min="0" max="50">
+                        </div>
+                        <div class="grid gap-1.5 flex-1 min-w-[120px]">
+                            <label for="quotaClassB2" class="label text-sm">Class B2 Quota</label>
+                            <input type="number" id="quotaClassB2" class="input" value="15" min="0" max="100">
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="saveQuotaSettings()" class="btn gap-2" data-variant="secondary">
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                Save Quota
+                            </button>
+                            <button onclick="resetQuotaToDefault()" class="btn gap-2" data-variant="outline">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                Reset to Default
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Quota Status Message -->
+                    <div id="quotaStatus" class="mt-3 text-sm text-muted-foreground">
+                        📋 Using default quotas (B: 5, B2: 15)
+                    </div>
+                    <!-- Quota Progress -->
+                    <div id="quotaProgress" class="hidden mt-3 p-3 rounded-lg border bg-muted/40 text-center">
+                        <p class="text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
+                            <i data-lucide="loader-circle" class="w-4 h-4 animate-spin text-primary"></i>
+                            Saving quota settings...
+                        </p>
+                    </div>
+                </section>
+            </div>
         </div>
 
         <!-- Shadcn-Style Segmented Tabs Bar Navigation Control -->
