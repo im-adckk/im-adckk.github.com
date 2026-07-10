@@ -18,6 +18,7 @@ let currentPage = 1;
 let rowsPerPage = 10;
 let totalPages = 1;
 let totalDBCount = 0;
+let editingDutyId = null;
 
 // DOM Elements
 const adminLogin = document.getElementById('adminLogin');
@@ -199,7 +200,6 @@ async function loadStats() {
     try {
         const today = getMalaysiaToday();
         
-        // Today's bookings (all confirmed bookings for today)
         const { count: todayCount, error: todayError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
@@ -209,7 +209,6 @@ async function loadStats() {
         if (todayError) throw todayError;
         document.getElementById('todayBookings').textContent = todayCount || 0;
 
-        // Upcoming bookings (tomorrow onwards, confirmed only)
         const { count: upcoming, error: upcomingError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
@@ -219,7 +218,6 @@ async function loadStats() {
         if (upcomingError) throw upcomingError;
         document.getElementById('upcomingBookings').textContent = upcoming || 0;
 
-        // Class B - Today only
         const { count: bCount, error: bError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
@@ -230,7 +228,6 @@ async function loadStats() {
         if (bError) throw bError;
         document.getElementById('classBBookings').textContent = bCount || 0;
 
-        // Class B2 - Today only
         const { count: b2Count, error: b2Error } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
@@ -241,7 +238,6 @@ async function loadStats() {
         if (b2Error) throw b2Error;
         document.getElementById('classB2Bookings').textContent = b2Count || 0;
 
-        // Cancelled bookings - Current and future only (today and onwards)
         const { count: cancelled, error: cancelledError } = await supabaseClient
             .from('bookings')
             .select('*', { count: 'exact', head: true })
@@ -256,6 +252,7 @@ async function loadStats() {
         showMessage('Error loading stats: ' + error.message, 'error');
     }
 }
+
 // ============================================
 // ALL BOOKINGS TABLE
 // ============================================
@@ -327,13 +324,9 @@ async function loadAllBookings() {
             .from('bookings')
             .select('*', { count: 'exact' });
         
-        // Default: Show today and future bookings only
-        // If date filters are not set, use today as default
         if (!dateFrom && !dateTo) {
-            // Only show today and future
             query = query.gte('booking_date', today);
         } else {
-            // User has set custom date range
             if (dateFrom) {
                 query = query.gte('booking_date', dateFrom);
             }
@@ -364,7 +357,6 @@ async function loadAllBookings() {
         allBookingsData = data || [];
         totalDBCount = count || 0;
         
-        // Show info about which dates are being shown
         let filterInfo = '';
         if (!dateFrom && !dateTo) {
             filterInfo = ` (Today: ${formatMalaysiaDate(today)} onwards)`;
@@ -387,6 +379,7 @@ async function loadAllBookings() {
         renderBookingsTable([]);
     }
 }
+
 function updatePaginationServerSide() {
     totalPages = Math.ceil(totalDBCount / rowsPerPage) || 1;
 
@@ -850,7 +843,11 @@ async function generateBookingPDF(data, dateFrom, dateTo, classFilter, statusFil
     }, 10000);
 }
 
-async function generateBookingReport() {
+// ============================================
+// REPORT FUNCTIONS - EXPOSED TO HTML
+// ============================================
+
+async function generatePDFReport() {
     const dateFrom = document.getElementById('reportDateFrom').value;
     const dateTo = document.getElementById('reportDateTo').value;
     const classFilter = document.getElementById('reportClass').value;
@@ -908,11 +905,11 @@ async function generateBookingReport() {
     }
 }
 
-async function generateDailyBookingReport() {
+async function generateDailyReport() {
     const today = getMalaysiaToday();
     document.getElementById('reportDateFrom').value = today;
     document.getElementById('reportDateTo').value = today;
-    await generateBookingReport();
+    await generatePDFReport();
 }
 
 // ============================================
@@ -1596,7 +1593,6 @@ function populateInstructorDropdown(instructors) {
     });
 }
 
-// Instructor form submission
 document.addEventListener('DOMContentLoaded', function() {
     const instructorForm = document.getElementById('instructorForm');
     if (instructorForm) {
@@ -1717,27 +1713,130 @@ async function assignDuty() {
         return;
     }
 
+    // Check for duplicate instructor on same day and same session
     try {
-        const { data, error } = await supabaseClient
+        const { data: existing, error: checkError } = await supabaseClient
             .from('duty_schedule')
-            .insert([{
-                instructor_id: instructor_id,
-                duty_date: dutyDate,
-                session_time: session_time,
-                class: class_type,
-                total_students: total_students,
-                sign: 'PENDING'
-            }])
-            .select();
+            .select('id, instructor_id, duty_date, session_time')
+            .eq('duty_date', dutyDate)
+            .eq('session_time', session_time)
+            .eq('instructor_id', instructor_id);
 
-        if (error) throw error;
+        if (checkError) throw checkError;
 
-        showMessage('✅ Duty assigned successfully!', 'success');
+        if (existing && existing.length > 0) {
+            // If editing, allow update only if it's the same record
+            if (editingDutyId && existing[0].id === editingDutyId) {
+                // Allow update - continue
+            } else {
+                showMessage('⚠️ This instructor is already assigned to this session on this day.', 'error');
+                return;
+            }
+        }
+
+        let result;
+        if (editingDutyId) {
+            // Update existing duty
+            const { data, error } = await supabaseClient
+                .from('duty_schedule')
+                .update({
+                    instructor_id: instructor_id,
+                    duty_date: dutyDate,
+                    session_time: session_time,
+                    class: class_type,
+                    total_students: total_students,
+                    sign: 'PENDING'
+                })
+                .eq('id', editingDutyId)
+                .select();
+
+            if (error) throw error;
+            result = data;
+            showMessage('✅ Duty updated successfully!', 'success');
+            editingDutyId = null;
+            document.getElementById('assignDutyBtn').textContent = 'Assign Duty';
+        } else {
+            // Insert new duty
+            const { data, error } = await supabaseClient
+                .from('duty_schedule')
+                .insert([{
+                    instructor_id: instructor_id,
+                    duty_date: dutyDate,
+                    session_time: session_time,
+                    class: class_type,
+                    total_students: total_students,
+                    sign: 'PENDING'
+                }])
+                .select();
+
+            if (error) throw error;
+            result = data;
+            showMessage('✅ Duty assigned successfully!', 'success');
+        }
+
         document.getElementById('dutyStudents').value = '';
+        document.getElementById('dutyInstructor').value = '';
         await generateDutyReport();
+        await loadInstructors();
 
     } catch (error) {
         console.error('Error assigning duty:', error);
+        showMessage('Error: ' + error.message, 'error');
+    }
+}
+
+async function editDuty(id) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('duty_schedule')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        if (data) {
+            document.getElementById('dutyDate').value = data.duty_date;
+            document.getElementById('dutyInstructor').value = data.instructor_id;
+            document.getElementById('dutySession').value = data.session_time;
+            document.getElementById('dutyClass').value = data.class;
+            document.getElementById('dutyStudents').value = data.total_students || 0;
+            
+            editingDutyId = id;
+            document.getElementById('assignDutyBtn').textContent = 'Update Duty';
+            
+            // Scroll to form
+            document.querySelector('.card.p-4.border').scrollIntoView({ behavior: 'smooth' });
+            
+            showMessage('✏️ Editing duty assignment. Click "Update Duty" to save changes.', 'info');
+        }
+    } catch (error) {
+        console.error('Error loading duty for edit:', error);
+        showMessage('Error: ' + error.message, 'error');
+    }
+}
+
+async function deleteDuty(id) {
+    if (!confirm('Are you sure you want to delete this duty assignment?')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('duty_schedule')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        showMessage('Duty assignment deleted successfully.', 'success');
+        if (editingDutyId === id) {
+            editingDutyId = null;
+            document.getElementById('assignDutyBtn').textContent = 'Assign Duty';
+        }
+        await generateDutyReport();
+        await loadInstructors();
+
+    } catch (error) {
+        console.error('Error deleting duty:', error);
         showMessage('Error: ' + error.message, 'error');
     }
 }
@@ -1774,15 +1873,6 @@ function renderDutyReport(data, date) {
 
     container.classList.remove('hidden');
 
-    const dateObj = new Date(date + 'T00:00:00');
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayName = dayNames[dateObj.getDay()];
-    const formattedDate = dateObj.toLocaleDateString('en-MY', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
-
     const session1 = data.filter(d => d.session_time === '9am-12pm');
     const session2 = data.filter(d => d.session_time === '1pm-4pm');
 
@@ -1805,26 +1895,31 @@ function renderDutyReport(data, date) {
                             <th class="p-2.5">INSTRUCTOR</th>
                             <th class="p-2.5">SIGN</th>
                             <th class="p-2.5">CLASS</th>
+                            <th class="p-2.5 text-center">ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
 
         sessionData.forEach((item, index) => {
-            // Remove the ✍️ Signed / ⏳ Pending display, just show empty or dash
-            const signDisplay = ''; // Empty for PDF
-
             html += `
                 <tr class="hover:bg-muted/40 transition-colors border-b">
                     <td class="p-2.5 text-center">${index + 1}</td>
                     <td class="p-2.5 font-medium">${item.total_students || 0}</td>
                     <td class="p-2.5 font-medium">${item.instructor_name || ''}</td>
                     <td class="p-2.5">
-                        <!-- Sign column - left empty for manual signature -->
                         <span style="color: transparent;">.</span>
                     </td>
                     <td class="p-2.5">
                         <span class="inline-block px-2 py-0.5 rounded bg-muted text-xs">${item.class || ''}</span>
+                    </td>
+                    <td class="p-2.5 text-center">
+                        <button onclick="editDuty('${item.id}')" class="text-xs text-blue-600 hover:text-blue-800 mr-2" title="Edit">
+                            <i data-lucide="edit" class="w-4 h-4 inline"></i>
+                        </button>
+                        <button onclick="deleteDuty('${item.id}')" class="text-xs text-red-600 hover:text-red-800" title="Delete">
+                            <i data-lucide="trash-2" class="w-4 h-4 inline"></i>
+                        </button>
                     </td>
                 </tr>
             `;
@@ -1841,8 +1936,6 @@ function renderDutyReport(data, date) {
 
     container.innerHTML = `
         <div class="bg-white rounded-xl border p-6 space-y-6">
-            <!-- Header removed from here - will be added in PDF export -->
-            
             <div>
                 <h4 class="font-semibold text-base mb-3 flex items-center gap-2">
                     <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">SESSION (9AM-12PM)</span>
@@ -1879,19 +1972,13 @@ async function exportDutyPDF() {
         const dateObj = new Date(date + 'T00:00:00');
         const filename = `duty_schedule_${dateObj.toISOString().split('T')[0]}`;
 
-        // Get the content and clean it
         let content = container.innerHTML;
-        
-        // Remove any buttons
         content = content.replace(/<button[^>]*>.*?<\/button>/g, '');
-        
-        // Remove ✍️ Signed text and icons
         content = content.replace(/✍️ Signed/g, '');
         content = content.replace(/⏳ Pending/g, '');
         content = content.replace(/<span[^>]*class="[^"]*text-emerald-600[^"]*"[^>]*>.*?<\/span>/g, '');
         content = content.replace(/<span[^>]*class="[^"]*text-amber-600[^"]*"[^>]*>.*?<\/span>/g, '');
 
-        // Build full HTML page with single header
         const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -2005,15 +2092,11 @@ async function exportDutyPDF() {
             padding-top: 15px; 
             margin-top: 20px; 
         }
-        @media print {
-            body { padding: 20px; }
-            .no-print { display: none; }
-        }
+        .no-print { display: none; }
     </style>
 </head>
 <body>
     <div class="report">
-        <!-- SINGLE HEADER -->
         <div class="header">
             <h2>API-API DRIVING CENTRE SDN BHD (723723T)</h2>
             <h3>INSTRUCTOR RECORD TIMETABLE (DUTY SCHEDULE)</h3>
@@ -2026,10 +2109,8 @@ async function exportDutyPDF() {
             </div>
         </div>
 
-        <!-- TABLE CONTENT -->
         ${content}
 
-        <!-- FOOTER ONLY -->
         <div class="footer">
             Generated on: ${new Date().toLocaleString('en-MY')}
             <br>© ${new Date().getFullYear()} - API-API Driving Centre Sdn Bhd
@@ -2045,7 +2126,6 @@ async function exportDutyPDF() {
 </body>
 </html>`;
 
-        // Open in new tab
         const newTab = window.open('', '_blank');
         if (!newTab) {
             throw new Error('Popup blocked. Please allow popups for this site.');
@@ -2062,14 +2142,12 @@ async function exportDutyPDF() {
     }
 }
 
-// Helper function to get day name
 function getDayName(dateString) {
     const date = new Date(dateString + 'T00:00:00');
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return dayNames[date.getDay()];
 }
 
-// Helper function to format date
 function formatDateForReport(dateString) {
     const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString('en-MY', {
@@ -2078,6 +2156,7 @@ function formatDateForReport(dateString) {
         year: 'numeric'
     });
 }
+
 // ============================================
 // ADMIN INITIALIZATION
 // ============================================
@@ -2102,7 +2181,6 @@ async function initializeAdmin() {
         loadAdminCalendarData();
     }, 100);
 
-    // Generate initial duty report
     setTimeout(() => {
         generateDutyReport();
     }, 200);
@@ -2113,8 +2191,8 @@ async function initializeAdmin() {
 // ============================================
 
 // Booking Report
-window.generateBookingReport = generateBookingReport;
-window.generateDailyBookingReport = generateDailyBookingReport;
+window.generatePDFReport = generatePDFReport;
+window.generateDailyReport = generateDailyReport;
 
 // Admin
 window.logoutAdmin = logoutAdmin;
@@ -2144,8 +2222,9 @@ window.deleteInstructor = deleteInstructor;
 
 // Duty Schedule
 window.assignDuty = assignDuty;
+window.editDuty = editDuty;
+window.deleteDuty = deleteDuty;
 window.generateDutyReport = generateDutyReport;
-// window.markSigned = markSigned;
 window.exportDutyPDF = exportDutyPDF;
 
 // ============================================
