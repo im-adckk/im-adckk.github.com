@@ -719,7 +719,7 @@ async function applyQuotaToDateFromCalendar(dateStr) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - BOOKING REPORT
+// PDF REPORT GENERATION - BOOKING REPORT (FIXED MARGINS)
 // ============================================
 
 function buildBookingReportHTML(data) {
@@ -783,7 +783,7 @@ function buildBookingReportHTML(data) {
 
             html += `
                 <tr class="class-separator">
-                    <td colspan="9" style="padding:8px 10px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;">
+                    <td colspan="9" style="padding:6px 10px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;font-size:10px;">
                         📅 ${sessionTime}
                     </td>
                 </tr>
@@ -798,25 +798,25 @@ function buildBookingReportHTML(data) {
 
                 html += `
                     <tr>
-                        <td style="text-align:center;padding:6px;border:1px solid #ddd;">${counter}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.name || ''}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.icno || ''}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.remark || ''}</td>
-                        <td style="text-align:center;padding:6px;border:1px solid #ddd;">${b.class || ''}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${lessonDisplay}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.plate_no || ''}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.sign_in || ''}</td>
-                        <td style="padding:6px;border:1px solid #ddd;">${b.sign_out || ''}</td>
+                        <td style="text-align:center;padding:5px 6px;border:1px solid #ddd;font-size:9px;">${counter}</td>
+                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.name || ''}</td>
+                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.icno || ''}</td>
+                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.remark || ''}</td>
+                        <td style="text-align:center;padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.class || ''}</td>
+                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${lessonDisplay}</td>
+                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.plate_no || ''}</td>
+                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.sign_in || ''}</td>
+                        <td style="padding:5px 6px;border:1px solid #ddd;font-size:9px;">${b.sign_out || ''}</td>
                     </tr>
                 `;
             });
 
             html += `
                 <tr style="background:#f8fafc;font-weight:bold;">
-                    <td colspan="8" style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:#2c3e50;">
+                    <td colspan="8" style="padding:5px 10px;border:1px solid #ddd;text-align:right;color:#2c3e50;font-size:9px;">
                         Subtotal (${sessionTime}):
                     </td>
-                    <td style="padding:6px;border:1px solid #ddd;text-align:center;color:#2c3e50;">
+                    <td style="padding:5px;border:1px solid #ddd;text-align:center;color:#2c3e50;font-size:9px;">
                         ${items.length}
                     </td>
                 </tr>
@@ -829,38 +829,38 @@ function buildBookingReportHTML(data) {
     function renderClassPage(bookingsList, className, classBadge, totalCount) {
         if (bookingsList.length === 0) {
             return `
-                <div style="page-break-after:always;padding:40px 0;text-align:center;color:#999;font-style:italic;">
+                <div style="page-break-after:always;padding:40px 0;text-align:center;color:#999;font-style:italic;font-size:12px;">
                     No ${className} bookings found for this period.
                 </div>
             `;
         }
 
         return `
-            <div style="page-break-after:always;">
-                <h3 class="section-title" style="margin-top:0;">
-                    <span class="class-badge ${classBadge}">${className}</span>
-                    <span style="margin-left:15px;font-weight:normal;font-size:13px;color:#666;">Total: ${totalCount} participants</span>
+            <div style="page-break-after:always;padding:10px 15px;">
+                <h3 class="section-title" style="margin-top:0;font-size:14px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:8px;">
+                    <span class="class-badge ${classBadge}" style="display:inline-block;padding:2px 10px;border-radius:4px;font-weight:bold;font-size:11px;background:${classBadge === 'class-badge-b' ? '#dbeafe' : '#fce7f3'};color:${classBadge === 'class-badge-b' ? '#1e40af' : '#9d174d'};">${className}</span>
+                    <span style="margin-left:15px;font-weight:normal;font-size:11px;color:#666;">Total: ${totalCount} participants</span>
                 </h3>
-                <table>
+                <table style="width:100%;border-collapse:collapse;font-size:9px;margin-top:10px;">
                     <thead>
                         <tr>
-                            <th class="center" style="width:40px;">NO</th>
-                            <th style="min-width:120px;">NAME</th>
-                            <th style="min-width:100px;">IC/PASSPORT</th>
-                            <th style="min-width:80px;">REMARK</th>
-                            <th class="center" style="width:50px;">CLASS</th>
-                            <th style="min-width:80px;">LESSON</th>
-                            <th style="min-width:80px;">PLATE NO</th>
-                            <th style="min-width:70px;">SIGN IN</th>
-                            <th style="min-width:70px;">SIGN OUT</th>
+                            <th style="text-align:center;padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;width:30px;">NO</th>
+                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:100px;">NAME</th>
+                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:80px;">IC/PASSPORT</th>
+                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:60px;">REMARK</th>
+                            <th style="text-align:center;padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;width:40px;">CLASS</th>
+                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:70px;">LESSON</th>
+                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:70px;">PLATE NO</th>
+                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:60px;">SIGN IN</th>
+                            <th style="padding:6px 8px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:9px;min-width:60px;">SIGN OUT</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${renderGroupedTableRows(bookingsList, 0)}
                     </tbody>
                 </table>
-                <div style="margin-top:15px;padding:10px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;text-align:right;">
-                    <span style="font-weight:bold;font-size:13px;">Total ${className}: ${totalCount} participants</span>
+                <div style="margin-top:10px;padding:8px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;text-align:right;font-size:10px;">
+                    <span style="font-weight:bold;">Total ${className}: ${totalCount} participants</span>
                 </div>
             </div>
         `;
@@ -874,83 +874,301 @@ function buildBookingReportHTML(data) {
     <title>Booking Report</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #ffffff; color: #000000; padding: 40px; font-size: 12px; line-height: 1.5; }
-        .report-container { max-width: 100%; margin: 0 auto; }
-        .page-break { page-break-after: always; }
-        .page-break:last-child { page-break-after: avoid; }
-        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
-        .header h1 { margin: 0; color: #2c3e50; font-size: 24px; }
-        .header p { margin: 5px 0; color: #7f8c8d; font-size: 14px; }
-        .section-title { color: #2c3e50; border-bottom: 2px solid #333; padding-bottom: 8px; font-size: 16px; margin: 25px 0 15px 0; }
-        .section-title:first-of-type { margin-top: 0; }
-        .class-badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; }
-        .class-badge-b { background: #dbeafe; color: #1e40af; }
-        .class-badge-b2 { background: #fce7f3; color: #9d174d; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        thead th { background: #34495e; color: #fff; padding: 8px; text-align: left; border: 1px solid #34495e; }
-        thead th.center { text-align: center; }
-        tbody td { padding: 6px; border: 1px solid #ddd; }
-        tbody tr:nth-child(even) { background: #f8f9fa; }
-        tbody tr:nth-child(odd) { background: #ffffff; }
-        .class-separator td { padding: 6px 10px; border: 1px solid #ccc; background: #e8ecf1 !important; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 11px; color: #95a5a6; text-align: center; }
-        .loading { text-align: center; padding: 40px; font-size: 16px; color: #666; }
-        .spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .cover-page { text-align: center; padding: 60px 40px; page-break-after: always; }
-        .cover-page h1 { font-size: 32px; color: #2c3e50; margin-bottom: 20px; }
-        .cover-page .subtitle { font-size: 18px; color: #7f8c8d; margin-bottom: 40px; }
-        .cover-page .info { font-size: 14px; color: #95a5a6; line-height: 2; }
-        .cover-page .info strong { color: #2c3e50; }
-        .cover-page .logo { font-size: 64px; margin-bottom: 30px; }
+        body { 
+            font-family: Arial, Helvetica, sans-serif; 
+            background: #ffffff; 
+            color: #000000; 
+            padding: 20px; 
+            font-size: 10px; 
+            line-height: 1.4;
+        }
+        .report-container { 
+            max-width: 100%; 
+            margin: 0 auto; 
+            padding: 10px;
+        }
+        .page-break { 
+            page-break-after: always; 
+        }
+        .page-break:last-child { 
+            page-break-after: avoid; 
+        }
+        
+        /* Cover Page */
+        .cover-page { 
+            text-align: center; 
+            padding: 40px 30px; 
+            page-break-after: always;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .cover-page .logo { 
+            font-size: 48px; 
+            margin-bottom: 20px; 
+        }
+        .cover-page h1 { 
+            font-size: 26px; 
+            color: #2c3e50; 
+            margin-bottom: 15px; 
+            font-weight: bold;
+        }
+        .cover-page .subtitle { 
+            font-size: 16px; 
+            color: #7f8c8d; 
+            margin-bottom: 30px; 
+        }
+        .cover-page .info { 
+            font-size: 12px; 
+            color: #95a5a6; 
+            line-height: 2; 
+        }
+        .cover-page .info strong { 
+            color: #2c3e50; 
+        }
+        .cover-page .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 30px;
+            max-width: 500px;
+            margin: 10px auto;
+            text-align: left;
+        }
+        .cover-page .info-grid .label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .cover-page .info-grid .value {
+            color: #555;
+        }
+        
+        /* Section Titles */
+        .section-title { 
+            color: #2c3e50; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 6px; 
+            font-size: 14px; 
+            margin: 15px 0 10px 0; 
+        }
+        .section-title:first-of-type { 
+            margin-top: 0; 
+        }
+        
+        /* Class Badges */
+        .class-badge { 
+            display: inline-block; 
+            padding: 2px 10px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            font-size: 11px; 
+        }
+        .class-badge-b { 
+            background: #dbeafe; 
+            color: #1e40af; 
+        }
+        .class-badge-b2 { 
+            background: #fce7f3; 
+            color: #9d174d; 
+        }
+        
+        /* Tables */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 9px; 
+        }
+        thead th { 
+            background: #34495e; 
+            color: #fff; 
+            padding: 5px 6px; 
+            text-align: left; 
+            border: 1px solid #34495e; 
+            font-size: 9px;
+        }
+        thead th.center { 
+            text-align: center; 
+        }
+        tbody td { 
+            padding: 4px 6px; 
+            border: 1px solid #ddd; 
+            font-size: 9px;
+        }
+        tbody tr:nth-child(even) { 
+            background: #f8f9fa; 
+        }
+        tbody tr:nth-child(odd) { 
+            background: #ffffff; 
+        }
+        .class-separator td { 
+            padding: 5px 10px; 
+            border: 1px solid #ccc; 
+            background: #e8ecf1 !important; 
+            font-size: 10px;
+        }
+        
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+        }
+        .summary-card {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+            background: #f8f9fa;
+        }
+        .summary-card .number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .summary-card .label {
+            font-size: 10px;
+            color: #7f8c8d;
+            margin-top: 3px;
+        }
+        .summary-card.blue {
+            background: #eff6ff;
+            border-color: #dbeafe;
+        }
+        .summary-card.blue .number {
+            color: #1e40af;
+        }
+        .summary-card.pink {
+            background: #fdf2f8;
+            border-color: #fce7f3;
+        }
+        .summary-card.pink .number {
+            color: #9d174d;
+        }
+        
+        /* Session Breakdown */
+        .session-breakdown {
+            margin-top: 15px;
+            padding: 12px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: #f8fafc;
+        }
+        .session-breakdown h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 12px;
+        }
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 4px;
+            font-size: 10px;
+        }
+        .session-item .count {
+            font-weight: bold;
+        }
+        
+        /* Footer */
+        .footer { 
+            margin-top: 20px; 
+            padding-top: 15px; 
+            border-top: 1px solid #ddd; 
+            font-size: 9px; 
+            color: #95a5a6; 
+            text-align: center; 
+        }
+        
+        /* Loading */
+        .loading { 
+            text-align: center; 
+            padding: 40px; 
+            font-size: 14px; 
+            color: #666; 
+        }
+        .spinner { 
+            display: inline-block; 
+            width: 30px; 
+            height: 30px; 
+            border: 3px solid #f3f3f3; 
+            border-top: 3px solid #3498db; 
+            border-radius: 50%; 
+            animation: spin 1s linear infinite; 
+        }
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+        
+        @media print {
+            body { padding: 10px; }
+            .cover-page { min-height: 70vh; }
+        }
     </style>
 </head>
 <body>
     <div id="loading" class="loading">
         <div class="spinner"></div>
-        <p style="margin-top: 15px;">Generating PDF report...</p>
+        <p style="margin-top: 15px;font-size:12px;">Generating PDF report...</p>
     </div>
     
     <div id="reportContent" class="report-container" style="display:none;">
+        <!-- COVER PAGE -->
         <div class="cover-page">
             <div class="logo">🏍️</div>
             <h1>Motorcycle Booking Report</h1>
-            <p class="subtitle">Class ${classLabel} • ${statusLabel}</p>
+            <p class="subtitle">${classLabel} • ${statusLabel}</p>
             <div class="info">
-                <p><strong>Period:</strong> ${formatDate(dateFrom)} to ${formatDate(dateTo)}</p>
-                <p><strong>Total Bookings:</strong> ${totalAll} participants</p>
-                <p><strong>Class B:</strong> ${totalB} participants</p>
-                <p><strong>Class B2:</strong> ${totalB2} participants</p>
-                <p><strong>Generated:</strong> ${formatDateTimeLocal(new Date().toISOString())}</p>
+                <div class="info-grid">
+                    <span class="label">Period:</span>
+                    <span class="value">${formatDate(dateFrom)} to ${formatDate(dateTo)}</span>
+                    <span class="label">Total Bookings:</span>
+                    <span class="value">${totalAll} participants</span>
+                    <span class="label">Class B:</span>
+                    <span class="value">${totalB} participants</span>
+                    <span class="label">Class B2:</span>
+                    <span class="value">${totalB2} participants</span>
+                    <span class="label">Generated:</span>
+                    <span class="value">${formatDateTimeLocal(new Date().toISOString())}</span>
+                </div>
             </div>
         </div>
         
+        <!-- CLASS B PAGE -->
         <div class="page-break">
             ${renderClassPage(classBBookings, 'CLASS B', 'class-badge-b', totalB)}
         </div>
         
+        <!-- CLASS B2 PAGE -->
         <div class="page-break">
             ${renderClassPage(classB2Bookings, 'CLASS B2', 'class-badge-b2', totalB2)}
         </div>
         
-        <div style="page-break-after:avoid;padding-top:40px;">
-            <h3 class="section-title" style="margin-top:0;">📊 Summary</h3>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:20px;">
-                <div style="padding:20px;border:1px solid #ddd;border-radius:8px;text-align:center;background:#f8f9fa;">
-                    <div style="font-size:28px;font-weight:bold;color:#2c3e50;">${totalAll}</div>
-                    <div style="font-size:12px;color:#7f8c8d;margin-top:5px;">Total Participants</div>
+        <!-- SUMMARY PAGE -->
+        <div style="page-break-after:avoid;padding:15px 10px;">
+            <h3 class="section-title" style="margin-top:0;font-size:14px;">📊 Summary</h3>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="number">${totalAll}</div>
+                    <div class="label">Total Participants</div>
                 </div>
-                <div style="padding:20px;border:1px solid #dbeafe;border-radius:8px;text-align:center;background:#eff6ff;">
-                    <div style="font-size:28px;font-weight:bold;color:#1e40af;">${totalB}</div>
-                    <div style="font-size:12px;color:#7f8c8d;margin-top:5px;">Class B</div>
+                <div class="summary-card blue">
+                    <div class="number">${totalB}</div>
+                    <div class="label">Class B</div>
                 </div>
-                <div style="padding:20px;border:1px solid #fce7f3;border-radius:8px;text-align:center;background:#fdf2f8;">
-                    <div style="font-size:28px;font-weight:bold;color:#9d174d;">${totalB2}</div>
-                    <div style="font-size:12px;color:#7f8c8d;margin-top:5px;">Class B2</div>
+                <div class="summary-card pink">
+                    <div class="number">${totalB2}</div>
+                    <div class="label">Class B2</div>
                 </div>
             </div>
-            <div style="margin-top:20px;padding:15px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
-                <h4 style="margin-bottom:10px;color:#2c3e50;">Session Breakdown</h4>
+            
+            <div class="session-breakdown">
+                <h4>Session Breakdown</h4>
                 ${(() => {
                     const sessionCounts = {};
                     bookings.forEach(b => {
@@ -958,19 +1176,19 @@ function buildBookingReportHTML(data) {
                         if (!sessionCounts[key]) sessionCounts[key] = 0;
                         sessionCounts[key]++;
                     });
-                    let html = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">';
+                    let html = '';
                     for (const [session, count] of Object.entries(sessionCounts)) {
                         html += `
-                            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:white;border-radius:4px;border:1px solid #e2e8f0;">
+                            <div class="session-item">
                                 <span>${session}</span>
-                                <span style="font-weight:bold;">${count}</span>
+                                <span class="count">${count}</span>
                             </div>
                         `;
                     }
-                    html += '</div>';
                     return html;
                 })()}
             </div>
+            
             <div class="footer">
                 <p>This report is auto-generated by the Motorcycle Booking System.</p>
                 <p>© ${new Date().getFullYear()} - All rights reserved.</p>
@@ -981,17 +1199,42 @@ function buildBookingReportHTML(data) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
     <script>
         (function() {
+            // Hide loading, show content
             setTimeout(function() {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('reportContent').style.display = 'block';
+                
                 const element = document.getElementById('reportContent');
                 const opt = {
-                    margin: [10, 10, 10, 10],
+                    margin: {
+                        top: 8,
+                        bottom: 8,
+                        left: 8,
+                        right: 8
+                    },
                     filename: '${filename}.pdf',
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', allowTaint: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                    html2canvas: { 
+                        scale: 2, 
+                        useCORS: true, 
+                        logging: false, 
+                        backgroundColor: '#ffffff',
+                        allowTaint: true,
+                        scrollY: 0,
+                        windowHeight: element.scrollHeight
+                    },
+                    jsPDF: { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'landscape'
+                    },
+                    pagebreak: { 
+                        mode: ['avoid-all', 'css', 'legacy'],
+                        before: '.page-break',
+                        after: '.page-break-after'
+                    }
                 };
+                
                 html2pdf().set(opt).from(element).save().then(function() {
                     setTimeout(function() { window.close(); }, 1000);
                 }).catch(function(err) {
@@ -1000,7 +1243,7 @@ function buildBookingReportHTML(data) {
                         '<p style="color:red;margin-top:20px;text-align:center;font-size:14px;">❌ Error generating PDF. Please use Print (Ctrl+P) to save as PDF.</p>' +
                         '<p style="text-align:center;margin-top:10px;"><button onclick="window.print()" style="padding:10px 20px;font-size:14px;cursor:pointer;">Print / Save as PDF</button></p>';
                 });
-            }, 500);
+            }, 800);
         })();
     <\/script>
 </body>
