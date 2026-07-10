@@ -719,7 +719,7 @@ async function applyQuotaToDateFromCalendar(dateStr) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - BOOKING REPORT (FIXED MARGINS)
+// PDF REPORT GENERATION - BOOKING REPORT (PORTRAIT FIXED)
 // ============================================
 
 function buildBookingReportHTML(data) {
@@ -783,7 +783,7 @@ function buildBookingReportHTML(data) {
 
             html += `
                 <tr class="class-separator">
-                    <td colspan="9" style="padding:4px 8px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;font-size:9px;">
+                    <td colspan="9" style="padding:4px 8px;border:1px solid #ccc;background:#e8ecf1;font-weight:bold;color:#2c3e50;font-size:9px;text-align:left;">
                         📅 ${sessionTime}
                     </td>
                 </tr>
@@ -798,15 +798,15 @@ function buildBookingReportHTML(data) {
 
                 html += `
                     <tr>
-                        <td style="text-align:center;padding:4px 5px;border:1px solid #ddd;font-size:8px;">${counter}</td>
-                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.name || ''}</td>
-                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.icno || ''}</td>
-                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.remark || ''}</td>
-                        <td style="text-align:center;padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.class || ''}</td>
-                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${lessonDisplay}</td>
-                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.plate_no || ''}</td>
-                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.sign_in || ''}</td>
-                        <td style="padding:4px 5px;border:1px solid #ddd;font-size:8px;">${b.sign_out || ''}</td>
+                        <td style="text-align:center;padding:3px 4px;border:1px solid #ddd;font-size:8px;">${counter}</td>
+                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.name || ''}</td>
+                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.icno || ''}</td>
+                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.remark || ''}</td>
+                        <td style="text-align:center;padding:3px 4px;border:1px solid #ddd;font-size:8px;">${b.class || ''}</td>
+                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${lessonDisplay}</td>
+                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.plate_no || ''}</td>
+                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.sign_in || ''}</td>
+                        <td style="padding:3px 4px;border:1px solid #ddd;font-size:8px;word-break:break-word;">${b.sign_out || ''}</td>
                     </tr>
                 `;
             });
@@ -836,30 +836,43 @@ function buildBookingReportHTML(data) {
         }
 
         return `
-            <div style="page-break-after:always;padding:5px 10px;">
-                <h3 style="margin:0 0 8px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:6px;">
+            <div style="page-break-after:always;padding:5px 8px;">
+                <h3 style="margin:0 0 6px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:5px;">
                     <span style="display:inline-block;padding:2px 10px;border-radius:4px;font-weight:bold;font-size:10px;background:${classBadge === 'class-badge-b' ? '#dbeafe' : '#fce7f3'};color:${classBadge === 'class-badge-b' ? '#1e40af' : '#9d174d'};">${className}</span>
-                    <span style="margin-left:12px;font-weight:normal;font-size:10px;color:#666;">Total: ${totalCount} participants</span>
+                    <span style="margin-left:10px;font-weight:normal;font-size:10px;color:#666;">Total: ${totalCount} participants</span>
                 </h3>
-                <table style="width:100%;border-collapse:collapse;font-size:8px;margin-top:8px;">
-                    <thead>
-                        <tr>
-                            <th style="text-align:center;padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;width:25px;">NO</th>
-                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:90px;">NAME</th>
-                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:70px;">IC/PASSPORT</th>
-                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:50px;">REMARK</th>
-                            <th style="text-align:center;padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;width:35px;">CLASS</th>
-                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:60px;">LESSON</th>
-                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:60px;">PLATE NO</th>
-                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:50px;">SIGN IN</th>
-                            <th style="padding:4px 5px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:8px;min-width:50px;">SIGN OUT</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${renderGroupedTableRows(bookingsList, 0)}
-                    </tbody>
-                </table>
-                <div style="margin-top:8px;padding:6px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;text-align:right;font-size:9px;">
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:8px;margin-top:6px;table-layout:fixed;">
+                        <colgroup>
+                            <col style="width:5%;">
+                            <col style="width:15%;">
+                            <col style="width:12%;">
+                            <col style="width:10%;">
+                            <col style="width:6%;">
+                            <col style="width:12%;">
+                            <col style="width:12%;">
+                            <col style="width:10%;">
+                            <col style="width:10%;">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th style="text-align:center;padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">NO</th>
+                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">NAME</th>
+                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">IC/PASSPORT</th>
+                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">REMARK</th>
+                                <th style="text-align:center;padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">CLASS</th>
+                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">LESSON</th>
+                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">PLATE NO</th>
+                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">SIGN IN</th>
+                                <th style="padding:4px 3px;border:1px solid #34495e;background:#34495e;color:#fff;font-size:7px;">SIGN OUT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${renderGroupedTableRows(bookingsList, 0)}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px;padding:5px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;text-align:right;font-size:9px;">
                     <span style="font-weight:bold;">Total ${className}: ${totalCount} participants</span>
                 </div>
             </div>
@@ -878,7 +891,7 @@ function buildBookingReportHTML(data) {
             font-family: Arial, Helvetica, sans-serif; 
             background: #ffffff; 
             color: #000000; 
-            padding: 10px; 
+            padding: 8px; 
             font-size: 10px; 
             line-height: 1.3;
         }
@@ -931,7 +944,7 @@ function buildBookingReportHTML(data) {
         .cover-page .info-grid {
             display: grid;
             grid-template-columns: auto auto;
-            gap: 5px 20px;
+            gap: 4px 20px;
             margin: 8px auto;
             text-align: left;
         }
@@ -943,35 +956,29 @@ function buildBookingReportHTML(data) {
             color: #555;
         }
         
-        /* Section Titles */
-        .section-title { 
-            color: #2c3e50; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 6px; 
-            font-size: 13px; 
-            margin: 12px 0 8px 0; 
-        }
-        
         /* Tables */
         table { 
             width: 100%; 
             border-collapse: collapse; 
+            table-layout: fixed;
         }
         thead th { 
             background: #34495e; 
             color: #fff; 
-            padding: 4px 5px; 
+            padding: 4px 3px; 
             text-align: left; 
             border: 1px solid #34495e; 
-            font-size: 8px;
+            font-size: 7px;
         }
         thead th.center { 
             text-align: center; 
         }
         tbody td { 
-            padding: 3px 5px; 
+            padding: 3px 4px; 
             border: 1px solid #ddd; 
             font-size: 8px;
+            word-break: break-word;
+            overflow-wrap: break-word;
         }
         tbody tr:nth-child(even) { 
             background: #f8f9fa; 
@@ -1055,7 +1062,7 @@ function buildBookingReportHTML(data) {
         /* Footer */
         .footer { 
             margin-top: 15px; 
-            padding-top: 12px; 
+            padding-top: 10px; 
             border-top: 1px solid #ddd; 
             font-size: 8px; 
             color: #95a5a6; 
@@ -1132,7 +1139,7 @@ function buildBookingReportHTML(data) {
         
         <!-- SUMMARY PAGE -->
         <div style="page-break-after:avoid;padding:10px 5px;">
-            <h3 style="margin:0 0 8px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:6px;">📊 Summary</h3>
+            <h3 style="margin:0 0 8px 0;font-size:13px;color:#2c3e50;border-bottom:2px solid #333;padding-bottom:5px;">📊 Summary</h3>
             <div class="summary-grid">
                 <div class="summary-card">
                     <div class="number">${totalAll}</div>
@@ -1196,12 +1203,15 @@ function buildBookingReportHTML(data) {
                         backgroundColor: '#ffffff',
                         allowTaint: true,
                         scrollY: 0,
+                        width: element.scrollWidth,
+                        height: element.scrollHeight,
+                        windowWidth: element.scrollWidth,
                         windowHeight: element.scrollHeight
                     },
                     jsPDF: { 
                         unit: 'mm', 
                         format: 'a4', 
-                        orientation: 'landscape'
+                        orientation: 'portrait'
                     },
                     pagebreak: { 
                         mode: ['avoid-all', 'css', 'legacy']
