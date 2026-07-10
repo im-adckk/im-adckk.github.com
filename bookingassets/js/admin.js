@@ -719,7 +719,7 @@ async function applyQuotaToDateFromCalendar(dateStr) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - BOOKING REPORT (IMPROVED LAYOUT - FIXED)
+// PDF REPORT GENERATION - BOOKING REPORT (FIXED)
 // ============================================
 
 function buildBookingReportHTML(data) {
@@ -883,6 +883,28 @@ function buildBookingReportHTML(data) {
                 </div>
             </div>
         `;
+    }
+
+    // Generate session breakdown HTML
+    function getSessionBreakdownHTML() {
+        const sessionCounts = {};
+        bookings.forEach(b => {
+            const key = b.session_time || 'Unknown';
+            if (!sessionCounts[key]) sessionCounts[key] = 0;
+            sessionCounts[key]++;
+        });
+        let html = '';
+        const sortedSessions = Object.keys(sessionCounts).sort();
+        sortedSessions.forEach(session => {
+            const count = sessionCounts[session];
+            html += `
+                <div class="session-item">
+                    <span class="label">${session}</span>
+                    <span class="count">${count}</span>
+                </div>
+            `;
+        });
+        return html;
     }
 
     return `
@@ -1316,26 +1338,7 @@ function buildBookingReportHTML(data) {
             
             <div class="session-breakdown">
                 <h4>Session Breakdown</h4>
-                ${(() => {
-                    const sessionCounts = {};
-                    bookings.forEach(b => {
-                        const key = b.session_time || 'Unknown';
-                        if (!sessionCounts[key]) sessionCounts[key] = 0;
-                        sessionCounts[key]++;
-                    });
-                    let html = '';
-                    const sortedSessions = Object.keys(sessionCounts).sort();
-                    sortedSessions.forEach(session => {
-                        const count = sessionCounts[session];
-                        html += \`
-                            <div class="session-item">
-                                <span class="label">\${session}</span>
-                                <span class="count">\${count}</span>
-                            </div>
-                        \`;
-                    });
-                    return html;
-                })()}
+                ${getSessionBreakdownHTML()}
             </div>
             
             <div class="footer">
@@ -1363,9 +1366,7 @@ function buildBookingReportHTML(data) {
                         logging: false, 
                         backgroundColor: '#ffffff',
                         allowTaint: true,
-                        letterRendering: true,
-                        width: 794,
-                        height: 1123
+                        letterRendering: true
                     },
                     jsPDF: { 
                         unit: 'mm', 
