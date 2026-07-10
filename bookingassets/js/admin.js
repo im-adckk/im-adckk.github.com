@@ -2186,7 +2186,7 @@ async function deleteInstructor(id) {
 // DUTY SCHEDULE FUNCTIONS
 // ============================================
 
-let editingDutyId = null;
+
 
 async function assignDuty() {
     const instructor_id = document.getElementById('dutyInstructor').value;
