@@ -646,57 +646,60 @@
         
         <!-- TAB: DUTY SCHEDULE REPORT -->
         <div id="tabContentDuty" class="hidden space-y-4">
-            <div class="card p-4 border">
-                <div class="flex flex-wrap gap-4 items-end">
-                    <div class="grid gap-1.5">
-                        <label class="label text-sm">Select Date</label>
-                        <input type="date" id="dutyDate" class="input" value="">
-                    </div>
-                    <button onclick="generateDutyReport()" class="btn gap-2">
-                        <i data-lucide="file-text" class="w-4 h-4"></i> Generate Report
-                    </button>
-                    <button onclick="exportDutyPDF()" class="btn gap-2" data-variant="secondary">
-                        <i data-lucide="file-down" class="w-4 h-4"></i> Export PDF
-                    </button>
+        <div class="card p-4 border">
+            <div class="flex flex-wrap gap-4 items-end">
+                <div class="grid gap-1.5">
+                    <label class="label text-sm">Select Date</label>
+                    <input type="date" id="dutyDate" class="input" value="">
                 </div>
-                
-                <!-- Quick Assign Duty -->
-                <div class="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div class="grid gap-1.5">
-                        <label class="label text-xs">Instructor</label>
-                        <select id="dutyInstructor" class="input"></select>
-                    </div>
-                    <div class="grid gap-1.5">
-                        <label class="label text-xs">Session</label>
-                        <select id="dutySession" class="input">
-                            <option value="9am-12pm">9am - 12pm</option>
-                            <option value="1pm-4pm">1pm - 4pm</option>
-                        </select>
-                    </div>
-                    <div class="grid gap-1.5">
-                        <label class="label text-xs">Class</label>
-                        <select id="dutyClass" class="input">
-                            <option value="B">Class B</option>
-                            <option value="B2">Class B2</option>
-                        </select>
-                    </div>
-                    <div class="grid gap-1.5">
-                        <label class="label text-xs">Students</label>
-                        <input type="number" id="dutyStudents" class="input" placeholder="0" min="0" value="5">
-                    </div>
-                    <div class="col-span-full">
-                        <button onclick="assignDuty()" class="btn gap-2" data-variant="secondary">
-                            <i data-lucide="calendar-plus" class="w-4 h-4"></i> Assign Duty
-                        </button>
-                    </div>
-                </div>
+                <button onclick="generateDutyReport()" class="btn gap-2">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> Generate Report
+                </button>
+                <button onclick="exportDutyPDF()" class="btn gap-2" data-variant="secondary">
+                    <i data-lucide="file-down" class="w-4 h-4"></i> Export PDF
+                </button>
             </div>
             
-            <!-- Duty Report Display -->
-            <div id="dutyReportContainer" class="hidden">
-                <!-- Report content will be rendered here -->
+            <!-- Quick Assign Duty -->
+            <div class="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div class="grid gap-1.5">
+                    <label class="label text-xs">Instructor</label>
+                    <select id="dutyInstructor" class="input"></select>
+                </div>
+                <div class="grid gap-1.5">
+                    <label class="label text-xs">Session</label>
+                    <select id="dutySession" class="input">
+                        <option value="9am-12pm">9am - 12pm</option>
+                        <option value="1pm-4pm">1pm - 4pm</option>
+                    </select>
+                </div>
+                <div class="grid gap-1.5">
+                    <label class="label text-xs">Class</label>
+                    <select id="dutyClass" class="input">
+                        <option value="B">Class B</option>
+                        <option value="B2">Class B2</option>
+                    </select>
+                </div>
+                <div class="grid gap-1.5">
+                    <label class="label text-xs">Students</label>
+                    <input type="number" id="dutyStudents" class="input" placeholder="0" min="0" value="5">
+                </div>
+                <div class="col-span-full flex gap-2">
+                    <button id="assignDutyBtn" onclick="assignDuty()" class="btn gap-2" data-variant="secondary">
+                        <i data-lucide="calendar-plus" class="w-4 h-4"></i> Assign Duty
+                    </button>
+                    <button onclick="cancelEditDuty()" id="cancelEditBtn" class="btn gap-2 hidden" data-variant="outline">
+                        <i data-lucide="x" class="w-4 h-4"></i> Cancel Edit
+                    </button>
+                </div>
             </div>
         </div>
+        
+        <!-- Duty Report Display -->
+        <div id="dutyReportContainer" class="hidden">
+            <!-- Report content will be rendered here -->
+        </div>
+    </div>
 
     </div>
 
