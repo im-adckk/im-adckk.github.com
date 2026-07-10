@@ -719,7 +719,7 @@ async function applyQuotaToDateFromCalendar(dateStr) {
 }
 
 // ============================================
-// PDF REPORT GENERATION - BOOKING REPORT (IMPROVED LAYOUT)
+// PDF REPORT GENERATION - BOOKING REPORT (IMPROVED LAYOUT - FIXED)
 // ============================================
 
 function buildBookingReportHTML(data) {
@@ -967,6 +967,8 @@ function buildBookingReportHTML(data) {
             background: #f9fafb;
             border-radius: 8px;
             border: 1px solid #e5e7eb;
+            width: 100%;
+            max-width: 500px;
         }
         
         .cover-page .info-grid {
@@ -1002,6 +1004,8 @@ function buildBookingReportHTML(data) {
             border-top: 1px solid #e5e7eb;
             color: #9ca3af;
             font-size: 11px;
+            width: 100%;
+            max-width: 500px;
         }
         
         /* TABLES */
@@ -1215,6 +1219,31 @@ function buildBookingReportHTML(data) {
             .page-break {
                 margin: 0;
                 padding: 0;
+            }
+            .session-header td {
+                background: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .session-subtotal td {
+                background: #f9fafb !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .summary-card.blue,
+            .summary-card.pink {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            thead th {
+                background: #1f2937 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .cover-page .info-section {
+                background: #f9fafb !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
