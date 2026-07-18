@@ -755,44 +755,133 @@ async function handleSave() {
 
   console.log('User verified:', verifiedUser);
 
-  // 🔹 Step 1: Insert or fetch customer
-  let customer_id = null;
-  const { data: existingCust, error: findErr } = await client
-    .from('customers')
-    .select('id')
-    .eq('contact', custContact)
-    .maybeSingle();
+// 🔹 Step 1: Handle customer - Search by name OR contact
+let customer_id = null;
 
-  if (findErr) {
-    console.error(findErr);
-    alert('Failed to fetch customer.');
+// Build search criteria - search by name OR contact
+let searchQuery = client
+  .from('customers')
+  .select('id, name, contact, email, address');
+
+// If contact is provided, search by contact first
+if (custContact) {
+  searchQuery = searchQuery.or(`contact.eq.${custContact},name.ilike.${custName}`);
+} else {
+  // If no contact, search by name only
+  searchQuery = searchQuery.ilike('name', custName);
+}
+
+const { data: existingCustomers, error: findErr } = await searchQuery.limit(1);
+
+if (findErr) {
+  console.error(findErr);
+  alert('Failed to fetch customer.');
+  return;
+}
+
+const existingCust = existingCustomers && existingCustomers.length > 0 ? existingCustomers[0] : null;
+
+if (existingCust) {
+  // Customer found - check if we should update or use existing
+  const nameMatches = existingCust.name.toLowerCase() === custName.toLowerCase();
+  
+  if (!nameMatches) {
+    // This shouldn't happen with our search, but just in case
+    const updateConfirm = confirm(
+      `A customer with this contact already exists:\n\n` +
+      `Current: ${existingCust.name}\nNew: ${custName}\n\n` +
+      `Do you want to update the customer name?`
+    );
+    
+    if (updateConfirm) {
+      // Update the existing customer with new name
+      const { data: updatedCust, error: updateErr } = await client
+        .from('customers')
+        .update({ 
+          name: custName,
+          email: custEmail || existingCust.email,
+          address: custAddress || existingCust.address
+        })
+        .eq('id', existingCust.id)
+        .select()
+        .single();
+      
+      if (updateErr) {
+        console.error('Update error:', updateErr);
+        alert('Failed to update customer details.');
+        return;
+      }
+      
+      customer_id = updatedCust.id;
+    } else {
+      customer_id = existingCust.id;
+      // Update form to show existing data
+      document.getElementById('cust-name').value = existingCust.name;
+      document.getElementById('cust-phone').value = existingCust.contact || '';
+      document.getElementById('cust-email').value = existingCust.email || '';
+      document.getElementById('cust-address').value = existingCust.address || '';
+      document.getElementById('customer-search').value = existingCust.name;
+    }
+  } else {
+    // Name matches - use existing customer but update other fields if changed
+    const needsUpdate = 
+      (custEmail && existingCust.email !== custEmail) ||
+      (custAddress && existingCust.address !== custAddress);
+    
+    if (needsUpdate) {
+      const updateConfirm = confirm(
+        `Customer "${existingCust.name}" already exists.\n\n` +
+        `Do you want to update the contact details?`
+      );
+      
+      if (updateConfirm) {
+        const { data: updatedCust, error: updateErr } = await client
+          .from('customers')
+          .update({
+            email: custEmail || existingCust.email,
+            address: custAddress || existingCust.address
+          })
+          .eq('id', existingCust.id)
+          .select()
+          .single();
+        
+        if (updateErr) {
+          console.error('Update error:', updateErr);
+        } else {
+          customer_id = updatedCust.id;
+        }
+      } else {
+        customer_id = existingCust.id;
+      }
+    } else {
+      // All good, use existing customer
+      customer_id = existingCust.id;
+    }
+  }
+} else {
+  // No customer found - create new
+  const { data: newCust, error: custErr } = await client
+    .from('customers')
+    .insert([
+      {
+        name: custName,
+        contact: custContact || null,  // Allow null for contact
+        email: custEmail || null,
+        address: custAddress || null,
+      },
+    ])
+    .select()
+    .single();
+
+  if (custErr) {
+    console.error(custErr);
+    alert('Failed to save customer.');
     return;
   }
 
-  if (existingCust) {
-    customer_id = existingCust.id;
-  } else {
-    const { data: newCust, error: custErr } = await client
-      .from('customers')
-      .insert([
-        {
-          name: custName,
-          contact: custContact,
-          email: custEmail,
-          address: custAddress,
-        },
-      ])
-      .select()
-      .single();
-
-    if (custErr) {
-      console.error(custErr);
-      alert('Failed to save customer.');
-      return;
-    }
-
-    customer_id = newCust.id;
-  }
+  customer_id = newCust.id;
+  console.log('New customer created:', newCust);
+}
 
   // 🔹 Step 2: Get next document number
   const docNumber = await getNextNumber(type);
