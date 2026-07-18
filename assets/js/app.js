@@ -350,9 +350,11 @@ saveNewBtn.addEventListener('click', async () => {
 // 3️⃣ Load item catalog
 // ------------------------------------------------------------
 async function loadCatalog() {
+  // Only fetch active groups
   const { data: groups, error } = await client
     .from('item_groups')
     .select('*')
+    .eq('is_active', true)  // Add this filter
     .order('name');
 
   if (error) {
