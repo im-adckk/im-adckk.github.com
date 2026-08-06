@@ -2141,12 +2141,9 @@ function showTab(tabId) {
     }
 
     if (tabId === 'duty') {
-        const today = getMalaysiaToday();
-        document.getElementById('dutyDate').value = today;
-        generateDutyReport();
+        initDutyTab();
     }
 }
-
 // ============================================
 // INSTRUCTOR MANAGEMENT
 // ============================================
@@ -2515,6 +2512,7 @@ async function deleteDuty(id) {
     }
 }
 
+// Override the existing generateDutyReport to use the date from picker
 async function generateDutyReport() {
     const date = document.getElementById('dutyDate').value;
 
@@ -2534,7 +2532,6 @@ async function generateDutyReport() {
 
         // If view doesn't exist or fails, fallback to direct query
         if (error && error.message.includes('does not exist')) {
-            // Fallback: Direct query with join
             const { data: dutyData, error: dutyError } = await supabaseClient
                 .from('duty_schedule')
                 .select(`
@@ -2552,7 +2549,6 @@ async function generateDutyReport() {
 
             if (dutyError) throw dutyError;
             
-            // Transform data to match view format
             data = dutyData.map(item => ({
                 id: item.id,
                 duty_date: item.duty_date,
@@ -2571,7 +2567,6 @@ async function generateDutyReport() {
                 instructor_active: item.instructors?.is_active
             }));
             
-            // Sort by session_time and instructor_name
             data.sort((a, b) => {
                 if (a.session_time !== b.session_time) {
                     return a.session_time.localeCompare(b.session_time);
@@ -2589,6 +2584,7 @@ async function generateDutyReport() {
         showMessage('Error generating report: ' + error.message, 'error');
     }
 }
+
 
 function renderDutyReport(data, date) {
     const container = document.getElementById('dutyReportContainer');
@@ -2911,6 +2907,7 @@ async function initializeAdmin() {
 
     setTimeout(() => {
         generateDutyReport();
+        initDutyTab();
     }, 200);
 }
 
@@ -2942,6 +2939,311 @@ document.addEventListener('DOMContentLoaded', function() {
         applyModeSelect.dispatchEvent(new Event('change'));
     }
 });
+
+// ============================================
+// DUTY SCHEDULE - MONTHLY OVERVIEW
+// ============================================
+
+let dutyMonth = new Date().getMonth();
+let dutyYear = new Date().getFullYear();
+let selectedDutyDate = null;
+let allDutyData = [];
+
+function renderDutyMonthPicker() {
+    const container = document.getElementById('dutyMonthPicker');
+    if (!container) return;
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    container.innerHTML = `
+        <div class="flex items-center gap-3 flex-wrap">
+            <button onclick="changeDutyMonth(-1)" class="btn p-1.5" data-variant="outline" data-size="sm">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <span class="font-semibold text-sm min-w-[140px] text-center">${monthNames[dutyMonth]} ${dutyYear}</span>
+            <button onclick="changeDutyMonth(1)" class="btn p-1.5" data-variant="outline" data-size="sm">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+            <button onclick="goToDutyToday()" class="btn py-1 px-2.5 text-xs" data-variant="outline" data-size="sm">
+                <i data-lucide="navigation" class="w-3.5 h-3.5 mr-1"></i> Today
+            </button>
+            <span class="text-xs text-muted-foreground ml-2" id="dutyMonthCount">Loading...</span>
+        </div>
+    `;
+    
+    refreshIcons();
+}
+
+function changeDutyMonth(delta) {
+    dutyMonth += delta;
+    if (dutyMonth > 11) {
+        dutyMonth = 0;
+        dutyYear++;
+    } else if (dutyMonth < 0) {
+        dutyMonth = 11;
+        dutyYear--;
+    }
+    selectedDutyDate = null;
+    renderDutyMonthPicker();
+    loadDutyMonthOverview();
+}
+
+function goToDutyToday() {
+    const today = new Date();
+    dutyMonth = today.getMonth();
+    dutyYear = today.getFullYear();
+    selectedDutyDate = null;
+    renderDutyMonthPicker();
+    loadDutyMonthOverview();
+}
+
+async function loadDutyMonthOverview() {
+    const startDate = new Date(dutyYear, dutyMonth, 1);
+    const endDate = new Date(dutyYear, dutyMonth + 1, 0);
+    const startStr = toMalaysiaDateStr(startDate);
+    const endStr = toMalaysiaDateStr(endDate);
+    
+    const container = document.getElementById('dutyMonthOverview');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="flex justify-center p-8">
+            <div class="spinner-border animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+            <span class="ml-3 text-muted-foreground">Loading duty schedule...</span>
+        </div>
+    `;
+    
+    try {
+        // Get duty data for the month
+        const { data, error } = await supabaseClient
+            .from('duty_report_view')
+            .select('*')
+            .gte('duty_date', startStr)
+            .lte('duty_date', endStr)
+            .order('duty_date', { ascending: true })
+            .order('session_time', { ascending: true });
+        
+        if (error) {
+            // Fallback to direct query
+            const { data: fallbackData, error: fallbackError } = await supabaseClient
+                .from('duty_schedule')
+                .select(`
+                    *,
+                    instructors:instructor_id (
+                        id,
+                        name,
+                        ic_no,
+                        class_qualified,
+                        is_active
+                    )
+                `)
+                .gte('duty_date', startStr)
+                .lte('duty_date', endStr)
+                .order('duty_date', { ascending: true })
+                .order('session_time', { ascending: true });
+            
+            if (fallbackError) throw fallbackError;
+            
+            allDutyData = fallbackData.map(item => ({
+                id: item.id,
+                duty_date: item.duty_date,
+                session_time: item.session_time,
+                class: item.class,
+                total_students: item.total_students,
+                sign: item.sign,
+                instructor_name: item.instructors?.name || 'Unknown',
+                instructor_id: item.instructors?.id,
+                class_qualified: item.instructors?.class_qualified
+            }));
+        } else {
+            allDutyData = data;
+        }
+        
+        renderDutyMonthOverview(allDutyData);
+        
+        // Update count
+        const countEl = document.getElementById('dutyMonthCount');
+        if (countEl) {
+            const uniqueDates = new Set(allDutyData.map(d => d.duty_date));
+            const uniqueInstructors = new Set(allDutyData.map(d => d.instructor_name).filter(Boolean));
+            countEl.textContent = `${allDutyData.length} assignments · ${uniqueDates.size} days · ${uniqueInstructors.size} instructors`;
+        }
+        
+    } catch (error) {
+        console.error('Error loading duty month overview:', error);
+        container.innerHTML = `
+            <div class="text-center text-muted-foreground p-8">
+                <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2 text-destructive"></i>
+                <p>Error loading duty schedule: ${error.message}</p>
+                <button onclick="loadDutyMonthOverview()" class="btn mt-3" data-size="sm">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-1.5"></i> Retry
+                </button>
+            </div>
+        `;
+        refreshIcons();
+    }
+}
+
+function renderDutyMonthOverview(data) {
+    const container = document.getElementById('dutyMonthOverview');
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted-foreground p-12 border rounded-xl border-dashed">
+                <i data-lucide="calendar-x" class="w-10 h-10 mx-auto mb-3 text-muted-foreground/40"></i>
+                <p class="font-medium">No duty assignments for ${new Date(dutyYear, dutyMonth).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })}</p>
+                <p class="text-sm mt-1">Assign duties using the form above.</p>
+            </div>
+        `;
+        refreshIcons();
+        return;
+    }
+    
+    // Group by date
+    const groupedByDate = {};
+    data.forEach(item => {
+        if (!groupedByDate[item.duty_date]) {
+            groupedByDate[item.duty_date] = [];
+        }
+        groupedByDate[item.duty_date].push(item);
+    });
+    
+    // Sort dates
+    const sortedDates = Object.keys(groupedByDate).sort();
+    
+    // Get today for highlighting
+    const today = getMalaysiaToday();
+    
+    let html = `
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-muted text-xs font-semibold text-muted-foreground uppercase border-b sticky top-0">
+                        <th class="p-2.5">Date</th>
+                        <th class="p-2.5">Session</th>
+                        <th class="p-2.5">Instructor</th>
+                        <th class="p-2.5">Class</th>
+                        <th class="p-2.5 text-center">Students</th>
+                        <th class="p-2.5 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    sortedDates.forEach(dateStr => {
+        const duties = groupedByDate[dateStr];
+        const isToday = dateStr === today;
+        const dateDisplay = formatMalaysiaDate(dateStr);
+        const dayOfWeek = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-MY', { weekday: 'short' });
+        
+        // Date row - clickable to filter
+        html += `
+            <tr class="border-t border-border ${isToday ? 'bg-primary/5' : ''}">
+                <td colspan="6" class="p-2 bg-muted/30">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold text-sm">${dateDisplay}</span>
+                            <span class="text-xs text-muted-foreground">(${dayOfWeek})</span>
+                            ${isToday ? '<span class="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Today</span>' : ''}
+                            <span class="text-xs text-muted-foreground">${duties.length} assignment${duties.length > 1 ? 's' : ''}</span>
+                        </div>
+                        <button onclick="filterDutyByDate(\'${dateStr}\')" class="btn text-xs" data-variant="ghost" data-size="sm">
+                            <i data-lucide="eye" class="w-3.5 h-3.5"></i> View
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        // Duty rows for this date
+        duties.forEach((duty, index) => {
+            const sessionLabel = duty.session_time || 'N/A';
+            const classBadge = duty.class || 'N/A';
+            const instructorName = duty.instructor_name || 'Unknown';
+            const students = duty.total_students || 0;
+            
+            html += `
+                <tr class="hover:bg-muted/20 transition-colors ${isToday ? 'bg-primary/5' : ''}">
+                    <td class="p-2.5 text-muted-foreground text-xs"></td>
+                    <td class="p-2.5 font-medium">${sessionLabel}</td>
+                    <td class="p-2.5">${instructorName}</td>
+                    <td class="p-2.5">
+                        <span class="inline-block px-2 py-0.5 rounded bg-muted text-xs font-semibold">${classBadge}</span>
+                    </td>
+                    <td class="p-2.5 text-center font-medium">${students}</td>
+                    <td class="p-2.5 text-center">
+                        <button onclick="editDuty('${duty.id}')" class="text-xs text-blue-600 hover:text-blue-800 mr-1.5" title="Edit">
+                            <i data-lucide="edit" class="w-3.5 h-3.5 inline"></i>
+                        </button>
+                        <button onclick="deleteDuty('${duty.id}')" class="text-xs text-red-600 hover:text-red-800" title="Delete">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    refreshIcons();
+}
+
+async function filterDutyByDate(dateStr) {
+    // Set the date picker to this date
+    document.getElementById('dutyDate').value = dateStr;
+    selectedDutyDate = dateStr;
+    
+    // Highlight the selected date in the overview
+    const rows = document.querySelectorAll('#dutyMonthOverview tbody tr');
+    rows.forEach(row => {
+        row.style.backgroundColor = '';
+    });
+    
+    // Find and highlight rows for this date
+    const dateHeaders = document.querySelectorAll('#dutyMonthOverview td[colspan="6"]');
+    dateHeaders.forEach(header => {
+        const parentRow = header.closest('tr');
+        if (parentRow) {
+            const text = header.textContent || '';
+            if (text.includes(formatMalaysiaDate(dateStr))) {
+                parentRow.style.backgroundColor = 'var(--color-primary-light, #dbeafe)';
+            } else {
+                parentRow.style.backgroundColor = '';
+            }
+        }
+    });
+    
+    // Generate the duty report for this date
+    await generateDutyReport();
+    
+    // Scroll to the report
+    const container = document.getElementById('dutyReportContainer');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    showMessage(`📅 Showing duties for ${formatMalaysiaDate(dateStr)}`, 'info');
+}
+
+
+// Update the duty tab initialization
+function initDutyTab() {
+    const today = getMalaysiaToday();
+    document.getElementById('dutyDate').value = today;
+    
+    renderDutyMonthPicker();
+    loadDutyMonthOverview();
+    generateDutyReport();
+    loadInstructors();
+}
 
 // ============================================
 // EXPOSE FUNCTIONS TO GLOBAL SCOPE
