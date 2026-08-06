@@ -690,24 +690,6 @@
         </div>
     </div>
     
-    <!-- Monthly Overview -->
-    <div class="card p-4 border">
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center justify-between flex-wrap gap-2">
-                <h3 class="font-semibold flex items-center gap-2">
-                    <i data-lucide="calendar" class="w-4 h-4"></i> Monthly Overview
-                </h3>
-                <div id="dutyMonthPicker"></div>
-            </div>
-            <div id="dutyMonthOverview" class="min-h-[200px]">
-                <div class="flex justify-center p-8">
-                    <div class="spinner-border animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
-                    <span class="ml-3 text-muted-foreground">Loading duty schedule...</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Daily Report -->
     <div class="card p-4 border">
         <div class="flex items-center justify-between flex-wrap gap-2">
@@ -732,6 +714,23 @@
         </div>
     </div>
 </div>
+        <!-- Monthly Overview -->
+    <div class="card p-4 border">
+        <div class="flex flex-col gap-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <h3 class="font-semibold flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-4 h-4"></i> Monthly Overview
+                </h3>
+                <div id="dutyMonthPicker"></div>
+            </div>
+            <div id="dutyMonthOverview" class="min-h-[200px]">
+                <div class="flex justify-center p-8">
+                    <div class="spinner-border animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                    <span class="ml-3 text-muted-foreground">Loading duty schedule...</span>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Alert Messaging Display Wrapper Area -->
     <div id="message" class="hidden alert items-start gap-2.5 border p-4 rounded-xl" role="alert">
         <i data-lucide="info" class="w-4 h-4 mt-0.5 shrink-0"></i>
