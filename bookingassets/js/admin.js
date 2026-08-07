@@ -2683,12 +2683,39 @@ async function exportDutyPDF() {
         const dateObj = new Date(date + 'T00:00:00');
         const filename = `duty_schedule_${dateObj.toISOString().split('T')[0]}`;
 
+        // Get the report content but remove action buttons and the Actions column
         let content = container.innerHTML;
+        
+        // Remove all button elements (edit/delete)
         content = content.replace(/<button[^>]*>.*?<\/button>/g, '');
-        content = content.replace(/✍️ Signed/g, '');
-        content = content.replace(/⏳ Pending/g, '');
-        content = content.replace(/<span[^>]*class="[^"]*text-emerald-600[^"]*"[^>]*>.*?<\/span>/g, '');
-        content = content.replace(/<span[^>]*class="[^"]*text-amber-600[^"]*"[^>]*>.*?<\/span>/g, '');
+        
+        // Remove the Actions column header - look for the th containing "ACTIONS"
+        content = content.replace(/<th[^>]*>ACTIONS?<\/th>/gi, '');
+        
+        // Remove the Actions column cells (td elements in the last column)
+        // This is more complex - we need to remove the last td in each row
+        // We'll use a more targeted approach
+        
+        // First, remove any action buttons that might be left
+        content = content.replace(/<button[^>]*data-lucide="edit"[^>]*>.*?<\/button>/g, '');
+        content = content.replace(/<button[^>]*data-lucide="trash-2"[^>]*>.*?<\/button>/g, '');
+        content = content.replace(/<button[^>]*onclick="editDuty\([^)]*\)"[^>]*>.*?<\/button>/g, '');
+        content = content.replace(/<button[^>]*onclick="deleteDuty\([^)]*\)"[^>]*>.*?<\/button>/g, '');
+        
+        // Remove the Actions column - find and remove the last td in each row that contains action buttons
+        // We'll use a more robust approach: remove any td that contains action-related icons or buttons
+        content = content.replace(/<td[^>]*class="[^"]*text-center[^"]*"[^>]*>.*?(?:edit|delete|trash|Edit|Delete).*?<\/td>/gi, '');
+        
+        // Also clean up any remaining icons
+        content = content.replace(/<i[^>]*data-lucide="edit"[^>]*>.*?<\/i>/g, '');
+        content = content.replace(/<i[^>]*data-lucide="trash-2"[^>]*>.*?<\/i>/g, '');
+        content = content.replace(/<i[^>]*data-lucide="eye"[^>]*>.*?<\/i>/g, '');
+        
+        // Clean up View buttons
+        content = content.replace(/<button[^>]*onclick="filterDutyByDate\([^)]*\)"[^>]*>.*?<\/button>/g, '');
+
+        // Remove empty td elements that might be left
+        content = content.replace(/<td[^>]*>\s*<\/td>/g, '');
 
         const htmlContent = `
 <!DOCTYPE html>
@@ -2804,6 +2831,16 @@ async function exportDutyPDF() {
             margin-top: 20px; 
         }
         .no-print { display: none; }
+        .actions-column { display: none; }
+        
+        /* Print styles */
+        @media print {
+            body { padding: 20px; }
+            .no-print { display: none !important; }
+            .actions-column { display: none !important; }
+            thead th:last-child { display: none !important; }
+            tbody td:last-child { display: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -2829,6 +2866,26 @@ async function exportDutyPDF() {
     </div>
     <script>
         window.onload = function() {
+            // Remove any remaining action elements before printing
+            document.querySelectorAll('button').forEach(el => el.remove());
+            document.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+            
+            // Hide the last column (Actions) in all tables
+            document.querySelectorAll('table').forEach(table => {
+                // Hide last th in thead
+                const headers = table.querySelectorAll('thead th');
+                if (headers.length > 0) {
+                    headers[headers.length - 1].style.display = 'none';
+                }
+                // Hide last td in each row
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length > 0) {
+                        cells[cells.length - 1].style.display = 'none';
+                    }
+                });
+            });
+            
             setTimeout(function() {
                 window.print();
             }, 800);
