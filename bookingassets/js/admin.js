@@ -2705,16 +2705,19 @@ async function exportDutyPDF() {
         cloneContainer.querySelectorAll('i[data-lucide]').forEach(el => el.remove());
         
         // Remove the ACTIONS column (last column) from each table
+        // IMPORTANT: Only remove the LAST column (ACTIONS), keep all others including CLASS
         cloneContainer.querySelectorAll('table').forEach(table => {
             // Remove the last th in thead (ACTIONS header)
             const headers = table.querySelectorAll('thead th');
             if (headers.length > 0) {
+                // Only remove the last one (ACTIONS)
                 headers[headers.length - 1].remove();
             }
             // Remove the last td in each row (ACTIONS cell)
             table.querySelectorAll('tbody tr').forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length > 0) {
+                    // Only remove the last one (ACTIONS cell)
                     cells[cells.length - 1].remove();
                 }
             });
@@ -2925,6 +2928,7 @@ async function exportDutyPDF() {
         showMessage('Error exporting PDF: ' + error.message, 'error');
     }
 }
+
 function getDayName(dateString) {
     const date = new Date(dateString + 'T00:00:00');
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
