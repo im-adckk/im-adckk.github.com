@@ -2512,7 +2512,6 @@ async function deleteDuty(id) {
     }
 }
 
-// Override the existing generateDutyReport to use the date from picker
 async function generateDutyReport() {
     const date = document.getElementById('dutyDate').value;
 
@@ -2553,7 +2552,7 @@ async function generateDutyReport() {
                 id: item.id,
                 duty_date: item.duty_date,
                 session_time: item.session_time,
-                class: item.class,
+                class: item.class || (item.instructors?.class_qualified && item.instructors.class_qualified.length > 0 ? item.instructors.class_qualified[0] : 'N/A'),
                 total_students: item.total_students,
                 sign: item.sign,
                 signature: item.signature,
@@ -2621,6 +2620,15 @@ function renderDutyReport(data, date) {
         `;
 
         sessionData.forEach((item, index) => {
+            // Ensure class has a value - if empty, use 'N/A' or get from instructor's class_qualified
+            let classValue = item.class || '';
+            if (!classValue && item.class_qualified && item.class_qualified.length > 0) {
+                classValue = item.class_qualified[0];
+            }
+            if (!classValue) {
+                classValue = 'N/A';
+            }
+            
             html += `
                 <tr class="hover:bg-muted/40 transition-colors border-b">
                     <td class="p-2.5 text-center">${index + 1}</td>
@@ -2631,7 +2639,7 @@ function renderDutyReport(data, date) {
                         <span style="color: transparent;">.</span>
                     </td>
                     <td class="p-2.5">
-                        <span class="inline-block px-2 py-0.5 rounded bg-muted text-xs">${item.class || ''}</span>
+                        <span class="inline-block px-2 py-0.5 rounded bg-muted text-xs font-semibold">${classValue}</span>
                     </td>
                     <td class="p-2.5 text-center">
                         <button onclick="editDuty('${item.id}')" class="text-xs text-blue-600 hover:text-blue-800 mr-2" title="Edit">
