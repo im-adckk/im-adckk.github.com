@@ -2692,27 +2692,37 @@ async function exportDutyPDF() {
         const dateObj = new Date(date + 'T00:00:00');
         const filename = `duty_schedule_${dateObj.toISOString().split('T')[0]}`;
 
-        // Get the report content
-        let content = container.innerHTML;
+        // Clone the container to not modify the original
+        const cloneContainer = container.cloneNode(true);
         
-        // Remove all button elements (edit/delete) and their container cells
-        // First, remove the Actions column header
-        content = content.replace(/<th[^>]*>ACTIONS?<\/th>/gi, '');
+        // Remove all buttons from the clone
+        cloneContainer.querySelectorAll('button').forEach(el => el.remove());
         
-        // Remove any td that contains action buttons (edit/delete)
-        content = content.replace(/<td[^>]*class="[^"]*text-center[^"]*"[^>]*>.*?(?:edit|delete|trash|Edit|Delete|button).*?<\/td>/gi, '');
+        // Remove all onclick attributes
+        cloneContainer.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
         
-        // Remove any remaining button elements
-        content = content.replace(/<button[^>]*>.*?<\/button>/g, '');
+        // Remove all icon elements
+        cloneContainer.querySelectorAll('i[data-lucide]').forEach(el => el.remove());
         
-        // Remove any remaining icon elements inside action cells
-        content = content.replace(/<i[^>]*data-lucide="edit"[^>]*>.*?<\/i>/g, '');
-        content = content.replace(/<i[^>]*data-lucide="trash-2"[^>]*>.*?<\/i>/g, '');
-        
-        // Remove any onclick attributes from remaining elements
-        content = content.replace(/onclick="[^"]*"/g, '');
+        // Remove the ACTIONS column (last column) from each table
+        cloneContainer.querySelectorAll('table').forEach(table => {
+            // Remove the last th in thead (ACTIONS header)
+            const headers = table.querySelectorAll('thead th');
+            if (headers.length > 0) {
+                headers[headers.length - 1].remove();
+            }
+            // Remove the last td in each row (ACTIONS cell)
+            table.querySelectorAll('tbody tr').forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    cells[cells.length - 1].remove();
+                }
+            });
+        });
 
-        // Create a clean version of the report
+        // Get the cleaned content
+        const content = cloneContainer.innerHTML;
+
         const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -2915,7 +2925,6 @@ async function exportDutyPDF() {
         showMessage('Error exporting PDF: ' + error.message, 'error');
     }
 }
-
 function getDayName(dateString) {
     const date = new Date(dateString + 'T00:00:00');
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
