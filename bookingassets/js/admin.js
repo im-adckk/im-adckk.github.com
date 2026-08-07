@@ -2614,7 +2614,6 @@ function renderDutyReport(data, date) {
                             <th class="p-2.5">INSTRUCTOR</th>
                             <th class="p-2.5">SIGN</th>
                             <th class="p-2.5">CLASS</th>
-                            <th class="p-2.5 text-center">ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2632,14 +2631,6 @@ function renderDutyReport(data, date) {
                     </td>
                     <td class="p-2.5">
                         <span class="inline-block px-2 py-0.5 rounded bg-muted text-xs">${item.class || ''}</span>
-                    </td>
-                    <td class="p-2.5 text-center">
-                        <button onclick="editDuty('${item.id}')" class="text-xs text-blue-600 hover:text-blue-800 mr-2" title="Edit">
-                            <i data-lucide="edit" class="w-4 h-4 inline"></i>
-                        </button>
-                        <button onclick="deleteDuty('${item.id}')" class="text-xs text-red-600 hover:text-red-800" title="Delete">
-                            <i data-lucide="trash-2" class="w-4 h-4 inline"></i>
-                        </button>
                     </td>
                 </tr>
             `;
@@ -3126,7 +3117,6 @@ function renderDutyMonthOverview(data) {
                         <th class="p-2.5">Instructor</th>
                         <th class="p-2.5">Class</th>
                         <th class="p-2.5 text-center">Students</th>
-                        <th class="p-2.5 text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -3141,7 +3131,7 @@ function renderDutyMonthOverview(data) {
         // Date row - clickable to filter
         html += `
             <tr class="border-t border-border ${isToday ? 'bg-primary/5' : ''}">
-                <td colspan="6" class="p-2 bg-muted/30">
+                <td colspan="5" class="p-2 bg-muted/30">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="font-semibold text-sm">${dateDisplay}</span>
@@ -3173,14 +3163,6 @@ function renderDutyMonthOverview(data) {
                         <span class="inline-block px-2 py-0.5 rounded bg-muted text-xs font-semibold">${classBadge}</span>
                     </td>
                     <td class="p-2.5 text-center font-medium">${students}</td>
-                    <td class="p-2.5 text-center">
-                        <button onclick="editDuty('${duty.id}')" class="text-xs text-blue-600 hover:text-blue-800 mr-1.5" title="Edit">
-                            <i data-lucide="edit" class="w-3.5 h-3.5 inline"></i>
-                        </button>
-                        <button onclick="deleteDuty('${duty.id}')" class="text-xs text-red-600 hover:text-red-800" title="Delete">
-                            <i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i>
-                        </button>
-                    </td>
                 </tr>
             `;
         });
