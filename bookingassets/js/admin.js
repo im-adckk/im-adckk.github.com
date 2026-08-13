@@ -3349,6 +3349,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (checkAdminSession()) {
         adminLogin.classList.add('hidden');
         adminContent.classList.remove('hidden');
+        adminContent.classList.add('visible');
         document.getElementById('adminStatus').textContent = '✅ Admin Logged In';
         document.getElementById('adminStatus').style.color = 'green';
         document.getElementById('logoutBtn').style.display = 'inline-block';
