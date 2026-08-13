@@ -1,11 +1,11 @@
 // Supabase Configuration
-const SUPABASE_URL = 'https://yrrinzreyafiowehhhon.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
+const SUPABASE_URL = CONFIG.SUPABASE_URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Admin password   
-const ADMIN_PASSWORD = 'admin123'; 
+const ADMIN_PASSWORD = CONFIG.ADMIN_PASSWORD;
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const ADMIN_LOGIN_TIME_KEY = 'admin_login_time';
 
