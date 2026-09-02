@@ -2110,7 +2110,7 @@ async function onAdminDateClick(dateStr) {
 // ============================================
 
 function showTab(tabId) {
-    const tabs = ['bookings', 'calendar', 'report', 'instructor', 'duty'];
+    const tabs = ['bookings', 'calendar', 'report', 'instructor', 'duty', 'search'];
 
     tabs.forEach(t => {
         const contentDiv = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -2142,6 +2142,13 @@ function showTab(tabId) {
 
     if (tabId === 'duty') {
         initDutyTab();
+    }
+
+    if (tabId === 'search') {
+        
+        setTimeout(() => {
+            document.getElementById('studentSearchInput').focus();
+        }, 200);
     }
 }
 // ============================================
@@ -2964,6 +2971,8 @@ async function initializeAdmin() {
         generateDutyReport();
         initDutyTab();
     }, 200);
+
+    setupAutocomplete();
 }
 
 // ============================================
@@ -3289,6 +3298,357 @@ function initDutyTab() {
     loadDutyMonthOverview();
     generateDutyReport();
     loadInstructors();
+}
+
+// ============================================
+// STUDENT SEARCH FUNCTIONALITY
+// ============================================
+
+let searchTimeout = null;
+let currentSearchResults = [];
+
+/**
+ * Perform student search with autocomplete
+ */
+async function performStudentSearch(query = null) {
+    const input = document.getElementById('studentSearchInput');
+    const searchTerm = query !== null ? query : input.value.trim();
+    
+    if (!searchTerm || searchTerm.length < 2) {
+        document.getElementById('autocompleteDropdown').classList.add('hidden');
+        document.getElementById('searchResultsContainer').classList.add('hidden');
+        document.getElementById('searchResultCount').textContent = '';
+        return;
+    }
+    
+    try {
+        // Search by IC or Name (partial match)
+        const { data, error } = await supabaseClient
+            .from('bookings')
+            .select('*')
+            .or(`icno.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%`)
+            .order('booking_date', { ascending: false })
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        currentSearchResults = data || [];
+        renderSearchResults(currentSearchResults, searchTerm);
+        
+        // Update result count
+        document.getElementById('searchResultCount').textContent = 
+            currentSearchResults.length > 0 ? 
+            `Found ${currentSearchResults.length} booking${currentSearchResults.length > 1 ? 's' : ''} for "${searchTerm}"` : 
+            `No bookings found for "${searchTerm}"`;
+        
+    } catch (error) {
+        console.error('Error searching students:', error);
+        showMessage('Error searching: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Render search results with color coding
+ */
+function renderSearchResults(bookings, searchTerm) {
+    const container = document.getElementById('searchResultsContainer');
+    const tbody = document.getElementById('searchResultsBody');
+    const summaryDiv = document.getElementById('studentSummary');
+    
+    if (!bookings || bookings.length === 0) {
+        container.classList.add('hidden');
+        summaryDiv.classList.add('hidden');
+        tbody.innerHTML = `
+            <tr><td colspan="11" class="text-center text-muted-foreground p-8">
+                <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-muted-foreground/40"></i>
+                No bookings found for "${searchTerm}"
+            </td></tr>
+        `;
+        document.getElementById('studentResultCount').textContent = '0 bookings found';
+        refreshIcons();
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    summaryDiv.classList.remove('hidden');
+    
+    // Build table rows
+    let html = '';
+    bookings.forEach((booking, index) => {
+        // Color coding for status
+        let statusColor = '';
+        let bgColor = '';
+        let statusDisplay = '';
+        
+        if (booking.status === 'confirmed') {
+            // Confirmed: Yellow for KPP02, Cyan for KPP03
+            if (booking.lesson && booking.lesson.includes('KPP02')) {
+                statusColor = 'text-yellow-700';
+                bgColor = 'bg-yellow-50 border-yellow-200';
+                statusDisplay = '✅ CONFIRMED (KPP02)';
+            } else if (booking.lesson && booking.lesson.includes('KPP03')) {
+                statusColor = 'text-cyan-700';
+                bgColor = 'bg-cyan-50 border-cyan-200';
+                statusDisplay = '✅ CONFIRMED (KPP03)';
+            } else {
+                statusColor = 'text-emerald-700';
+                bgColor = 'bg-emerald-50 border-emerald-200';
+                statusDisplay = '✅ CONFIRMED';
+            }
+        } else if (booking.status === 'cancelled') {
+            // Cancelled: Light red only (no differentiation)
+            statusColor = 'text-red-600';
+            bgColor = 'bg-red-50 border-red-200';
+            statusDisplay = '❌ CANCELLED';
+        } else if (booking.status === 'rescheduled') {
+            statusColor = 'text-amber-700';
+            bgColor = 'bg-amber-50 border-amber-200';
+            statusDisplay = '🔄 RESCHEDULED';
+        } else {
+            statusColor = 'text-gray-600';
+            bgColor = 'bg-gray-50 border-gray-200';
+            statusDisplay = booking.status.toUpperCase();
+        }
+        
+        // Lesson display
+        let lessonDisplay = booking.lesson || '';
+        if (lessonDisplay.includes(' - ')) {
+            lessonDisplay = lessonDisplay.split(' - ')[1] || lessonDisplay;
+        }
+        
+        // Highlight search term in name and IC
+        const highlightedName = highlightText(booking.name || '', searchTerm);
+        const highlightedIc = highlightText(booking.icno || '', searchTerm);
+        
+        html += `
+            <tr class="hover:bg-muted/40 transition-colors border-b">
+                <td class="p-3 text-center font-mono text-xs text-muted-foreground">${index + 1}</td>
+                <td class="p-3 font-mono text-xs font-medium">${highlightedIc}</td>
+                <td class="p-3 font-semibold">${highlightedName}</td>
+                <td class="p-3 text-muted-foreground">${booking.contact_no || ''}</td>
+                <td class="p-3 text-center">
+                    <span class="inline-block px-2 py-0.5 rounded bg-muted text-muted-foreground text-xs font-bold">${booking.class || ''}</span>
+                </td>
+                <td class="p-3">
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${booking.lesson && booking.lesson.includes('KPP02') ? 'bg-yellow-100 text-yellow-800' : booking.lesson && booking.lesson.includes('KPP03') ? 'bg-cyan-100 text-cyan-800' : 'bg-gray-100 text-gray-600'}">
+                        ${lessonDisplay}
+                    </span>
+                </td>
+                <td class="p-3 text-foreground">${formatMalaysiaDate(booking.booking_date)}</td>
+                <td class="p-3 text-muted-foreground">${booking.session_time || ''}</td>
+                <td class="p-3 text-muted-foreground font-medium">${booking.session_slot || ''}</td>
+                <td class="p-3">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${bgColor} ${statusColor}">
+                        ${statusDisplay}
+                    </span>
+                </td>
+                <td class="p-3 text-xs text-muted-foreground">${formatDateTime(booking.created_at)}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    document.getElementById('studentResultCount').textContent = `${bookings.length} booking${bookings.length > 1 ? 's' : ''} found`;
+    
+    // Update summary
+    updateStudentSummary(bookings);
+    
+    refreshIcons();
+}
+
+/**
+ * Highlight matching text in search results
+ */
+function highlightText(text, searchTerm) {
+    if (!text || !searchTerm) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
+}
+
+/**
+ * Update student summary statistics
+ */
+function updateStudentSummary(bookings) {
+    const total = bookings.length;
+    const confirmed = bookings.filter(b => b.status === 'confirmed').length;
+    const cancelled = bookings.filter(b => b.status === 'cancelled').length;
+    const rescheduled = bookings.filter(b => b.status === 'rescheduled').length;
+    
+    // KPP02 vs KPP03 (check lesson field)
+    const kpp02 = bookings.filter(b => b.lesson && b.lesson.includes('KPP02')).length;
+    const kpp03 = bookings.filter(b => b.lesson && b.lesson.includes('KPP03')).length;
+    
+    document.getElementById('summaryTotal').textContent = total;
+    document.getElementById('summaryConfirmed').textContent = confirmed;
+    document.getElementById('summaryCancelled').textContent = cancelled;
+    document.getElementById('summaryRescheduled').textContent = rescheduled;
+    document.getElementById('summaryKPP02').textContent = kpp02;
+    document.getElementById('summaryKPP03').textContent = kpp03;
+}
+
+/**
+ * Autocomplete handler for search input
+ */
+function setupAutocomplete() {
+    const input = document.getElementById('studentSearchInput');
+    const dropdown = document.getElementById('autocompleteDropdown');
+    
+    input.addEventListener('input', function() {
+        const query = this.value.trim();
+        const clearBtn = document.getElementById('clearSearchBtn');
+        
+        if (query.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+            dropdown.classList.add('hidden');
+            document.getElementById('searchResultsContainer').classList.add('hidden');
+            document.getElementById('searchResultCount').textContent = '';
+            return;
+        }
+        
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        // Debounce: wait 300ms after user stops typing
+        searchTimeout = setTimeout(async () => {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bookings')
+                    .select('icno, name, contact_no, class, booking_date, session_time, session_slot, lesson, status, created_at')
+                    .or(`icno.ilike.%${query}%,name.ilike.%${query}%`)
+                    .order('booking_date', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    // Show autocomplete dropdown with unique students (by IC)
+                    const uniqueStudents = [];
+                    const seenIcs = new Set();
+                    data.forEach(item => {
+                        if (!seenIcs.has(item.icno)) {
+                            seenIcs.add(item.icno);
+                            uniqueStudents.push(item);
+                        }
+                    });
+                    
+                    dropdown.innerHTML = '';
+                    uniqueStudents.forEach(student => {
+                        const div = document.createElement('div');
+                        div.className = 'px-4 py-2.5 hover:bg-muted/60 cursor-pointer border-b last:border-b-0 flex items-center justify-between';
+                        div.innerHTML = `
+                            <div>
+                                <span class="font-semibold">${student.name}</span>
+                                <span class="text-xs text-muted-foreground ml-2">${student.icno}</span>
+                            </div>
+                            <span class="text-xs text-muted-foreground">${student.class || ''}</span>
+                        `;
+                        div.addEventListener('click', () => {
+                            input.value = student.icno;
+                            dropdown.classList.add('hidden');
+                            performStudentSearch(student.icno);
+                        });
+                        dropdown.appendChild(div);
+                    });
+                    
+                    dropdown.classList.remove('hidden');
+                } else {
+                    dropdown.innerHTML = `
+                        <div class="px-4 py-3 text-sm text-muted-foreground text-center">
+                            No students found matching "${query}"
+                        </div>
+                    `;
+                    dropdown.classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+            }
+        }, 300);
+    });
+    
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.classList.add('hidden');
+        }
+    });
+    
+    // Handle Enter key
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            dropdown.classList.add('hidden');
+            performStudentSearch(this.value.trim());
+        }
+        if (e.key === 'Escape') {
+            dropdown.classList.add('hidden');
+        }
+    });
+    
+    // Focus handler
+    input.addEventListener('focus', function() {
+        if (this.value.trim().length > 0) {
+            // Trigger autocomplete again
+            this.dispatchEvent(new Event('input'));
+        }
+    });
+}
+
+/**
+ * Clear search input
+ */
+function clearStudentSearch() {
+    document.getElementById('studentSearchInput').value = '';
+    document.getElementById('clearSearchBtn').classList.add('hidden');
+    document.getElementById('autocompleteDropdown').classList.add('hidden');
+    document.getElementById('searchResultsContainer').classList.add('hidden');
+    document.getElementById('searchResultCount').textContent = '';
+}
+
+/**
+ * Quick search: Today's students
+ */
+async function searchByToday() {
+    const today = getMalaysiaToday();
+    document.getElementById('studentSearchInput').value = today;
+    await performStudentSearch(today);
+}
+
+/**
+ * Quick search: This week's students
+ */
+async function searchByWeek() {
+    const today = getMalaysiaToday();
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = toMalaysiaDateStr(weekAgo);
+    
+    document.getElementById('studentSearchInput').value = `${weekAgoStr} to ${today}`;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('bookings')
+            .select('*')
+            .gte('booking_date', weekAgoStr)
+            .lte('booking_date', today)
+            .order('booking_date', { ascending: false })
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        currentSearchResults = data || [];
+        renderSearchResults(currentSearchResults, 'this week');
+        document.getElementById('searchResultCount').textContent = 
+            `Found ${currentSearchResults.length} booking${currentSearchResults.length > 1 ? 's' : ''} for this week`;
+        
+    } catch (error) {
+        console.error('Error searching week:', error);
+        showMessage('Error: ' + error.message, 'error');
+    }
 }
 
 // ============================================
