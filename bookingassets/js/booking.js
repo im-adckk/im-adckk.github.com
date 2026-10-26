@@ -352,11 +352,14 @@ async function checkAvailabilityForMonth() {
                 return;
             }
 
-            const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
+            // Only consider sessions that are actually open (is_available !== false)
+            const openSessions = sessions.filter(s => s.is_available !== false);
+
+            const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
             if (hasAvailable) {
                 setCellState(cell, 'available');
                 cell.title = 'Available';
-            } else if (sessions.length > 0) {
+            } else if (openSessions.length > 0) {
                 setCellState(cell, 'full');
                 cell.title = 'Fully Booked';
             } else {
