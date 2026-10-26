@@ -532,28 +532,148 @@ function setDateRange(range) {
 // QUOTA MANAGEMENT
 // ============================================
 
+// ============================================
+// SESSION OPEN/CLOSE HELPERS
+// ============================================
+
+const SESSION_TIMES = ['9am-12pm', '12pm-3pm'];
+const SESSION_SLOTS = ['sesi1', 'sesi2', 'sesi3'];
+const DEFAULT_QUOTA  = { B: 3, B2: 10 };
+
+/**
+ * Fetch which sessions are open for a date.
+ * A session is considered "open" if ANY of its rows have is_available = true.
+ * If no rows exist at all for that date, treat as open (default state).
+ */
+async function fetchSessionOpenState(date) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('available_sessions')
+            .select('session_time, is_available')
+            .eq('session_date', date);
+
+        if (error) throw error;
+
+        const bySession = { '9am-12pm': [], '12pm-3pm': [] };
+        (data || []).forEach(r => {
+            if (bySession[r.session_time]) bySession[r.session_time].push(r);
+        });
+
+        const result = {};
+        for (const t of SESSION_TIMES) {
+            const rows = bySession[t];
+            result[t] = rows.length === 0
+                ? true
+                : rows.some(r => r.is_available !== false);
+        }
+        return result;
+    } catch (error) {
+        console.error('fetchSessionOpenState error:', error);
+        return { '9am-12pm': true, '12pm-3pm': true };
+    }
+}
+
+/**
+ * Apply open/closed state to a single date for one session.
+ * - If isOpen=false: set is_available=false on existing rows; also insert
+ *   missing rows as closed (so a future cron can't silently reopen them).
+ * - If isOpen=true:  set is_available=true on existing rows; insert any
+ *   missing rows as open using quotas for that date.
+ */
+async function applySessionOpenState(date, sessionTime, isOpen, quotas) {
+    const quotaB  = quotas?.B  ?? DEFAULT_QUOTA.B;
+    const quotaB2 = quotas?.B2 ?? DEFAULT_QUOTA.B2;
+
+    // 1) Flip existing rows
+    const { error: updErr } = await supabaseClient
+        .from('available_sessions')
+        .update({ is_available: isOpen })
+        .eq('session_date', date)
+        .eq('session_time', sessionTime);
+
+    if (updErr) throw updErr;
+
+    // 2) Upsert any missing rows for both classes & all slots
+    const rows = [];
+    for (const cls of ['B', 'B2']) {
+        const max = cls === 'B' ? quotaB : quotaB2;
+        for (const slot of SESSION_SLOTS) {
+            rows.push({
+                class: cls,
+                session_date: date,
+                session_time: sessionTime,
+                session_slot: slot,
+                max_bookings: max,
+                current_bookings: 0,
+                is_available: isOpen
+            });
+        }
+    }
+
+    const { error: upsErr } = await supabaseClient
+        .from('available_sessions')
+        .upsert(rows, {
+            onConflict: 'class,session_date,session_time,session_slot',
+            ignoreDuplicates: false
+        });
+
+    if (upsErr) throw upsErr;
+}
+
+/**
+ * Get quota_settings row for a date (or null).
+ */
+async function fetchQuotaForDate(date) {
+    const { data, error } = await supabaseClient
+        .from('quota_settings')
+        .select('class_b_quota, class_b2_quota')
+        .eq('target_date', date)
+        .maybeSingle();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data
+        ? { B: data.class_b_quota ?? DEFAULT_QUOTA.B, B2: data.class_b2_quota ?? DEFAULT_QUOTA.B2 }
+        : { ...DEFAULT_QUOTA };
+}
+
 async function loadQuotaSettings(date) {
     if (!date) return;
-    
+
     try {
         const { data, error } = await supabaseClient
             .from('quota_settings')
             .select('*')
             .eq('target_date', date)
             .maybeSingle();
-            
+
         if (error) throw error;
-        
+
         if (data) {
-            document.getElementById('quotaClassB').value = data.class_b_quota || 3;
-            document.getElementById('quotaClassB2').value = data.class_b2_quota || 10;
-            document.getElementById('quotaStatus').textContent = `✅ Custom quota loaded for ${formatMalaysiaDate(date)}`;
+            document.getElementById('quotaClassB').value  = data.class_b_quota  ?? DEFAULT_QUOTA.B;
+            document.getElementById('quotaClassB2').value = data.class_b2_quota ?? DEFAULT_QUOTA.B2;
+            document.getElementById('quotaStatus').textContent =
+                `✅ Custom quota loaded for ${formatMalaysiaDate(date)}`;
             document.getElementById('quotaStatus').className = 'text-sm text-emerald-600 font-medium';
         } else {
-            document.getElementById('quotaClassB').value = 3;
-            document.getElementById('quotaClassB2').value = 10;
-            document.getElementById('quotaStatus').textContent = `📋 Using default quotas (B: 3, B2: 10) for ${formatMalaysiaDate(date)}`;
+            document.getElementById('quotaClassB').value  = DEFAULT_QUOTA.B;
+            document.getElementById('quotaClassB2').value = DEFAULT_QUOTA.B2;
+            document.getElementById('quotaStatus').textContent =
+                `📋 Using default quotas (B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2}) for ${formatMalaysiaDate(date)}`;
             document.getElementById('quotaStatus').className = 'text-sm text-muted-foreground';
+        }
+
+        // Reflect session open/closed state in checkboxes
+        const openState = await fetchSessionOpenState(date);
+        const cbMorning = document.getElementById('sessionOpenMorning');
+        const cbNoon    = document.getElementById('sessionOpenNoon');
+        if (cbMorning) cbMorning.checked = openState['9am-12pm'];
+        if (cbNoon)    cbNoon.checked    = openState['12pm-3pm'];
+
+        const hint = document.getElementById('sessionToggleHint');
+        if (hint) {
+            const closed = [];
+            if (!openState['9am-12pm']) closed.push('Morning');
+            if (!openState['12pm-3pm']) closed.push('Noon');
+            hint.textContent = closed.length ? `🔒 ${closed.join(' & ')} closed` : '';
         }
     } catch (error) {
         console.error('Error loading quota settings:', error);
@@ -562,11 +682,11 @@ async function loadQuotaSettings(date) {
 }
 
 async function saveQuotaSettings() {
-    const date = document.getElementById('quotaDateSelect').value;
-    const classBQuota = parseInt(document.getElementById('quotaClassB').value) || 3;
-    const classB2Quota = parseInt(document.getElementById('quotaClassB2').value) || 10;
-    const applyMode = document.getElementById('quotaApplyMode').value;
-    const rangeEnd = document.getElementById('quotaRangeEnd').value;
+    const date           = document.getElementById('quotaDateSelect').value;
+    const classBQuota    = parseInt(document.getElementById('quotaClassB').value)  || DEFAULT_QUOTA.B;
+    const classB2Quota   = parseInt(document.getElementById('quotaClassB2').value) || DEFAULT_QUOTA.B2;
+    const applyMode      = document.getElementById('quotaApplyMode').value;
+    const rangeEnd       = document.getElementById('quotaRangeEnd').value;
 
     if (!date) {
         showMessage('Please select a date first.', 'error');
@@ -591,10 +711,9 @@ async function saveQuotaSettings() {
             showMessage('End date must be after or equal to start date.', 'error');
             return;
         }
-        
-        // Generate all dates in range
+
         let current = new Date(date + 'T00:00:00');
-        const end = new Date(rangeEnd + 'T00:00:00');
+        const end   = new Date(rangeEnd + 'T00:00:00');
         while (current <= end) {
             datesToUpdate.push(toMalaysiaDateStr(current));
             current.setDate(current.getDate() + 1);
@@ -610,11 +729,16 @@ async function saveQuotaSettings() {
     if (progressDiv) progressDiv.style.display = 'block';
 
     try {
+        const cbMorning  = document.getElementById('sessionOpenMorning');
+        const cbNoon     = document.getElementById('sessionOpenNoon');
+        const morningOpen = cbMorning ? cbMorning.checked : true;
+        const noonOpen    = cbNoon    ? cbNoon.checked    : true;
+        const quotas      = { B: classBQuota, B2: classB2Quota };
+
         let successCount = 0;
-        let errorCount = 0;
 
         for (const targetDate of datesToUpdate) {
-            // Check if quota exists
+            // --- 1) Upsert quota_settings row ---
             const { data: existing, error: checkError } = await supabaseClient
                 .from('quota_settings')
                 .select('id')
@@ -624,40 +748,59 @@ async function saveQuotaSettings() {
             if (checkError && checkError.code !== 'PGRST116') throw checkError;
 
             if (existing) {
-                // Update existing
                 const { error: updateError } = await supabaseClient
                     .from('quota_settings')
                     .update({
-                        class_b_quota: classBQuota,
+                        class_b_quota:  classBQuota,
                         class_b2_quota: classB2Quota,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', existing.id);
-
                 if (updateError) throw updateError;
             } else {
-                // Insert new
                 const { error: insertError } = await supabaseClient
                     .from('quota_settings')
                     .insert([{
                         target_date: targetDate,
-                        class_b_quota: classBQuota,
+                        class_b_quota:  classBQuota,
                         class_b2_quota: classB2Quota
                     }]);
-
                 if (insertError) throw insertError;
             }
+
+            // --- 2) Sync max_bookings on existing available_sessions rows ---
+            const { error: syncBErr } = await supabaseClient
+                .from('available_sessions')
+                .update({ max_bookings: classBQuota })
+                .eq('session_date', targetDate)
+                .eq('class', 'B');
+            if (syncBErr) throw syncBErr;
+
+            const { error: syncB2Err } = await supabaseClient
+                .from('available_sessions')
+                .update({ max_bookings: classB2Quota })
+                .eq('session_date', targetDate)
+                .eq('class', 'B2');
+            if (syncB2Err) throw syncB2Err;
+
+            // --- 3) Apply session open/close (also upserts missing rows) ---
+            await applySessionOpenState(targetDate, '9am-12pm', morningOpen, quotas);
+            await applySessionOpenState(targetDate, '12pm-3pm', noonOpen,    quotas);
+
             successCount++;
         }
 
         const modeText = applyMode === 'single' ? 'date' : 'date range';
-        showMessage(`✅ Quota updated successfully for ${successCount} ${modeText}(s)!`, 'success');
-        
-        // Refresh calendar and date details
+        const closedMsg =
+            (!morningOpen || !noonOpen)
+                ? ` (${[!morningOpen && 'Morning', !noonOpen && 'Noon'].filter(Boolean).join(' & ')} closed)`
+                : '';
+        showMessage(`✅ Quota updated successfully for ${successCount} ${modeText}(s)${closedMsg}!`, 'success');
+
+        // Refresh UI
         await loadQuotaSettings(date);
         await loadAdminCalendarData();
-        
-        // If a date is selected in calendar, refresh its details
+
         if (selectedAdminDate) {
             await onAdminDateClick(selectedAdminDate);
         }
@@ -672,28 +815,56 @@ async function saveQuotaSettings() {
 
 async function resetQuotaToDefault() {
     const date = document.getElementById('quotaDateSelect').value;
-    
+
     if (!date) {
         showMessage('Please select a date first.', 'error');
         return;
     }
 
-    if (!confirm(`Reset quota for ${formatMalaysiaDate(date)} to default values (B: 5, B2: 15)?`)) {
+    if (!confirm(
+        `Reset quota for ${formatMalaysiaDate(date)} to default values ` +
+        `(B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2}) and reopen both sessions?`
+    )) {
         return;
     }
 
     try {
+        // 1) Delete custom quota row → falls back to defaults
         const { error } = await supabaseClient
             .from('quota_settings')
             .delete()
             .eq('target_date', date);
-
         if (error) throw error;
 
-        showMessage(`✅ Quota reset to default for ${formatMalaysiaDate(date)}`, 'success');
+        // 2) Reset max_bookings on existing rows to defaults
+        const { error: resetBErr } = await supabaseClient
+            .from('available_sessions')
+            .update({ max_bookings: DEFAULT_QUOTA.B })
+            .eq('session_date', date)
+            .eq('class', 'B');
+        if (resetBErr) throw resetBErr;
+
+        const { error: resetB2Err } = await supabaseClient
+            .from('available_sessions')
+            .update({ max_bookings: DEFAULT_QUOTA.B2 })
+            .eq('session_date', date)
+            .eq('class', 'B2');
+        if (resetB2Err) throw resetB2Err;
+
+        // 3) Reopen both sessions (also upserts missing rows)
+        const quotas = { ...DEFAULT_QUOTA };
+        await applySessionOpenState(date, '9am-12pm', true, quotas);
+        await applySessionOpenState(date, '12pm-3pm', true, quotas);
+
+        showMessage(
+            `✅ Quota reset to default (B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2}) ` +
+            `and both sessions reopened for ${formatMalaysiaDate(date)}`,
+            'success'
+        );
+
         await loadQuotaSettings(date);
         await loadAdminCalendarData();
-        
+
         if (selectedAdminDate) {
             await onAdminDateClick(selectedAdminDate);
         }
@@ -1957,14 +2128,14 @@ async function onAdminDateClick(dateStr) {
     }
 
     selectedAdminDate = dateStr;
-    document.getElementById('adminSelectedDate').textContent = `📅 ${formatMalaysiaDate(dateStr)}`;
+    document.getElementById('adminSelectedDate').textContent =
+        `📅 ${formatMalaysiaDate(dateStr)}`;
 
     try {
         const { data: sessionData, error: sessionError } = await supabaseClient
             .from('available_sessions')
             .select('*')
             .eq('session_date', dateStr);
-
         if (sessionError) throw sessionError;
 
         const { data: statusData, error: statusError } = await supabaseClient
@@ -1972,7 +2143,6 @@ async function onAdminDateClick(dateStr) {
             .select('*')
             .eq('target_date', dateStr)
             .single();
-
         if (statusError && statusError.code !== 'PGRST116') throw statusError;
 
         const { data: quotaData, error: quotaError } = await supabaseClient
@@ -1980,36 +2150,65 @@ async function onAdminDateClick(dateStr) {
             .select('*')
             .eq('target_date', dateStr)
             .maybeSingle();
-
         if (quotaError && quotaError.code !== 'PGRST116') throw quotaError;
 
-        const detailsDiv = document.getElementById('adminDateSessions');
-        const detailsContainer = document.getElementById('adminDateDetails');
-        const fallbackPrompt = document.getElementById('calendarFallbackPrompt');
+        const detailsDiv        = document.getElementById('adminDateSessions');
+        const detailsContainer  = document.getElementById('adminDateDetails');
+        const fallbackPrompt    = document.getElementById('calendarFallbackPrompt');
 
-        // Get quotas (custom or default)
-        const classBQuota = quotaData ? quotaData.class_b_quota : 5;
-        const classB2Quota = quotaData ? quotaData.class_b2_quota : 15;
+        // Quotas (custom or default)
+        const classBQuota  = quotaData ? (quotaData.class_b_quota  ?? DEFAULT_QUOTA.B)  : DEFAULT_QUOTA.B;
+        const classB2Quota = quotaData ? (quotaData.class_b2_quota ?? DEFAULT_QUOTA.B2) : DEFAULT_QUOTA.B2;
 
-        const classBData = sessionData ? sessionData.filter(s => s.class === 'B') : [];
-        const classB2Data = sessionData ? sessionData.filter(s => s.class === 'B2') : [];
+        // Only show OPEN rows in the tables
+        const rawSessions  = sessionData || [];
+        const classBData   = rawSessions.filter(s => s.class === 'B'  && s.is_available !== false);
+        const classB2Data  = rawSessions.filter(s => s.class === 'B2' && s.is_available !== false);
+
+        // Determine which sessions are fully closed (all rows is_available=false)
+        const morningRows  = rawSessions.filter(s => s.session_time === '9am-12pm');
+        const noonRows     = rawSessions.filter(s => s.session_time === '12pm-3pm');
+        const morningClosed = morningRows.length > 0 && morningRows.every(s => s.is_available === false);
+        const noonClosed    = noonRows.length    > 0 && noonRows.every(s => s.is_available === false);
 
         let html = `
             <div class="p-3 bg-muted rounded-lg border text-sm mb-4">
-                <p class="font-medium"><strong>Status:</strong> ${statusData ? (statusData.is_active ? '🟢 Active' : '🔴 Inactive') : '🟢 Active (default)'}</p>
-                ${statusData && statusData.reason ? `<p class="mt-1 text-xs text-muted-foreground"><strong>Reason:</strong> ${statusData.reason}</p>` : ''}
-                ${statusData && !statusData.is_active ? `<p class="mt-1 text-xs text-destructive font-semibold">⚠️ This date is closed for bookings.</p>` : ''}
-                ${quotaData ? `<p class="mt-1 text-xs text-blue-600 font-medium">⚡ Custom Quota: B=${classBQuota}, B2=${classB2Quota}</p>` : `<p class="mt-1 text-xs text-muted-foreground">📋 Default Quota: B=5, B2=15</p>`}
+                <p class="font-medium"><strong>Status:</strong> ${
+                    statusData
+                        ? (statusData.is_active ? '🟢 Active' : '🔴 Inactive')
+                        : '🟢 Active (default)'
+                }</p>
+                ${statusData && statusData.reason
+                    ? `<p class="mt-1 text-xs text-muted-foreground"><strong>Reason:</strong> ${statusData.reason}</p>`
+                    : ''}
+                ${statusData && !statusData.is_active
+                    ? `<p class="mt-1 text-xs text-destructive font-semibold">⚠️ This date is closed for bookings.</p>`
+                    : ''}
+                ${quotaData
+                    ? `<p class="mt-1 text-xs text-blue-600 font-medium">⚡ Custom Quota: B=${classBQuota}, B2=${classB2Quota}</p>`
+                    : `<p class="mt-1 text-xs text-muted-foreground">📋 Default Quota: B=${classBQuota}, B2=${classB2Quota}</p>`}
                 <button onclick="applyQuotaToDateFromCalendar('${dateStr}')" class="mt-2 text-xs text-blue-600 hover:text-blue-800 underline">
-                    <i data-lucide="edit" class="w-3 h-3 inline"></i> Edit Quota
+                    <i data-lucide="edit" class="w-3 h-3 inline"></i> Edit Quota / Sessions
                 </button>
             </div>
         `;
 
+        // Closed-session indicator
+        if (morningClosed || noonClosed) {
+            const labels = [morningClosed && 'Morning', noonClosed && 'Noon'].filter(Boolean);
+            html += `
+                <div class="mb-4 p-2 rounded-lg border border-amber-300 bg-amber-50 text-xs text-amber-800 font-medium">
+                    🔒 Closed session(s): ${labels.join(' & ')}
+                </div>
+            `;
+        }
+
+        // --- Class B table ---
         html += `
             <div class="space-y-2">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
-                    <span>🏍️ Class B</span> <span class="text-xs text-muted-foreground font-normal">Quota: ${classBQuota}</span>
+                    <span>🏍️ Class B</span>
+                    <span class="text-xs text-muted-foreground font-normal">Quota: ${classBQuota}</span>
                 </h4>
                 ${classBData.length > 0 ? `
                     <div class="border rounded-lg overflow-hidden bg-card text-xs">
@@ -2027,23 +2226,27 @@ async function onAdminDateClick(dateStr) {
                                     <tr>
                                         <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
                                         <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
-                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || classBQuota}</td>
+                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings ?? classBQuota}</td>
                                         <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
-                                            ${s.current_bookings < s.max_bookings ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
+                                            ${s.current_bookings < s.max_bookings
+                                                ? '✅ ' + (s.max_bookings - s.current_bookings)
+                                                : '❌ Full'}
                                         </td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
                     </div>
-                ` : '<p class="text-xs text-muted-foreground italic p-2">No Class B sessions available.</p>'}
+                ` : '<p class="text-xs text-muted-foreground italic p-2">No open Class B sessions for this date.</p>'}
             </div>
         `;
 
+        // --- Class B2 table ---
         html += `
             <div class="space-y-2 mt-4">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
-                    <span>🏍️ Class B2</span> <span class="text-xs text-muted-foreground font-normal">Quota: ${classB2Quota}</span>
+                    <span>🏍️ Class B2</span>
+                    <span class="text-xs text-muted-foreground font-normal">Quota: ${classB2Quota}</span>
                 </h4>
                 ${classB2Data.length > 0 ? `
                     <div class="border rounded-lg overflow-hidden bg-card text-xs">
@@ -2061,27 +2264,30 @@ async function onAdminDateClick(dateStr) {
                                     <tr>
                                         <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
                                         <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
-                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings || classB2Quota}</td>
+                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings ?? classB2Quota}</td>
                                         <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
-                                            ${s.current_bookings < s.max_bookings ? '✅ ' + (s.max_bookings - s.current_bookings) : '❌ Full'}
+                                            ${s.current_bookings < s.max_bookings
+                                                ? '✅ ' + (s.max_bookings - s.current_bookings)
+                                                : '❌ Full'}
                                         </td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
                     </div>
-                ` : '<p class="text-xs text-muted-foreground italic p-2">No Class B2 sessions available.</p>'}
+                ` : '<p class="text-xs text-muted-foreground italic p-2">No open Class B2 sessions for this date.</p>'}
             </div>
         `;
 
-        const totalB = classBData.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
-        const totalB2 = classB2Data.reduce((sum, s) => sum + (s.max_bookings - s.current_bookings), 0);
+        // --- Totals (open sessions only) ---
+        const totalB  = classBData.reduce((sum, s)  => sum + Math.max(0, s.max_bookings - s.current_bookings), 0);
+        const totalB2 = classB2Data.reduce((sum, s) => sum + Math.max(0, s.max_bookings - s.current_bookings), 0);
         const totalAvailable = totalB + totalB2;
 
         html += `
             <div class="mt-4 p-3 bg-card border rounded-lg text-xs font-medium space-y-1">
-                <p class="text-muted-foreground">Class B Available: <span class="${totalB > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB > 0 ? totalB : '0'} slots</span></p>
-                <p class="text-muted-foreground">Class B2 Available: <span class="${totalB2 > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB2 > 0 ? totalB2 : '0'} slots</span></p>
+                <p class="text-muted-foreground">Class B Available: <span class="${totalB > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB} slots</span></p>
+                <p class="text-muted-foreground">Class B2 Available: <span class="${totalB2 > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB2} slots</span></p>
                 <p class="border-t pt-1 font-bold text-foreground flex justify-between text-sm"><span>Total Remaining:</span> <span>${totalAvailable} slots</span></p>
             </div>
         `;
@@ -2096,7 +2302,6 @@ async function onAdminDateClick(dateStr) {
 
         document.getElementById('adminDateSelect').value = dateStr;
 
-        // Refresh icons
         refreshIcons();
 
     } catch (error) {
@@ -2104,7 +2309,6 @@ async function onAdminDateClick(dateStr) {
         showMessage('Error loading date details: ' + error.message, 'error');
     }
 }
-
 // ============================================
 // TABS
 // ============================================
@@ -2600,7 +2804,7 @@ function renderDutyReport(data, date) {
     container.classList.remove('hidden');
 
     const session1 = data.filter(d => d.session_time === '9am-12pm');
-    const session2 = data.filter(d => d.session_time === '1pm-4pm');
+    const session2 = data.filter(d => d.session_time === '12pm-3pm');
 
     function renderSessionTable(sessionData, sessionLabel) {
         if (sessionData.length === 0) {
@@ -2672,7 +2876,7 @@ function renderDutyReport(data, date) {
             
             <div>
                 <h4 class="font-semibold text-base mb-3 flex items-center gap-2">
-                    <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">SESSION (1PM-4PM)</span>
+                    <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">SESSION (12PM-3PM)</span>
                 </h4>
                 ${renderSessionTable(session2, '1pm-4pm')}
             </div>
@@ -2874,7 +3078,7 @@ async function exportDutyPDF() {
                 <span><span class="label">DATE:</span> ${formatDateForReport(date)}</span>
             </div>
             <div class="info">
-                <span class="label">SESSION:</span> (9AM-12PM) | (1PM-4PM)
+                <span class="label">SESSION:</span> (9AM-12PM) | (12PM-3PM)
             </div>
         </div>
 
