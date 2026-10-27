@@ -4197,8 +4197,8 @@ window.generateDailyReport = generateDailyReport;
 window.logoutAdmin = logoutAdmin;
 window.showTab = showTab;
 window.toggleDateStatus = toggleDateStatus;
-window.onDateApplyModeChange = onDateApplyModeChange;
 window.refreshSchedule = refreshSchedule;
+window.onDateApplyModeChange = onDateApplyModeChange;
 
 // Bookings Table
 window.loadAllBookings = loadAllBookings;
