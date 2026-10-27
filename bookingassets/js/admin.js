@@ -1833,79 +1833,195 @@ async function generateDailyReport() {
 // ============================================
 // DATE MANAGEMENT
 // ============================================
+function onDateApplyModeChange() {
+    const mode     = document.getElementById('dateApplyMode').value;
+    const endWrap  = document.getElementById('dateRangeEndWrapper');
+    const startEl  = document.getElementById('adminDateSelect');
+
+    if (mode === 'single') {
+        endWrap.style.display = 'none';
+    } else {
+        endWrap.style.display = 'block';
+
+        if (mode === 'week') {
+            // Auto-fill end date = Sunday of the week containing the start date.
+            // Week runs Monday → Sunday (matches Malaysian driving-school convention).
+            const startVal = startEl.value || getMalaysiaToday();
+            const start    = new Date(startVal + 'T00:00:00');
+            // getDay(): Sun=0, Mon=1 ... Sat=6. Convert to Mon=0..Sun=6
+            const dow      = (start.getDay() + 6) % 7;
+            const monday   = new Date(start);
+            monday.setDate(start.getDate() - dow);
+            const sunday   = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+
+            startEl.value = toMalaysiaDateStr(monday);
+            document.getElementById('dateRangeEnd').value = toMalaysiaDateStr(sunday);
+        } else {
+            // custom range — just seed end = start if empty
+            if (!document.getElementById('dateRangeEnd').value) {
+                document.getElementById('dateRangeEnd').value = startEl.value;
+            }
+        }
+    }
+}
 
 async function toggleDateStatus() {
-    const date = document.getElementById('adminDateSelect').value;
-    const reason = document.getElementById('closureReason').value.trim();
-    const messageDiv = document.getElementById('dateStatusMessage');
-    const statusDisplay = document.getElementById('currentDateStatus');
+    const mode         = document.getElementById('dateApplyMode').value;
+    const startDate    = document.getElementById('adminDateSelect').value;
+    const endDateInput = document.getElementById('dateRangeEnd').value;
+    const reason       = document.getElementById('closureReason').value.trim();
+    const messageDiv   = document.getElementById('dateStatusMessage');
+    const statusDisplay= document.getElementById('currentDateStatus');
 
-    if (!date) {
+    if (!startDate) {
         showNotification('Please select a date first.', 'error', messageDiv);
         return;
     }
 
-    showNotification('⏳ Processing...', 'info', messageDiv);
+    // ---- Build the list of dates to toggle ----
+    let dates = [];
+    if (mode === 'single') {
+        dates = [startDate];
+    } else {
+        if (!endDateInput) {
+            showNotification('Please select an end date for the range.', 'error', messageDiv);
+            return;
+        }
+        if (endDateInput < startDate) {
+            showNotification('End date must be after or equal to start date.', 'error', messageDiv);
+            return;
+        }
+        const cur = new Date(startDate + 'T00:00:00');
+        const end = new Date(endDateInput + 'T00:00:00');
+        while (cur <= end) {
+            dates.push(toMalaysiaDateStr(cur));
+            cur.setDate(cur.getDate() + 1);
+        }
+    }
+
+    if (dates.length === 0) {
+        showNotification('No dates to update.', 'error', messageDiv);
+        return;
+    }
+
+    // ---- Guard: don't touch past dates ----
+    const today = getMalaysiaToday();
+    const filtered = dates.filter(d => d >= today);
+    const skipped  = dates.length - filtered.length;
+    if (filtered.length === 0) {
+        showNotification('All selected dates are in the past.', 'error', messageDiv);
+        return;
+    }
+
+    showNotification(
+        `⏳ Processing ${filtered.length} date(s)…` + (skipped ? ` (${skipped} past date(s) skipped)` : ''),
+        'info', messageDiv
+    );
 
     try {
-        const { data: existing, error: checkError } = await supabaseClient
+        // ---- Determine target status from the FIRST date (toggle behaviour) ----
+        const firstDate = filtered[0];
+        const { data: firstExisting, error: firstErr } = await supabaseClient
             .from('date_status')
-            .select('is_active, reason')
-            .eq('target_date', date)
+            .select('is_active')
+            .eq('target_date', firstDate)
             .maybeSingle();
+        if (firstErr && firstErr.code !== 'PGRST116') throw firstErr;
 
-        if (checkError && checkError.code !== 'PGRST116') throw checkError;
+        const currentlyActive = firstExisting ? firstExisting.is_active : true;
+        const newStatus       = !currentlyActive;   // flip once, apply to all
+        const statusText      = newStatus ? '🟢 ACTIVE' : '🔴 INACTIVE';
 
-        const currentStatus = existing ? existing.is_active : true;
-        const newStatus = !currentStatus;
-        const statusText = newStatus ? '🟢 ACTIVE' : '🔴 INACTIVE';
-        const statusColor = newStatus ? 'text-green-700' : 'text-red-700';
-        const bgColor = newStatus ? 'bg-green-50' : 'bg-red-50';
-        const borderColor = newStatus ? 'border-green-300' : 'border-red-300';
+        // ---- Load all existing rows for the range in one query ----
+        const { data: existingRows, error: existErr } = await supabaseClient
+            .from('date_status')
+            .select('target_date, id')
+            .in('target_date', filtered);
+        if (existErr) throw existErr;
 
-        if (existing) {
-            const { error: updateError } = await supabaseClient
+        const existingMap = new Map((existingRows || []).map(r => [r.target_date, r.id]));
+
+        // ---- Split into updates + inserts ----
+        const toUpdate = [];
+        const toInsert = [];
+
+        for (const d of filtered) {
+            if (existingMap.has(d)) {
+                toUpdate.push({ id: existingMap.get(d), target_date: d });
+            } else {
+                toInsert.push(d);
+            }
+        }
+
+        // Bulk update (one query per row — Supabase can't bulk-update with different values)
+        for (const row of toUpdate) {
+            const { error } = await supabaseClient
                 .from('date_status')
                 .update({
                     is_active: newStatus,
                     reason: reason || null,
                     updated_at: new Date().toISOString()
                 })
-                .eq('target_date', date);
-
-            if (updateError) throw updateError;
-        } else {
-            const { error: insertError } = await supabaseClient
-                .from('date_status')
-                .insert([{
-                    target_date: date,
-                    is_active: newStatus,
-                    reason: reason || null
-                }]);
-
-            if (insertError) throw insertError;
+                .eq('id', row.id);
+            if (error) throw error;
         }
 
-        const icon = newStatus ? '✅' : '❌';
+        // Bulk insert (one query)
+        if (toInsert.length > 0) {
+            const rows = toInsert.map(d => ({
+                target_date: d,
+                is_active: newStatus,
+                reason: reason || null
+            }));
+            const { error } = await supabaseClient
+                .from('date_status')
+                .insert(rows);
+            if (error) throw error;
+        }
+
+        // ---- Feedback ----
+        const icon       = newStatus ? '✅' : '❌';
         const actionText = newStatus ? 'enabled' : 'disabled';
         const reasonText = reason ? ` (Reason: ${reason})` : '';
+        const rangeLabel = mode === 'single'
+            ? startDate
+            : `${startDate} → ${endDateInput}`;
 
         showNotification(
-            `${icon} Date ${date} is now ${actionText.toUpperCase()}${reasonText}`,
-            'success',
-            messageDiv
+            `${icon} ${filtered.length} date(s) ${actionText.toUpperCase()}${reasonText} — ${rangeLabel}`,
+            'success', messageDiv
         );
 
-        statusDisplay.innerHTML = `
-            <div class="flex items-center gap-3 p-3 rounded-lg border ${borderColor} ${bgColor}">
-                <span class="font-semibold ${statusColor}">${statusText}</span>
-                <span class="text-gray-600 text-sm">Date: ${formatMalaysiaDate(date)}</span>
-                ${reason ? `<span class="text-gray-500 text-sm">Reason: ${reason}</span>` : ''}
-                <span class="text-xs text-gray-400 ml-auto">
-                    ${newStatus ? 'Bookings allowed' : 'Bookings closed'}
-                </span>
-            </div>
-        `;
+        // Per-date status panel — show a summary for the range, not just one date
+        if (mode === 'single') {
+            statusDisplay.innerHTML = `
+                <div class="flex items-center gap-3 p-3 rounded-lg border ${
+                    newStatus ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'
+                }">
+                    <span class="font-semibold ${newStatus ? 'text-green-700' : 'text-red-700'}">
+                        ${statusText}
+                    </span>
+                    <span class="text-gray-600 text-sm">Date: ${formatMalaysiaDate(startDate)}</span>
+                    ${reason ? `<span class="text-gray-500 text-sm">Reason: ${reason}</span>` : ''}
+                </div>
+            `;
+        } else {
+            statusDisplay.innerHTML = `
+                <div class="flex items-center gap-3 p-3 rounded-lg border ${
+                    newStatus ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'
+                }">
+                    <span class="font-semibold ${newStatus ? 'text-green-700' : 'text-red-700'}">
+                        ${statusText}
+                    </span>
+                    <span class="text-gray-600 text-sm">
+                        ${formatMalaysiaDate(startDate)} → ${formatMalaysiaDate(endDateInput)}
+                        (${filtered.length} date${filtered.length > 1 ? 's' : ''})
+                    </span>
+                    ${reason ? `<span class="text-gray-500 text-sm">Reason: ${reason}</span>` : ''}
+                </div>
+            `;
+        }
 
         await loadAdminCalendarData();
         await loadStats();
@@ -1916,7 +2032,7 @@ async function toggleDateStatus() {
             if (!messageDiv.classList.contains('hidden')) {
                 messageDiv.classList.add('hidden');
             }
-        }, 5000);
+        }, 6000);
 
     } catch (error) {
         console.error('Error toggling date status:', error);
@@ -1979,14 +2095,23 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dateSelect) {
         dateSelect.addEventListener('change', function() {
             loadDateStatus(this.value);
+            // If in week/range mode, recompute the end date
+            const mode = document.getElementById('dateApplyMode')?.value;
+            if (mode === 'week') onDateApplyModeChange();
         });
 
         if (dateSelect.value) {
             loadDateStatus(dateSelect.value);
         }
     }
-});
 
+    // NEW: wire up the apply-mode selector
+    const modeSelect = document.getElementById('dateApplyMode');
+    if (modeSelect) {
+        modeSelect.addEventListener('change', onDateApplyModeChange);
+        onDateApplyModeChange();
+    }
+});
 async function loadDateStatus(date) {
     if (!date) return;
 
@@ -4072,6 +4197,7 @@ window.generateDailyReport = generateDailyReport;
 window.logoutAdmin = logoutAdmin;
 window.showTab = showTab;
 window.toggleDateStatus = toggleDateStatus;
+window.onDateApplyModeChange = onDateApplyModeChange;
 window.refreshSchedule = refreshSchedule;
 
 // Bookings Table
