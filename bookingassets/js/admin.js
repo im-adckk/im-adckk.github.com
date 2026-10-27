@@ -814,12 +814,12 @@ async function saveQuotaSettings() {
     const rangeEnd       = document.getElementById('quotaRangeEnd').value;
 
     if (!date) {
-        showMessage('Please select a date first.', 'error');
+        showQuotaMessage('Please select a date first.', 'error');
         return;
     }
 
     if (classBQuota < 0 || classB2Quota < 0) {
-        showMessage('Quota values cannot be negative.', 'error');
+        showQuotaMessage('Quota values cannot be negative.', 'error');
         return;
     }
 
@@ -829,11 +829,11 @@ async function saveQuotaSettings() {
         datesToUpdate = [date];
     } else if (applyMode === 'range') {
         if (!rangeEnd) {
-            showMessage('Please select an end date for the range.', 'error');
+            showQuotaMessage('Please select an end date for the range.', 'error');
             return;
         }
         if (rangeEnd < date) {
-            showMessage('End date must be after or equal to start date.', 'error');
+            showQuotaMessage('End date must be after or equal to start date.', 'error');
             return;
         }
 
@@ -846,7 +846,7 @@ async function saveQuotaSettings() {
     }
 
     if (datesToUpdate.length === 0) {
-        showMessage('No dates to update.', 'error');
+        showQuotaMessage('No dates to update.', 'error');
         return;
     }
 
@@ -952,7 +952,7 @@ async function saveQuotaSettings() {
             closedMsg = ` (slots closed: ${closedSlots.join(', ')})`;
         }
 
-        showMessage(
+        showQuotaMessage(
             `✅ Quota updated successfully for ${successCount} ${modeText}(s)${closedMsg}!`,
             'success'
         );
@@ -977,7 +977,7 @@ async function resetQuotaToDefault() {
     const date = document.getElementById('quotaDateSelect').value;
 
     if (!date) {
-        showMessage('Please select a date first.', 'error');
+        showQuotaMessage('Please select a date first.', 'error');
         return;
     }
 
@@ -1024,7 +1024,7 @@ async function resetQuotaToDefault() {
             }
         }
 
-        showMessage(
+        showQuotaMessage(
             `✅ Reset to default (B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2}) — ` +
             `sessions open, sesi1/sesi2 enabled, sesi3 disabled — for ${formatMalaysiaDate(date)}`,
             'success'
@@ -1039,7 +1039,7 @@ async function resetQuotaToDefault() {
 
     } catch (error) {
         console.error('Error resetting quota:', error);
-        showMessage('Error resetting quota: ' + error.message, 'error');
+        showQuotaMessage('Error resetting quota: ' + error.message, 'error');
     }
 }
 
@@ -1054,7 +1054,7 @@ async function applyQuotaToDateFromCalendar(dateStr) {
     // Scroll to quota section
     document.getElementById('quotaManagement').scrollIntoView({ behavior: 'smooth' });
     
-    showMessage(`📅 Quota settings loaded for ${formatMalaysiaDate(dateStr)}`, 'info');
+    showQuotaMessage(`📅 Quota settings loaded for ${formatMalaysiaDate(dateStr)}`, 'info');
 }
 
 // ============================================
@@ -2084,6 +2084,41 @@ function showNotification(message, type = 'info', messageDiv) {
             </button>
         </div>
     `;
+}
+
+function showQuotaMessage(message, type = 'info') {
+    const el = document.getElementById('quotaMessage');
+    if (!el) { showMessage(message, type); return; }   // fallback
+
+    el.classList.remove('hidden');
+    el.className = 'mb-3 p-3 rounded-lg border text-sm font-medium';
+
+    switch (type) {
+        case 'success':
+            el.classList.add('bg-green-50', 'border-green-300', 'text-green-700');
+            break;
+        case 'error':
+            el.classList.add('bg-red-50', 'border-red-300', 'text-red-700');
+            break;
+        case 'warning':
+            el.classList.add('bg-yellow-50', 'border-yellow-300', 'text-yellow-700');
+            break;
+        default:
+            el.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-700');
+    }
+
+    el.innerHTML = `
+        <div class="flex items-start gap-2">
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.classList.add('hidden')"
+                    class="ml-auto text-gray-400 hover:text-gray-600"
+                    style="background:none;border:none;cursor:pointer;font-size:16px;">✕</button>
+        </div>`;
+}
+
+function clearQuotaMessage() {
+    const el = document.getElementById('quotaMessage');
+    if (el) { el.classList.add('hidden'); el.innerHTML = ''; }
 }
 
 // ============================================
