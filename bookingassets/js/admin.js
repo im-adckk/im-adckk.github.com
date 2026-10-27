@@ -533,82 +533,113 @@ function setDateRange(range) {
 // ============================================
 
 // ============================================
-// SESSION OPEN/CLOSE HELPERS
+// SESSION & SLOT OPEN/CLOSE HELPERS (R3)
 // ============================================
 
 const SESSION_TIMES = ['9am-12pm', '12pm-3pm'];
-const SESSION_SLOTS = ['sesi1', 'sesi2', 'sesi3'];
-const DEFAULT_QUOTA  = { B: 3, B2: 10 };
+const ALL_SLOTS     = ['sesi1', 'sesi2', 'sesi3'];   // all possible slots
+const DEFAULT_SLOTS = ['sesi1', 'sesi2'];            // default-off = sesi3
+const DEFAULT_QUOTA = { B: 3, B2: 10 };
 
 /**
- * Fetch which sessions are open for a date.
- * A session is considered "open" if ANY of its rows have is_available = true.
- * If no rows exist at all for that date, treat as open (default state).
+ * Fetch per-slot open state for a date.
+ * Returns:
+ *   {
+ *     '9am-12pm': { sesi1: bool, sesi2: bool, sesi3: bool },
+ *     '12pm-3pm': { sesi1: bool, sesi2: bool, sesi3: bool }
+ *   }
+ *
+ * Missing rows default to:
+ *   - sesi1/sesi2 -> true  (open)
+ *   - sesi3       -> false (off by default)
+ *
+ * Row-level semantics:
+ *   For a (session, slot) pair, look across BOTH classes.
+ *   - If any class-row is is_available=true  -> open
+ *   - If all class-rows are is_available=false -> closed
+ *   - If no rows exist at all               -> fall back to default (per above)
  */
-async function fetchSessionOpenState(date) {
+async function fetchSlotOpenState(date) {
+    const fallback = {};
+    for (const t of SESSION_TIMES) {
+        fallback[t] = {};
+        for (const s of ALL_SLOTS) {
+            fallback[t][s] = DEFAULT_SLOTS.includes(s);
+        }
+    }
+
     try {
         const { data, error } = await supabaseClient
             .from('available_sessions')
-            .select('session_time, is_available')
+            .select('session_time, session_slot, class, is_available')
             .eq('session_date', date);
-
         if (error) throw error;
 
-        const bySession = { '9am-12pm': [], '12pm-3pm': [] };
+        // Group rows by (session, slot) -> array of rows (one per class)
+        const grouped = {};
+        for (const t of SESSION_TIMES) {
+            grouped[t] = {};
+            for (const s of ALL_SLOTS) grouped[t][s] = [];
+        }
         (data || []).forEach(r => {
-            if (bySession[r.session_time]) bySession[r.session_time].push(r);
+            if (grouped[r.session_time] && grouped[r.session_time][r.session_slot]) {
+                grouped[r.session_time][r.session_slot].push(r);
+            }
         });
 
         const result = {};
         for (const t of SESSION_TIMES) {
-            const rows = bySession[t];
-            result[t] = rows.length === 0
-                ? true
-                : rows.some(r => r.is_available !== false);
+            result[t] = {};
+            for (const s of ALL_SLOTS) {
+                const rows = grouped[t][s];
+                if (rows.length === 0) {
+                    // No rows -> use default
+                    result[t][s] = DEFAULT_SLOTS.includes(s);
+                } else {
+                    // Open if ANY class row is open
+                    result[t][s] = rows.some(r => r.is_available !== false);
+                }
+            }
         }
         return result;
-    } catch (error) {
-        console.error('fetchSessionOpenState error:', error);
-        return { '9am-12pm': true, '12pm-3pm': true };
+
+    } catch (err) {
+        console.error('fetchSlotOpenState error:', err);
+        return fallback;
     }
 }
 
 /**
- * Apply open/closed state to a single date for one session.
- * - If isOpen=false: set is_available=false on existing rows; also insert
- *   missing rows as closed (so a future cron can't silently reopen them).
- * - If isOpen=true:  set is_available=true on existing rows; insert any
- *   missing rows as open using quotas for that date.
+ * Apply open/closed state to a single (date, session_time, session_slot)
+ * across BOTH classes (class-agnostic toggle).
+ *
+ * - Existing rows are UPDATEd to is_available = isOpen.
+ * - Missing rows are INSERTED via upsert so enabling sesi3 works even
+ *   if the daily cron never created it (or for dates beyond cron window).
  */
-async function applySessionOpenState(date, sessionTime, isOpen, quotas) {
+async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas) {
     const quotaB  = quotas?.B  ?? DEFAULT_QUOTA.B;
     const quotaB2 = quotas?.B2 ?? DEFAULT_QUOTA.B2;
 
-    // 1) Flip existing rows
+    // 1) Flip existing rows (both classes)
     const { error: updErr } = await supabaseClient
         .from('available_sessions')
         .update({ is_available: isOpen })
         .eq('session_date', date)
-        .eq('session_time', sessionTime);
-
+        .eq('session_time', sessionTime)
+        .eq('session_slot', sessionSlot);
     if (updErr) throw updErr;
 
-    // 2) Upsert any missing rows for both classes & all slots
-    const rows = [];
-    for (const cls of ['B', 'B2']) {
-        const max = cls === 'B' ? quotaB : quotaB2;
-        for (const slot of SESSION_SLOTS) {
-            rows.push({
-                class: cls,
-                session_date: date,
-                session_time: sessionTime,
-                session_slot: slot,
-                max_bookings: max,
-                current_bookings: 0,
-                is_available: isOpen
-            });
-        }
-    }
+    // 2) Upsert missing rows for both classes
+    const rows = ['B', 'B2'].map(cls => ({
+        class: cls,
+        session_date: date,
+        session_time: sessionTime,
+        session_slot: sessionSlot,
+        max_bookings: cls === 'B' ? quotaB : quotaB2,
+        current_bookings: 0,
+        is_available: isOpen
+    }));
 
     const { error: upsErr } = await supabaseClient
         .from('available_sessions')
@@ -616,12 +647,21 @@ async function applySessionOpenState(date, sessionTime, isOpen, quotas) {
             onConflict: 'class,session_date,session_time,session_slot',
             ignoreDuplicates: false
         });
-
     if (upsErr) throw upsErr;
 }
 
 /**
- * Get quota_settings row for a date (or null).
+ * Convenience: apply open/closed state to ALL slots of a session.
+ * Used by callers that want session-level semantics.
+ */
+async function applySessionOpenState(date, sessionTime, isOpen, quotas) {
+    for (const slot of ALL_SLOTS) {
+        await applySlotOpenState(date, sessionTime, slot, isOpen, quotas);
+    }
+}
+
+/**
+ * Get quota_settings row for a date (or null). Falls back to defaults.
  */
 async function fetchQuotaForDate(date) {
     const { data, error } = await supabaseClient
@@ -633,6 +673,80 @@ async function fetchQuotaForDate(date) {
     return data
         ? { B: data.class_b_quota ?? DEFAULT_QUOTA.B, B2: data.class_b2_quota ?? DEFAULT_QUOTA.B2 }
         : { ...DEFAULT_QUOTA };
+}
+
+// ============================================
+// SESSION/SLOT UI CASCADE HANDLERS
+// ============================================
+
+/**
+ * Called when the Morning/Noon session checkbox toggles.
+ * - If unchecked -> disable + uncheck all slot checkboxes for that session
+ * - If checked   -> enable slot checkboxes, re-check DEFAULT slots (sesi1/sesi2)
+ *                   and leave sesi3 as-is (it stays whatever it was).
+ */
+function onSessionToggle(sessionKey) {
+    const sessionCb = document.getElementById(
+        sessionKey === 'morning' ? 'sessionOpenMorning' : 'sessionOpenNoon'
+    );
+    const containerId = sessionKey === 'morning' ? 'morningSlots' : 'noonSlots';
+    const slotCbs = document.querySelectorAll(`#${containerId} .slot-cb`);
+    const open = sessionCb.checked;
+
+    slotCbs.forEach(cb => {
+        cb.disabled = !open;
+        if (!open) {
+            // closing session -> close all slots visually
+            cb.checked = false;
+        } else if (DEFAULT_SLOTS.includes(cb.dataset.slot)) {
+            // reopening session -> restore default slots, leave sesi3 as-is
+            cb.checked = true;
+        }
+    });
+    refreshSessionHint();
+}
+
+/**
+ * Called when any individual slot checkbox toggles.
+ * - If any slot is checked -> session checkbox auto-checks, all slots enabled
+ * - If no slots checked    -> session checkbox auto-unchecks
+ */
+function onSlotToggle(sessionKey) {
+    const containerId = sessionKey === 'morning' ? 'morningSlots' : 'noonSlots';
+    const sessionCbId = sessionKey === 'morning' ? 'sessionOpenMorning' : 'sessionOpenNoon';
+    const slotCbs = [...document.querySelectorAll(`#${containerId} .slot-cb`)];
+    const sessionCb = document.getElementById(sessionCbId);
+    const anyChecked = slotCbs.some(cb => cb.checked);
+
+    sessionCb.checked = anyChecked;
+    slotCbs.forEach(cb => { cb.disabled = !anyChecked; });
+    refreshSessionHint();
+}
+
+/**
+ * Update the "🔒 ... closed" hint text below the checkboxes.
+ */
+function refreshSessionHint() {
+    const hint = document.getElementById('sessionToggleHint');
+    if (!hint) return;
+
+    const parts = [];
+    const mSession = document.getElementById('sessionOpenMorning')?.checked;
+    const nSession = document.getElementById('sessionOpenNoon')?.checked;
+
+    if (!mSession) parts.push('Morning closed');
+    if (!nSession) parts.push('Noon closed');
+
+    const closedSlots = [];
+    document.querySelectorAll('#morningSlots .slot-cb').forEach(cb => {
+        if (!cb.checked) closedSlots.push(`AM/${cb.dataset.slot}`);
+    });
+    document.querySelectorAll('#noonSlots .slot-cb').forEach(cb => {
+        if (!cb.checked) closedSlots.push(`PM/${cb.dataset.slot}`);
+    });
+    if (closedSlots.length) parts.push(`slots: ${closedSlots.join(', ')}`);
+
+    hint.textContent = parts.length ? `🔒 ${parts.join(' · ')}` : '';
 }
 
 async function loadQuotaSettings(date) {
@@ -661,20 +775,31 @@ async function loadQuotaSettings(date) {
             document.getElementById('quotaStatus').className = 'text-sm text-muted-foreground';
         }
 
-        // Reflect session open/closed state in checkboxes
-        const openState = await fetchSessionOpenState(date);
-        const cbMorning = document.getElementById('sessionOpenMorning');
-        const cbNoon    = document.getElementById('sessionOpenNoon');
-        if (cbMorning) cbMorning.checked = openState['9am-12pm'];
-        if (cbNoon)    cbNoon.checked    = openState['12pm-3pm'];
+        // Reflect per-slot open/closed state in checkboxes
+        const state = await fetchSlotOpenState(date);
 
-        const hint = document.getElementById('sessionToggleHint');
-        if (hint) {
-            const closed = [];
-            if (!openState['9am-12pm']) closed.push('Morning');
-            if (!openState['12pm-3pm']) closed.push('Noon');
-            hint.textContent = closed.length ? `🔒 ${closed.join(' & ')} closed` : '';
-        }
+        // --- Morning ---
+        const mSlotCbs = [...document.querySelectorAll('#morningSlots .slot-cb')];
+        mSlotCbs.forEach(cb => {
+            cb.checked = !!state['9am-12pm'][cb.dataset.slot];
+        });
+        const mAnyOpen = mSlotCbs.some(cb => cb.checked);
+        const mSessionCb = document.getElementById('sessionOpenMorning');
+        if (mSessionCb) mSessionCb.checked = mAnyOpen;
+        mSlotCbs.forEach(cb => { cb.disabled = !mAnyOpen; });
+
+        // --- Noon ---
+        const nSlotCbs = [...document.querySelectorAll('#noonSlots .slot-cb')];
+        nSlotCbs.forEach(cb => {
+            cb.checked = !!state['12pm-3pm'][cb.dataset.slot];
+        });
+        const nAnyOpen = nSlotCbs.some(cb => cb.checked);
+        const nSessionCb = document.getElementById('sessionOpenNoon');
+        if (nSessionCb) nSessionCb.checked = nAnyOpen;
+        nSlotCbs.forEach(cb => { cb.disabled = !nAnyOpen; });
+
+        refreshSessionHint();
+
     } catch (error) {
         console.error('Error loading quota settings:', error);
         showMessage('Error loading quota settings: ' + error.message, 'error');
@@ -823,7 +948,11 @@ async function resetQuotaToDefault() {
 
     if (!confirm(
         `Reset quota for ${formatMalaysiaDate(date)} to default values ` +
-        `(B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2}) and reopen both sessions?`
+        `(B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2})?\n\n` +
+        `This will:\n` +
+        `  • Reopen both sessions\n` +
+        `  • Keep sesi1 + sesi2 enabled\n` +
+        `  • Keep sesi3 disabled (default)`
     )) {
         return;
     }
@@ -851,14 +980,18 @@ async function resetQuotaToDefault() {
             .eq('class', 'B2');
         if (resetB2Err) throw resetB2Err;
 
-        // 3) Reopen both sessions (also upserts missing rows)
+        // 3) Reset each slot: sesi1/sesi2 open, sesi3 closed
         const quotas = { ...DEFAULT_QUOTA };
-        await applySessionOpenState(date, '9am-12pm', true, quotas);
-        await applySessionOpenState(date, '12pm-3pm', true, quotas);
+        for (const t of SESSION_TIMES) {
+            for (const s of ALL_SLOTS) {
+                const open = DEFAULT_SLOTS.includes(s);
+                await applySlotOpenState(date, t, s, open, quotas);
+            }
+        }
 
         showMessage(
-            `✅ Quota reset to default (B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2}) ` +
-            `and both sessions reopened for ${formatMalaysiaDate(date)}`,
+            `✅ Reset to default (B: ${DEFAULT_QUOTA.B}, B2: ${DEFAULT_QUOTA.B2}) — ` +
+            `sessions open, sesi1/sesi2 enabled, sesi3 disabled — for ${formatMalaysiaDate(date)}`,
             'success'
         );
 
@@ -2152,25 +2285,20 @@ async function onAdminDateClick(dateStr) {
             .maybeSingle();
         if (quotaError && quotaError.code !== 'PGRST116') throw quotaError;
 
-        const detailsDiv        = document.getElementById('adminDateSessions');
-        const detailsContainer  = document.getElementById('adminDateDetails');
-        const fallbackPrompt    = document.getElementById('calendarFallbackPrompt');
+        const detailsDiv       = document.getElementById('adminDateSessions');
+        const detailsContainer = document.getElementById('adminDateDetails');
+        const fallbackPrompt   = document.getElementById('calendarFallbackPrompt');
 
         // Quotas (custom or default)
         const classBQuota  = quotaData ? (quotaData.class_b_quota  ?? DEFAULT_QUOTA.B)  : DEFAULT_QUOTA.B;
         const classB2Quota = quotaData ? (quotaData.class_b2_quota ?? DEFAULT_QUOTA.B2) : DEFAULT_QUOTA.B2;
 
-        // Only show OPEN rows in the tables
+        // Only show OPEN rows in the class tables (closed slots hidden from availability view)
         const rawSessions  = sessionData || [];
         const classBData   = rawSessions.filter(s => s.class === 'B'  && s.is_available !== false);
         const classB2Data  = rawSessions.filter(s => s.class === 'B2' && s.is_available !== false);
 
-        // Determine which sessions are fully closed (all rows is_available=false)
-        const morningRows  = rawSessions.filter(s => s.session_time === '9am-12pm');
-        const noonRows     = rawSessions.filter(s => s.session_time === '12pm-3pm');
-        const morningClosed = morningRows.length > 0 && morningRows.every(s => s.is_available === false);
-        const noonClosed    = noonRows.length    > 0 && noonRows.every(s => s.is_available === false);
-
+        // ---- Header block: date status + quota info + edit link ----
         let html = `
             <div class="p-3 bg-muted rounded-lg border text-sm mb-4">
                 <p class="font-medium"><strong>Status:</strong> ${
@@ -2193,17 +2321,59 @@ async function onAdminDateClick(dateStr) {
             </div>
         `;
 
-        // Closed-session indicator
-        if (morningClosed || noonClosed) {
-            const labels = [morningClosed && 'Morning', noonClosed && 'Noon'].filter(Boolean);
+        // ---- Closed / not-offered state analysis ----
+        // Rules:
+        //   • Session "fully closed"  = rows exist for that session AND every row is is_available=false
+        //   • Slot "closed"           = rows exist for that (session, slot) AND every row is is_available=false
+        //   • Slot "not offered"      = no rows exist for that (session, slot) at all
+        //                                (only meaningful for sesi3, which defaults off)
+        //
+        // TOGGLE: set REPORT_NOT_OFFERED = true to also surface "sesi3 (not offered)"
+        // on every date. Default false keeps the badge quiet unless something is truly closed.
+        const REPORT_NOT_OFFERED = false;
+        const closedLabels = [];
+
+        for (const t of SESSION_TIMES) {
+            const tLabel = t === '9am-12pm' ? 'Morning' : 'Noon';
+            const tRows  = rawSessions.filter(r => r.session_time === t);
+
+            if (tRows.length === 0) {
+                if (REPORT_NOT_OFFERED) {
+                    closedLabels.push(`${tLabel} (no slots offered)`);
+                }
+                continue;
+            }
+
+            const sessionFullyClosed = tRows.every(r => r.is_available === false);
+            if (sessionFullyClosed) {
+                closedLabels.push(`${tLabel} (session closed)`);
+                continue; // no need to enumerate slots if whole session is closed
+            }
+
+            // Enumerate per-slot closures (and optionally missing slots)
+            for (const s of ALL_SLOTS) {
+                const sRows = tRows.filter(r => r.session_slot === s);
+                const shortLabel = `${t === '9am-12pm' ? 'AM' : 'PM'}/${s}`;
+
+                if (sRows.length === 0) {
+                    if (REPORT_NOT_OFFERED) {
+                        closedLabels.push(`${shortLabel} (not offered)`);
+                    }
+                } else if (sRows.every(r => r.is_available === false)) {
+                    closedLabels.push(shortLabel);
+                }
+            }
+        }
+
+        if (closedLabels.length) {
             html += `
                 <div class="mb-4 p-2 rounded-lg border border-amber-300 bg-amber-50 text-xs text-amber-800 font-medium">
-                    🔒 Closed session(s): ${labels.join(' & ')}
+                    🔒 Closed: ${closedLabels.join(' · ')}
                 </div>
             `;
         }
 
-        // --- Class B table ---
+        // ---- Class B table ----
         html += `
             <div class="space-y-2">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
@@ -2241,7 +2411,7 @@ async function onAdminDateClick(dateStr) {
             </div>
         `;
 
-        // --- Class B2 table ---
+        // ---- Class B2 table ----
         html += `
             <div class="space-y-2 mt-4">
                 <h4 class="font-bold text-sm text-foreground border-b pb-1 flex justify-between">
@@ -2279,7 +2449,7 @@ async function onAdminDateClick(dateStr) {
             </div>
         `;
 
-        // --- Totals (open sessions only) ---
+        // ---- Totals (open rows only) ----
         const totalB  = classBData.reduce((sum, s)  => sum + Math.max(0, s.max_bookings - s.current_bookings), 0);
         const totalB2 = classB2Data.reduce((sum, s) => sum + Math.max(0, s.max_bookings - s.current_bookings), 0);
         const totalAvailable = totalB + totalB2;
@@ -2878,7 +3048,7 @@ function renderDutyReport(data, date) {
                 <h4 class="font-semibold text-base mb-3 flex items-center gap-2">
                     <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">SESSION (12PM-3PM)</span>
                 </h4>
-                ${renderSessionTable(session2, '1pm-4pm')}
+                ${renderSessionTable(session2, '12pm-3pm')}
             </div>
             
             <div class="text-center text-xs text-muted-foreground border-t pt-4">
