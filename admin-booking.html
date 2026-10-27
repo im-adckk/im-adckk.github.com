@@ -314,19 +314,64 @@
                             <input type="number" id="quotaClassB2" class="input" value="10" min="0" max="100">
                         </div>
                         
-                        <div class="flex flex-wrap gap-4 items-center mt-3 p-3 rounded-lg border bg-muted/20">
-                            <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sessions enabled:</span>
-                            <label class="flex items-center gap-2 text-sm cursor-pointer">
-                                <input type="checkbox" id="sessionOpenMorning" checked
-                                       class="w-4 h-4 rounded border-border accent-primary">
-                                <span>9am – 12pm <span class="text-muted-foreground">(Morning)</span></span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm cursor-pointer">
-                                <input type="checkbox" id="sessionOpenNoon" checked
-                                       class="w-4 h-4 rounded border-border accent-primary">
-                                <span>12pm – 3pm <span class="text-muted-foreground">(Noon)</span></span>
-                            </label>
-                            <span id="sessionToggleHint" class="text-xs text-muted-foreground ml-auto"></span>
+                        <div class="mt-3 p-3 rounded-lg border bg-muted/20 space-y-3">
+                            <div class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sessions &amp; slots enabled:</div>
+                        
+                            <!-- Morning -->
+                            <div class="space-y-1.5">
+                                <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                                    <input type="checkbox" id="sessionOpenMorning" checked
+                                           class="w-4 h-4 rounded border-border accent-primary"
+                                           onchange="onSessionToggle('morning')">
+                                    <span>9am – 12pm <span class="text-muted-foreground font-normal">(Morning)</span></span>
+                                </label>
+                                <div id="morningSlots" class="flex flex-wrap gap-4 pl-6">
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb morning-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi1" checked onchange="onSlotToggle('morning')">
+                                        <span>sesi1</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb morning-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi2" checked onchange="onSlotToggle('morning')">
+                                        <span>sesi2</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb morning-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi3" onchange="onSlotToggle('morning')">
+                                        <span class="text-muted-foreground">sesi3 <span class="text-[10px]">(optional)</span></span>
+                                    </label>
+                                </div>
+                            </div>
+                        
+                            <!-- Noon -->
+                            <div class="space-y-1.5">
+                                <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                                    <input type="checkbox" id="sessionOpenNoon" checked
+                                           class="w-4 h-4 rounded border-border accent-primary"
+                                           onchange="onSessionToggle('noon')">
+                                    <span>12pm – 3pm <span class="text-muted-foreground font-normal">(Noon)</span></span>
+                                </label>
+                                <div id="noonSlots" class="flex flex-wrap gap-4 pl-6">
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb noon-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi1" checked onchange="onSlotToggle('noon')">
+                                        <span>sesi1</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb noon-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi2" checked onchange="onSlotToggle('noon')">
+                                        <span>sesi2</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb noon-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi3" onchange="onSlotToggle('noon')">
+                                        <span class="text-muted-foreground">sesi3 <span class="text-[10px]">(optional)</span></span>
+                                    </label>
+                                </div>
+                            </div>
+                        
+                            <div id="sessionToggleHint" class="text-xs text-muted-foreground"></div>
                         </div>
                         
                         <div class="flex gap-2 flex-wrap">
