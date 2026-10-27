@@ -854,11 +854,26 @@ async function saveQuotaSettings() {
     if (progressDiv) progressDiv.style.display = 'block';
 
     try {
-        const cbMorning  = document.getElementById('sessionOpenMorning');
-        const cbNoon     = document.getElementById('sessionOpenNoon');
-        const morningOpen = cbMorning ? cbMorning.checked : true;
-        const noonOpen    = cbNoon    ? cbNoon.checked    : true;
-        const quotas      = { B: classBQuota, B2: classB2Quota };
+        // --- Capture per-slot UI state ONCE (before looping dates) ---
+        const morningSessionOpen = document.getElementById('sessionOpenMorning')?.checked ?? true;
+        const noonSessionOpen    = document.getElementById('sessionOpenNoon')?.checked    ?? true;
+
+        const morningSlots = [...document.querySelectorAll('#morningSlots .slot-cb')]
+            .map(cb => ({ slot: cb.dataset.slot, checked: cb.checked }));
+        const noonSlots = [...document.querySelectorAll('#noonSlots .slot-cb')]
+            .map(cb => ({ slot: cb.dataset.slot, checked: cb.checked }));
+
+        const quotas = { B: classBQuota, B2: classB2Quota };
+
+        // Effective open state = session must be open AND the individual slot checked
+        const effectiveMorning = morningSlots.map(s => ({
+            slot: s.slot,
+            open: morningSessionOpen && s.checked
+        }));
+        const effectiveNoon = noonSlots.map(s => ({
+            slot: s.slot,
+            open: noonSessionOpen && s.checked
+        }));
 
         let successCount = 0;
 
@@ -908,21 +923,41 @@ async function saveQuotaSettings() {
                 .eq('class', 'B2');
             if (syncB2Err) throw syncB2Err;
 
-            // --- 3) Apply session open/close (also upserts missing rows) ---
-            await applySessionOpenState(targetDate, '9am-12pm', morningOpen, quotas);
-            await applySessionOpenState(targetDate, '12pm-3pm', noonOpen,    quotas);
+            // --- 3) Apply per-slot open/closed state (upserts missing rows) ---
+            for (const { slot, open } of effectiveMorning) {
+                await applySlotOpenState(targetDate, '9am-12pm', slot, open, quotas);
+            }
+            for (const { slot, open } of effectiveNoon) {
+                await applySlotOpenState(targetDate, '12pm-3pm', slot, open, quotas);
+            }
 
             successCount++;
         }
 
+        // --- 4) Build success message reflecting what was actually closed ---
         const modeText = applyMode === 'single' ? 'date' : 'date range';
-        const closedMsg =
-            (!morningOpen || !noonOpen)
-                ? ` (${[!morningOpen && 'Morning', !noonOpen && 'Noon'].filter(Boolean).join(' & ')} closed)`
-                : '';
-        showMessage(`✅ Quota updated successfully for ${successCount} ${modeText}(s)${closedMsg}!`, 'success');
 
-        // Refresh UI
+        const closedParts = [];
+        if (!morningSessionOpen) closedParts.push('Morning');
+        if (!noonSessionOpen)    closedParts.push('Noon');
+
+        const closedSlots = [];
+        effectiveMorning.forEach(s => { if (!s.open) closedSlots.push(`AM/${s.slot}`); });
+        effectiveNoon.forEach(s    => { if (!s.open) closedSlots.push(`PM/${s.slot}`); });
+
+        let closedMsg = '';
+        if (closedParts.length) {
+            closedMsg = ` (${closedParts.join(' & ')} closed)`;
+        } else if (closedSlots.length) {
+            closedMsg = ` (slots closed: ${closedSlots.join(', ')})`;
+        }
+
+        showMessage(
+            `✅ Quota updated successfully for ${successCount} ${modeText}(s)${closedMsg}!`,
+            'success'
+        );
+
+        // --- Refresh UI ---
         await loadQuotaSettings(date);
         await loadAdminCalendarData();
 
