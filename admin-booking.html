@@ -260,10 +260,27 @@
                         <label for="adminDateSelect" class="label text-sm">Select Date</label>
                         <input type="date" id="adminDateSelect" class="input">
                     </div>
+            
+                    <div class="grid gap-1.5 flex-1 min-w-[150px]">
+                        <label for="dateApplyMode" class="label text-sm">Apply Mode</label>
+                        <select id="dateApplyMode" class="input" onchange="onDateApplyModeChange()">
+                            <option value="single">Single Date</option>
+                            <option value="week">Whole Week (Mon–Sun)</option>
+                            <option value="range">Custom Range</option>
+                        </select>
+                    </div>
+            
+                    <!-- Hidden unless mode = week or range -->
+                    <div class="grid gap-1.5 flex-1 min-w-[150px]" id="dateRangeEndWrapper" style="display:none;">
+                        <label for="dateRangeEnd" class="label text-sm">End Date</label>
+                        <input type="date" id="dateRangeEnd" class="input">
+                    </div>
+            
                     <div class="grid gap-1.5 flex-1 min-w-[150px]">
                         <label for="closureReason" class="label text-sm">Reason (optional)</label>
                         <input type="text" id="closureReason" placeholder="e.g., Holiday, Maintenance" class="input">
                     </div>
+            
                     <div class="flex gap-2 flex-wrap">
                         <button onclick="toggleDateStatus()" class="btn gap-2" data-variant="secondary">
                             <i data-lucide="toggle-left" class="w-4 h-4"></i>
