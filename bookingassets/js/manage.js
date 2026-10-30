@@ -5,6 +5,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 // DOM Elements
 const searchForm = document.getElementById('searchForm');
+const searchIcNo = document.getElementById('searchIcNo');
 const searchSessionId = document.getElementById('searchSessionId');
 const bookingResult = document.getElementById('bookingResult');
 const bookingDetails = document.getElementById('bookingDetails');
@@ -27,46 +28,48 @@ searchForm.addEventListener('submit', async (e) => {
     await searchBooking();
 });
 
-// Search Booking by Session ID
 async function searchBooking() {
-    const sessionId = searchSessionId.value.trim().toUpperCase();
+    const icno = searchIcNo.value.trim();
 
-    if (!sessionId) {
-        showMessage('Please enter your Session ID.', 'error');
+    if (!icno) {
+        showMessage('Please enter your IC / Passport number.', 'error');
         return;
     }
 
     try {
         showMessage('Searching...', 'info');
 
-        // Get booking by session_id
         const { data, error } = await supabaseClient
             .from('bookings')
             .select('*')
-            .eq('session_id', sessionId)
-            .single();
+            .eq('icno', icno)
+            .eq('status', 'confirmed')
+            .gte('booking_date', new Date().toISOString().split('T')[0])
+            .order('booking_date', { ascending: true })
+            .order('session_time', { ascending: true });
 
-        if (error) {
-            if (error.code === 'PGRST116') {
-                showMessage('No booking found with this Session ID.', 'error');
-                bookingResult.classList.add('hidden');
-                return;
-            }
-            throw error;
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            bookingResult.classList.add('hidden');
+            showMessage('No upcoming bookings found for this IC.', 'info');
+            return;
         }
 
-        // Display booking details
-        displayBooking(data);
+        displayBookings(data);
         bookingResult.classList.remove('hidden');
-        showMessage('Booking found!', 'success');
-
+        showMessage(
+            data.length === 1
+                ? 'Booking found!'
+                : `${data.length} upcoming bookings found.`,
+            'success'
+        );
     } catch (error) {
         console.error('Search error:', error);
-        showMessage('Error searching booking: ' + error.message, 'error');
+        showMessage('Error searching bookings: ' + error.message, 'error');
         bookingResult.classList.add('hidden');
     }
 }
-
 // ============================================
 // SUMMARY ROW BUILDER (icon + label + value list)
 // ============================================
@@ -94,50 +97,35 @@ function statusBadge(status) {
 }
 
 // Display Booking Details
-function displayBooking(booking) {
-    const isUpcoming = booking.booking_date >= new Date().toISOString().split('T')[0] && booking.status === 'confirmed';
-    const isPast = booking.booking_date < new Date().toISOString().split('T')[0];
-
-    let html = buildSummaryRows([
-        { icon: 'hash', label: 'Session ID', value: `<span class="font-semibold">${booking.session_id}</span>` },
+function buildBookingCard(booking) {
+    const rows = buildSummaryRows([
         { icon: 'bike', label: 'Class', value: booking.class },
         { icon: 'calendar', label: 'Date', value: formatDate(booking.booking_date) },
         { icon: 'clock', label: 'Session', value: `${booking.session_time} - ${booking.session_slot}` },
         { icon: 'user', label: 'Name', value: booking.name },
-        { icon: 'id-card', label: 'IC/Passport', value: booking.icno },
-        { icon: 'phone', label: 'Contact', value: booking.contact_no },
-        { icon: 'flag', label: 'Status', value: statusBadge(booking.status) },
-        { icon: 'clock-4', label: 'Booked On', value: formatDateTime(booking.created_at) }
+        { icon: 'hash', label: 'Session ID', value: `<span class="font-semibold">${booking.session_id}</span>` },
     ]);
 
-    // Add action buttons / notices depending on booking state
-    if (isUpcoming && booking.status === 'confirmed') {
-        html += `
-            <div class="mt-4 space-y-2">
-                <button onclick="cancelBooking('${booking.session_id}')" class="btn w-full justify-center gap-2" data-variant="destructive">
+    return `
+        <div class="card mb-4">
+            <section>
+                ${rows}
+                <button
+                    type="button"
+                    onclick="cancelBooking('${booking.session_id}')"
+                    class="btn w-full justify-center gap-2 mt-4"
+                    data-variant="destructive"
+                >
                     <i data-lucide="x-circle" class="w-4 h-4"></i>
-                    Cancel Booking
+                    Cancel This Booking
                 </button>
-                <p class="text-xs text-muted-foreground text-center">Cancellations release the slot for others.</p>
-            </div>
-        `;
-    } else if (isPast && booking.status === 'confirmed') {
-        html += `
-            <div class="alert mt-4">
-                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
-                <span class="text-sm">This booking has already passed.</span>
-            </div>
-        `;
-    } else if (booking.status === 'cancelled') {
-        html += `
-            <div class="alert mt-4" data-variant="destructive">
-                <i data-lucide="circle-x" class="w-4 h-4"></i>
-                <span class="text-sm">This booking has been cancelled.</span>
-            </div>
-        `;
-    }
+            </section>
+        </div>
+    `;
+}
 
-    bookingDetails.innerHTML = html;
+function displayBookings(bookings) {
+    bookingDetails.innerHTML = bookings.map(buildBookingCard).join('');
     refreshIcons();
 }
 
@@ -156,13 +144,11 @@ async function cancelBooking(sessionId) {
         if (error) throw error;
 
         if (data) {
-            showMessage('Booking cancelled successfully! The slot is now available for others.', 'success');
-            // Refresh the booking display
-            await searchBooking();
+            showMessage('Booking cancelled successfully!', 'success');
+            await searchBooking();  // re-runs IC query; cancelled card disappears
         } else {
             showMessage('Booking not found or already cancelled.', 'error');
         }
-
     } catch (error) {
         console.error('Cancel error:', error);
         showMessage('Error cancelling booking: ' + error.message, 'error');
