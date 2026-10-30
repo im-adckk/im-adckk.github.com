@@ -53,11 +53,24 @@
     <section>
       <form id="searchForm" class="space-y-4">
         <div class="grid gap-2">
-          <label for="searchSessionId" class="label">Session ID</label>
+          <label for="searchIcNo" class="label">IC / Passport Number</label>
           <div class="relative">
-            <i data-lucide="hash" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <input type="text" id="searchSessionId" required placeholder="e.g., 260703-1234" class="input pl-9">
+            <i data-lucide="id-card" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+            <input
+              type="text"
+              id="searchIcNo"
+              required
+              placeholder="e.g., 010203040567 / A0123456ABC"
+              class="input pl-9"
+              inputmode="text"
+              autocomplete="off"
+              spellcheck="false"
+              maxlength="20"
+              pattern="[0-9A-Za-z\- ]+"
+              title="Letters, numbers only"
+            >
           </div>
+          <p class="text-xs text-muted-foreground">Enter the IC/Passport number exactly as used during booking.</p>
         </div>
         <button type="submit" class="btn w-full justify-center gap-2">
           <i data-lucide="search" class="w-4 h-4"></i>
