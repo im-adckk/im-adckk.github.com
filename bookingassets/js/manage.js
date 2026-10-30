@@ -202,5 +202,5 @@ function formatDateTime(dateString) {
 document.addEventListener('DOMContentLoaded', () => {
     refreshIcons();
     // Focus Session ID input
-    searchSessionId.focus();
+    searchIcNo.focus();
 });
