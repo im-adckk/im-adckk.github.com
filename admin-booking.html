@@ -391,6 +391,33 @@
                                     </label>
                                 </div>
                             </div>
+
+                            <!-- 11am-2pm (Sunday override session) -->
+                            <div class="space-y-1.5">
+                                <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                                    <input type="checkbox" id="sessionOpenEleven"
+                                           class="w-4 h-4 rounded border-border accent-primary"
+                                           onchange="onSessionToggle('eleven')">
+                                    <span>11am – 2pm <span class="text-muted-foreground font-normal">(Sunday override)</span></span>
+                                </label>
+                                <div id="elevenSlots" class="flex flex-wrap gap-4 pl-6">
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb eleven-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi1" checked onchange="onSlotToggle('eleven')">
+                                        <span>sesi1</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb eleven-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi2" onchange="onSlotToggle('eleven')">
+                                        <span class="text-muted-foreground">sesi2 <span class="text-[10px]">(optional)</span></span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" class="slot-cb eleven-slot w-4 h-4 rounded border-border accent-primary"
+                                               data-slot="sesi3" onchange="onSlotToggle('eleven')">
+                                        <span class="text-muted-foreground">sesi3 <span class="text-[10px]">(optional)</span></span>
+                                    </label>
+                                </div>
+                            </div>
                         
                             <div id="sessionToggleHint" class="text-xs text-muted-foreground"></div>
                         </div>
