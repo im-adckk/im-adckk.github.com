@@ -39,6 +39,17 @@ const LESSON_OPTIONS = {
     ]
 };
 
+const SESSION_SLOT_LABELS = {
+    'sesi1': 'Group1',
+    'sesi2': 'Group2',
+    'sesi3': 'Group3'
+};
+
+function formatSlot(slot) {
+    if (!slot) return '';
+    return SESSION_SLOT_LABELS[slot] || slot;
+}
+
 const LESSON_TYPES_SIMPLE = {
     'KPP02': { label: 'KPP02', max: 5 },
     'KPP03': { label: 'KPP03', max: 3 },
@@ -555,7 +566,7 @@ async function onDateClick(dateStr) {
     if (hasDayDuplicate) {
         const existing = window._dayDuplicateInfo;
         const detail = existing
-            ? ` (Session: ${existing.session_time} - ${existing.session_slot})`
+            ? ` (Session: ${existing.session_time} - ${formatSlot(existing.session_slot)})`
             : '';
         showMessage(
             `⚠️ You already have a booking on this date${detail}. You can only have ONE booking per day. To book a different session, cancel your existing booking first via Manage My Bookings.`,
@@ -624,7 +635,7 @@ async function loadSessionsForDate(dateStr, opts = {}) {
                         </span>
                         <span class="flex-1">
                             <span class="block text-sm font-medium">${session.session_time}</span>
-                            <span class="block text-xs text-red-600/80">${session.session_slot}</span>
+                            <<span class="block text-xs text-red-600/80">${formatSlot(session.session_slot)}</span>
                         </span>
                         <span class="badge bg-red-600 text-white border-red-700">FULL</span>
                     </button>
@@ -641,7 +652,7 @@ async function loadSessionsForDate(dateStr, opts = {}) {
                         </span>
                         <span class="flex-1">
                             <span class="block text-sm font-medium">${session.session_time}</span>
-                            <span class="block text-xs text-muted-foreground">${session.session_slot}</span>
+                            <span class="block text-xs text-muted-foreground">${formatSlot(session.session_slot)}</span>
                         </span>
                         <span class="badge" data-variant="secondary">${available} left</span>
                     </button>
@@ -917,7 +928,7 @@ function goToStep4() {
     summary.innerHTML = buildSummaryRows([
         { icon: 'bike', label: 'Class', value: bookingData.class },
         { icon: 'calendar', label: 'Date', value: formatMalaysiaDate(bookingData.date) },
-        { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${bookingData.session.session_slot}` },
+        { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${formatSlot(bookingData.session.session_slot)}` },
         { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },
         { icon: 'user', label: 'Name', value: bookingData.name },
         { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
@@ -981,7 +992,7 @@ async function checkDayDuplicate() {
                         <i data-lucide="circle-alert" class="w-4 h-4"></i>
                         <span class="text-sm">
                             <strong>❌ Booking Not Allowed:</strong> You already have a booking on this date
-                            (Session: ${data.session_time} - ${data.session_slot}).
+                            (Session: ${data.session_time} - ${formatSlot(data.session_slot)}).
                             You can only have ONE booking per day. 
                             <a href="manage-booking.html" target="_blank" class="underline font-medium">Cancel your existing booking first</a>.
                         </span>
@@ -1284,7 +1295,7 @@ document.addEventListener('keydown', function(event) {
 function showConfirmDialog() {
     document.getElementById('confirmClass').textContent = bookingData.class;
     document.getElementById('confirmDate').textContent = formatMalaysiaDate(bookingData.date);
-    document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${bookingData.session.session_slot}`;
+    document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${formatSlot(bookingData.session.session_slot)}`;
     document.getElementById('confirmLesson').textContent = bookingData.lesson;
     document.getElementById('confirmName').textContent = bookingData.name;
     document.getElementById('confirmIC').textContent = bookingData.icno;
@@ -1398,7 +1409,7 @@ function showExistingBooking(duplicateCheck) {
             <dl class="text-sm space-y-1.5">
                 <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session ID</dt><dd class="font-semibold">${duplicateCheck.existing_session_id}</dd></div>
                 <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session Time</dt><dd>${duplicateCheck.existing_session_time}</dd></div>
-                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session Slot</dt><dd>${duplicateCheck.existing_session_slot}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-red-700/80">Session Slot</dt><dd>${formatSlot(duplicateCheck.existing_session_slot)}</dd></div>
             </dl>
             <p class="text-xs text-red-700 pt-1 border-t border-red-200">
                 <strong>Cancel this booking first.</strong> Go to
@@ -1416,7 +1427,7 @@ function showConfirmation(sessionId) {
         { icon: 'hash', label: 'Session ID', value: sessionId },
         { icon: 'bike', label: 'Class', value: bookingData.class },
         { icon: 'calendar', label: 'Date', value: formatMalaysiaDate(bookingData.date) },
-        { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${bookingData.session.session_slot}` },
+        { icon: 'clock', label: 'Session', value: `${bookingData.session.session_time} - ${formatSlot(bookingData.session.session_slot)}` },
         { icon: 'book-open', label: 'Lesson', value: bookingData.lesson },
         { icon: 'user', label: 'Name', value: bookingData.name },
         { icon: 'id-card', label: 'IC/Passport', value: bookingData.icno },
