@@ -519,9 +519,12 @@ async function onDateClick(dateStr) {
     if (selectedDate === dateStr) {
         selectedDate = null;
         selectedSession = null;
+        hasDayDuplicate = false;
+        window._dayDuplicateInfo = null;
         document.getElementById('selectedDateDisplay').textContent = '';
         document.getElementById('sessionsContainer').classList.add('hidden');
         document.getElementById('nextToDetailsBtn').classList.add('hidden');
+        hideMessage();
         await resetCalendarColors();
         return;
     }
@@ -530,6 +533,14 @@ async function onDateClick(dateStr) {
     document.getElementById('selectedDateDisplay').innerHTML =
         `<span class="badge" data-variant="outline">Selected Date: ${formatMalaysiaDate(dateStr)}</span>`;
 
+    // Early duplicate check for the currently-entered IC (Scenario 1).
+    // If the IC box is empty/short, helper short-circuits with no query.
+    // Always overwrite hasDayDuplicate — never carry a stale value across date clicks.
+    const icnoValue = (document.getElementById('icno')?.value || '').trim();
+    const dupResult = await checkDuplicateForDate(icnoValue, dateStr);
+    hasDayDuplicate = dupResult.isDuplicate;
+    window._dayDuplicateInfo = dupResult.existing || null;
+    
     await resetCalendarColors();
 
     const cells = document.querySelectorAll('#calendar button[data-date]');
@@ -539,10 +550,21 @@ async function onDateClick(dateStr) {
         }
     });
 
-    await loadSessionsForDate(dateStr);
+    await loadSessionsForDate(dateStr, { silentInfoMessage: hasDayDuplicate });
+
+    if (hasDayDuplicate) {
+        const existing = window._dayDuplicateInfo;
+        const detail = existing
+            ? ` (Session: ${existing.session_time} - ${existing.session_slot})`
+            : '';
+        showMessage(
+            `⚠️ You already have a booking on this date${detail}. You can only have ONE booking per day. To book a different session, cancel your existing booking first via Manage My Bookings.`,
+            'error'
+        );
+    }
 }
 
-async function loadSessionsForDate(dateStr) {
+async function loadSessionsForDate(dateStr, opts = {}) {
     try {
         const { data, error } = await supabaseClient
             .rpc('get_available_sessions_for_date', {
@@ -633,7 +655,9 @@ async function loadSessionsForDate(dateStr) {
         selectedSession = null;
         refreshIcons();
 
-        showMessage('Select a session time to continue.', 'info');
+        if (!opts.silentInfoMessage) {
+            showMessage('Select a session time to continue.', 'info');
+        }
 
     } catch (error) {
         console.error('Error loading sessions:', error);
@@ -976,6 +1000,39 @@ async function checkDayDuplicate() {
         hasDayDuplicate = false;
         document.getElementById('dayDuplicateWarning').innerHTML = '';
         await loadLessonHistory(icno);
+    }
+}
+
+// Checks whether a given IC already has a confirmed booking on a given date.
+// Returns { isDuplicate: boolean, existing: object|null }.
+// Does NOT touch UI or state — callers decide what to do with the result.
+async function checkDuplicateForDate(icno, dateStr) {
+    if (!icno || icno.length < 8 || !dateStr) {
+        return { isDuplicate: false, existing: null };
+    }
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('bookings')
+            .select('session_id, session_time, session_slot, booking_date')
+            .eq('icno', icno)
+            .eq('booking_date', dateStr)
+            .eq('status', 'confirmed')
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+            return { isDuplicate: true, existing: data };
+        }
+        return { isDuplicate: false, existing: null };
+
+    } catch (error) {
+        console.error('Error checking duplicate for date:', error);
+        // Fail open for the early-warning layer: don't block the user on a
+        // network/transient error. The Confirm-time RPC is the enforcement layer.
+        return { isDuplicate: false, existing: null };
     }
 }
 
@@ -1409,6 +1466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.value !== value) {
                 this.value = value;
             }
+            hasDayDuplicate = false;
             document.getElementById('dayDuplicateWarning').innerHTML = '';
             document.getElementById('historyIndicator').classList.add('hidden');
         });
