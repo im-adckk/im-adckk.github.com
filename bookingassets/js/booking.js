@@ -40,9 +40,9 @@ const LESSON_OPTIONS = {
 };
 
 const SESSION_SLOT_LABELS = {
-    'sesi1': 'Group1',
-    'sesi2': 'Group2',
-    'sesi3': 'Group3'
+    'sesi1': 'Group 1',
+    'sesi2': 'Group 2',
+    'sesi3': 'Group 3'
 };
 
 function formatSlot(slot) {
