@@ -635,7 +635,7 @@ async function loadSessionsForDate(dateStr, opts = {}) {
                         </span>
                         <span class="flex-1">
                             <span class="block text-sm font-medium">${session.session_time}</span>
-                            <<span class="block text-xs text-red-600/80">${formatSlot(session.session_slot)}</span>
+                            <span class="block text-xs text-red-600/80">${formatSlot(session.session_slot)}</span>
                         </span>
                         <span class="badge bg-red-600 text-white border-red-700">FULL</span>
                     </button>
