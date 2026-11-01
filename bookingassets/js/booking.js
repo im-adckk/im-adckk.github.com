@@ -580,25 +580,51 @@ async function loadSessionsForDate(dateStr) {
             refreshIcons();
             return;
         }
+        if (selectedSession !== null) {
+            const prev = availableSessionsData[selectedSession];
+            if (!prev || prev.current_bookings >= prev.max_bookings) {
+                selectedSession = null;
+            }
+        }
 
-        let html = '';
+       let html = '';
         data.forEach((session, index) => {
-            const available = session.max_bookings - session.current_bookings;
-            const isSelected = selectedSession === index;
-            html += `
-                <button type="button"
-                    class="w-full text-left rounded-lg border p-3 flex items-center gap-3 transition-colors ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-card hover:bg-muted/50'}"
-                    onclick="selectSession(${index})">
-                    <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                        <i data-lucide="clock" class="w-4 h-4"></i>
-                    </span>
-                    <span class="flex-1">
-                        <span class="block text-sm font-medium">${session.session_time}</span>
-                        <span class="block text-xs text-muted-foreground">${session.session_slot}</span>
-                    </span>
-                    <span class="badge" data-variant="secondary">${available} left</span>
-                </button>
-            `;
+            const available = Math.max(0, session.max_bookings - session.current_bookings);
+            const isFull = available <= 0;
+        
+            if (isFull) {
+                // Disabled row: full session, not selectable
+                html += `
+                    <button type="button" disabled
+                        class="w-full text-left rounded-lg border p-3 flex items-center gap-3 transition-colors border-red-200 bg-red-50 text-red-700 cursor-not-allowed opacity-80">
+                        <span class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                        </span>
+                        <span class="flex-1">
+                            <span class="block text-sm font-medium">${session.session_time}</span>
+                            <span class="block text-xs text-red-600/80">${session.session_slot}</span>
+                        </span>
+                        <span class="badge bg-red-600 text-white border-red-700">FULL</span>
+                    </button>
+                `;
+            } else {
+                // Available row: existing behavior
+                const isSelected = selectedSession === index;
+                html += `
+                    <button type="button"
+                        class="w-full text-left rounded-lg border p-3 flex items-center gap-3 transition-colors ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-card hover:bg-muted/50'}"
+                        onclick="selectSession(${index})">
+                        <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                        </span>
+                        <span class="flex-1">
+                            <span class="block text-sm font-medium">${session.session_time}</span>
+                            <span class="block text-xs text-muted-foreground">${session.session_slot}</span>
+                        </span>
+                        <span class="badge" data-variant="secondary">${available} left</span>
+                    </button>
+                `;
+            }
         });
 
         sessionsList.innerHTML = html;
@@ -616,6 +642,11 @@ async function loadSessionsForDate(dateStr) {
 }
 
 function selectSession(index) {
+    const s = availableSessionsData[index];
+    if (!s || s.current_bookings >= s.max_bookings) {
+        showMessage('This session is full. Please choose another.', 'error');
+        return;
+    }
     selectedSession = index;
     const sessionsList = document.getElementById('sessionsList');
     const items = sessionsList.querySelectorAll('button');
