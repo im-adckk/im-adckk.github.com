@@ -1148,78 +1148,55 @@ function buildBookingReportHTML(data) {
     const totalB2 = classB2Bookings.length;
     const totalAll = bookings.length;
 
-    function renderGroupedTableRows(bookingsList, startCounter) {
-        const sessionOrder = ['9am-12pm', '12pm-3pm'];
+    /**
+     * Render table rows for a single session (no gray header, no subtotal).
+     * Numbering restarts at 1. Called once per non-empty session page.
+     */
+    function renderSessionTableRows(sessionBookings) {
         const slotOrder = ['sesi1', 'sesi2', 'sesi3'];
-
-        const grouped = {};
-        bookingsList.forEach(b => {
-            const key = b.session_time || 'Unknown';
-            if (!grouped[key]) {
-                grouped[key] = [];
-            }
-            grouped[key].push(b);
+    
+        const items = [...sessionBookings].sort((a, b) => {
+            return slotOrder.indexOf(a.session_slot) - slotOrder.indexOf(b.session_slot);
         });
-
+    
         let html = '';
-        let counter = startCounter || 0;
-
-        const sortedSessions = Object.keys(grouped).sort((a, b) => {
-            return sessionOrder.indexOf(a) - sessionOrder.indexOf(b);
-        });
-
-        sortedSessions.forEach(sessionTime => {
-            const items = grouped[sessionTime];
-            items.sort((a, b) => {
-                return slotOrder.indexOf(a.session_slot) - slotOrder.indexOf(b.session_slot);
-            });
-
+        items.forEach((b, index) => {
+            const counter = index + 1;
+    
+            let lessonDisplay = b.lesson || '';
+            if (lessonDisplay.includes(' - ')) {
+                lessonDisplay = lessonDisplay.split(' - ')[1] || lessonDisplay;
+            }
+    
             html += `
-                <tr class="session-header">
-                    <td colspan="9" style="padding:6px 10px;border:1px solid #d1d5db;background:#f3f4f6;font-weight:600;color:#374151;font-size:12px;text-align:left;">
-                        📅 ${sessionTime}
-                    </td>
-                </tr>
-            `;
-
-            items.forEach((b) => {
-                counter++;
-                let lessonDisplay = b.lesson || '';
-                if (lessonDisplay.includes(' - ')) {
-                    lessonDisplay = lessonDisplay.split(' - ')[1] || lessonDisplay;
-                }
-
-                html += `
-                    <tr class="data-row">
-                        <td style="text-align:center;padding:6px 4px;border:1px solid #e5e7eb;font-size:12px;font-weight:500;color:#374151;">${counter}</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.name || ''}</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.icno || ''}</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.remark || ''}</td>
-                        <td style="text-align:center;padding:6px 4px;border:1px solid #e5e7eb;font-size:12px;font-weight:500;color:#374151;">${b.class || ''}</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${lessonDisplay}</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.plate_no || ''}</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.sign_in || ''}</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.sign_out || ''}</td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                <tr class="session-subtotal">
-                    <td colspan="8" style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;color:#374151;font-size:12px;font-weight:600;background:#f9fafb;">
-                        Subtotal (${sessionTime}):
-                    </td>
-                    <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;color:#374151;font-size:12px;font-weight:600;background:#f9fafb;">
-                        ${items.length}
-                    </td>
+                <tr class="data-row">
+                    <td style="text-align:center;padding:6px 4px;border:1px solid #e5e7eb;font-size:12px;font-weight:500;color:#374151;">${counter}</td>
+                    <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.name || ''}</td>
+                    <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.icno || ''}</td>
+                    <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.remark || ''}</td>
+                    <td style="text-align:center;padding:6px 4px;border:1px solid #e5e7eb;font-size:12px;font-weight:500;color:#374151;">${b.class || ''}</td>
+                    <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${lessonDisplay}</td>
+                    <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.plate_no || ''}</td>
+                    <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.sign_in || ''}</td>
+                    <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:12px;color:#374151;word-break:break-word;">${b.sign_out || ''}</td>
                 </tr>
             `;
         });
-
+    
         return html;
     }
 
+    /**
+     * Render all pages for a single class.
+     * Emits ONE page per non-empty session (9am-12pm, 12pm-3pm, 11am-2pm).
+     * Sessions with zero bookings are skipped to save paper.
+     * The class badge + session name live in the page header; the gray
+     * "📅 session" row is gone; numbering restarts at 1 per session page.
+     */
     function renderClassPage(bookingsList, className, classColor, classBgColor, totalCount) {
+        const SESSION_ORDER = ['9am-12pm', '12pm-3pm', '11am-2pm'];
+    
+        // Empty class → single "No bookings" page (unchanged behaviour)
         if (bookingsList.length === 0) {
             return `
                 <div style="page-break-after:always;padding:40px 20px;text-align:center;color:#9ca3af;font-style:italic;font-size:12px;">
@@ -1227,55 +1204,126 @@ function buildBookingReportHTML(data) {
                 </div>
             `;
         }
-
-        return `
-            <div style="page-break-after:always;padding:20px;">
-                <div style="margin-bottom:16px;">
-                    <h2 style="margin:0;font-size:14px;color:#111827;font-weight:700;letter-spacing:-0.3px;">
-                        <span style="display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;font-size:12px;background:${classBgColor};color:${classColor};margin-right:12px;">${className}</span>
-                    </h2>
-                    <p style="margin:8px 0 0 0;font-size:12px;color:#6b7280;font-weight:500;">
-                        ${totalCount} participants in this class
-                    </p>
+    
+        // Group by session_time
+        const bySession = {};
+        bookingsList.forEach(b => {
+            const key = b.session_time || 'Unknown';
+            if (!bySession[key]) bySession[key] = [];
+            bySession[key].push(b);
+        });
+    
+        // Build one page per non-empty session (in canonical order)
+        let pagesHtml = '';
+    
+        SESSION_ORDER.forEach(sessionTime => {
+            const items = bySession[sessionTime];
+            if (!items || items.length === 0) return;   // skip empty session
+    
+            const count = items.length;
+    
+            pagesHtml += `
+                <div style="page-break-after:always;padding:20px;">
+                    <!-- Per-session page header -->
+                    <div style="margin-bottom:16px;">
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                            <span style="display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;font-size:12px;background:${classBgColor};color:${classColor};">${className}</span>
+                            <span style="font-size:14px;font-weight:700;color:#111827;letter-spacing:-0.2px;">${sessionTime}</span>
+                        </div>
+                        <p style="margin:8px 0 0 0;font-size:12px;color:#6b7280;font-weight:500;">
+                            ${count} participant${count > 1 ? 's' : ''} in this session
+                        </p>
+                    </div>
+    
+                    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;">
+                        <colgroup>
+                            <col style="width:5%;">
+                            <col style="width:16%;">
+                            <col style="width:12%;">
+                            <col style="width:10%;">
+                            <col style="width:6%;">
+                            <col style="width:12%;">
+                            <col style="width:12%;">
+                            <col style="width:10%;">
+                            <col style="width:10%;">
+                        </colgroup>
+                        <thead>
+                            <tr style="background:#1f2937;height:32px;">
+                                <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">NO</th>
+                                <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">NAME</th>
+                                <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">IC/PASSPORT</th>
+                                <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">REMARK</th>
+                                <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">CLASS</th>
+                                <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">LESSON</th>
+                                <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">PLATE NO</th>
+                                <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN IN</th>
+                                <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN OUT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${renderSessionTableRows(items)}
+                        </tbody>
+                    </table>
+    
+                    <div style="padding:10px 12px;background:${classBgColor};border:1px solid ${classColor};border-radius:6px;text-align:right;">
+                        <span style="font-weight:600;font-size:12px;color:${classColor};">
+                            Subtotal (${sessionTime}): ${count}
+                        </span>
+                    </div>
                 </div>
-
-                <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;">
-                    <colgroup>
-                        <col style="width:5%;">
-                        <col style="width:16%;">
-                        <col style="width:12%;">
-                        <col style="width:10%;">
-                        <col style="width:6%;">
-                        <col style="width:12%;">
-                        <col style="width:12%;">
-                        <col style="width:10%;">
-                        <col style="width:10%;">
-                    </colgroup>
-                    <thead>
-                        <tr style="background:#1f2937;height:32px;">
-                            <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">NO</th>
-                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">NAME</th>
-                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">IC/PASSPORT</th>
-                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">REMARK</th>
-                            <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">CLASS</th>
-                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">LESSON</th>
-                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">PLATE NO</th>
-                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN IN</th>
-                            <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN OUT</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${renderGroupedTableRows(bookingsList, 0)}
-                    </tbody>
-                </table>
-
-                <div style="padding:10px 12px;background:${classBgColor};border:1px solid ${classColor};border-radius:6px;text-align:right;">
-                    <span style="font-weight:600;font-size:12px;color:${classColor};">
-                        Total ${className}: ${totalCount} participants
-                    </span>
-                </div>
-            </div>
-        `;
+            `;
+        });
+    
+        // Defensive: if for some reason all sessions had zero bookings but
+        // bookingsList was non-empty (e.g. a session_time value outside
+        // SESSION_ORDER like "Unknown"), still emit the rows so nothing is lost.
+        const renderedSessions = SESSION_ORDER.filter(s => bySession[s] && bySession[s].length > 0);
+        const renderedCount = renderedSessions.reduce((n, s) => n + bySession[s].length, 0);
+        if (renderedCount < bookingsList.length) {
+            const leftovers = bookingsList.filter(b => !SESSION_ORDER.includes(b.session_time));
+            if (leftovers.length > 0) {
+                const count = leftovers.length;
+                pagesHtml += `
+                    <div style="page-break-after:always;padding:20px;">
+                        <div style="margin-bottom:16px;">
+                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <span style="display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;font-size:12px;background:${classBgColor};color:${classColor};">${className}</span>
+                                <span style="font-size:14px;font-weight:700;color:#111827;letter-spacing:-0.2px;">Other</span>
+                            </div>
+                            <p style="margin:8px 0 0 0;font-size:12px;color:#6b7280;font-weight:500;">
+                                ${count} participant${count > 1 ? 's' : ''} with unrecognised session time
+                            </p>
+                        </div>
+                        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;">
+                            <colgroup>
+                                <col style="width:5%;"><col style="width:16%;"><col style="width:12%;">
+                                <col style="width:10%;"><col style="width:6%;"><col style="width:12%;">
+                                <col style="width:12%;"><col style="width:10%;"><col style="width:10%;">
+                            </colgroup>
+                            <thead>
+                                <tr style="background:#1f2937;height:32px;">
+                                    <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">NO</th>
+                                    <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">NAME</th>
+                                    <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">IC/PASSPORT</th>
+                                    <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">REMARK</th>
+                                    <th style="text-align:center;padding:8px 4px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;">CLASS</th>
+                                    <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">LESSON</th>
+                                    <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">PLATE NO</th>
+                                    <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN IN</th>
+                                    <th style="padding:8px 10px;border:1px solid #1f2937;color:#fff;font-size:12px;font-weight:600;text-align:left;">SIGN OUT</th>
+                                </tr>
+                            </thead>
+                            <tbody>${renderSessionTableRows(leftovers)}</tbody>
+                        </table>
+                        <div style="padding:10px 12px;background:${classBgColor};border:1px solid ${classColor};border-radius:6px;text-align:right;">
+                            <span style="font-weight:600;font-size:12px;color:${classColor};">Subtotal (Other): ${count}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    
+        return pagesHtml;
     }
 
     // Generate session breakdown HTML
