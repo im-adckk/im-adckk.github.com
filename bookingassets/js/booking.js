@@ -1033,31 +1033,10 @@ async function goToStep4() {
 
     // --- Combine both problems into one message (don't let one overwrite the other) ---
     if (hasDayDuplicate || hasFutureLimit) {
-        const problems = [];
-
-        if (hasDayDuplicate) {
-            const existing = window._dayDuplicateInfo;
-            const detail = existing
-                ? ` (Session: ${existing.session_time} - ${formatSlot(existing.session_slot)})`
-                : '';
-            problems.push(
-                `You already have a booking on this date${detail}. Only one booking per day is allowed.`
-            );
-        }
-
-        if (hasFutureLimit && futureLimitInfo) {
-            const info = futureLimitInfo;
-            const list = (info.existing || []).map(b =>
-                `• ${b.booking_date} — ${b.session_time} (${formatSlot(b.session_slot)})`
-            ).join('\n');
-            problems.push(
-                `You already have the maximum ${info.max} future bookings.\n${list}`
-            );
-        }
-
+        renderStep3Warnings();
         showMessage(
-            `⚠️ ${problems.join('\n\n')}\n\n` +
-            `Cancel an existing booking via Manage My Bookings to proceed.`,
+            '⚠️ Please resolve the issues shown above before continuing.\n' +
+            'Cancel an existing booking via Manage My Bookings to proceed.',
             'error'
         );
         return;
@@ -1164,6 +1143,93 @@ async function checkDayDuplicate() {
         document.getElementById('dayDuplicateWarning').innerHTML = '';
         await loadLessonHistory(icno);
     }
+}
+
+
+// Runs on IC blur (Step 3). Checks BOTH same-day duplicate AND future limit.
+// Renders the combined warning into #dayDuplicateWarning.
+async function checkICOnStep3() {
+    const icno = (document.getElementById('icno')?.value || '').trim();
+    const warningContainer = document.getElementById('dayDuplicateWarning');
+
+    // Not enough input yet — clear everything and bail.
+    if (!icno || icno.length < 8) {
+        hasDayDuplicate = false;
+        hasFutureLimit = false;
+        futureLimitInfo = null;
+        window._dayDuplicateInfo = null;
+        if (warningContainer) warningContainer.innerHTML = '';
+        document.getElementById('historyIndicator').classList.add('hidden');
+        return;
+    }
+
+    // Same-day duplicate (only meaningful once a date is selected).
+    let dupResult = { isDuplicate: false, existing: null };
+    if (selectedDate) {
+        dupResult = await checkDuplicateForDate(icno, selectedDate);
+    }
+    hasDayDuplicate = dupResult.isDuplicate;
+    window._dayDuplicateInfo = dupResult.existing || null;
+
+    // Future limit — check against the selected date, or "today" if none yet,
+    // so the limit is enforced even before the user picks a date.
+    const limitRefDate = selectedDate || getMalaysiaToday();
+    const limitResult = await checkFutureLimit(icno, limitRefDate);
+    hasFutureLimit = limitResult.limited;
+    futureLimitInfo = limitResult.info;
+
+    // Render combined warning.
+    renderStep3Warnings();
+
+    // History indicator (existing behaviour).
+    await loadLessonHistory(icno);
+}
+
+function renderStep3Warnings() {
+    const warningContainer = document.getElementById('dayDuplicateWarning');
+    if (!warningContainer) return;
+
+    const problems = [];
+
+    if (hasDayDuplicate) {
+        const existing = window._dayDuplicateInfo;
+        const detail = existing
+            ? ` (Session: ${existing.session_time} - ${formatSlot(existing.session_slot)})`
+            : '';
+        problems.push(
+            `<strong>❌ Booking Not Allowed:</strong> You already have a booking on this date${detail}. ` +
+            `You can only have ONE booking per day. ` +
+            `<a href="manage-booking.html" target="_blank" class="underline font-medium">Cancel your existing booking first</a>.`
+        );
+    }
+
+    if (hasFutureLimit && futureLimitInfo) {
+        const info = futureLimitInfo;
+        const existing = Array.isArray(info.existing) ? info.existing : [];
+        const list = existing.length
+            ? existing.map(b =>
+                `• ${b.booking_date} — ${b.session_time} (${formatSlot(b.session_slot)})`
+              ).join('\n')
+            : '(existing bookings could not be listed)';
+        const max = info.max ?? 2;
+        problems.push(
+            `<strong>⚠️ Future Booking Limit Reached:</strong> You already have the maximum ${max} future bookings.\n${list}\n` +
+            `Cancel one via <a href="manage-booking.html" target="_blank" class="underline font-medium">Manage My Bookings</a> before booking another.`
+        );
+    }
+
+    if (problems.length === 0) {
+        warningContainer.innerHTML = '';
+        return;
+    }
+
+    warningContainer.innerHTML = `
+        <div id="dayDuplicateWarningAlert" class="alert mb-4" data-variant="destructive">
+            <i data-lucide="circle-alert" class="w-4 h-4"></i>
+            <span class="text-sm whitespace-pre-line">${problems.join('\n\n')}</span>
+        </div>
+    `;
+    refreshIcons();
 }
 
 // Checks whether a given IC already has a confirmed booking on a given date.
@@ -1650,7 +1716,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // IC/Passport input - only letters and numbers, auto uppercase
     const icnoInput = document.getElementById('icno');
     if (icnoInput) {
-        icnoInput.addEventListener('blur', checkDayDuplicate);
+        icnoInput.addEventListener('blur', checkICOnStep3);
         icnoInput.addEventListener('input', function() {
             // Auto-validate: remove special characters, convert to uppercase
             let value = this.value.replace(/[^a-zA-Z0-9]/g, '');
@@ -1663,6 +1729,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hasDayDuplicate = false;
             window._dayDuplicateInfo = null;
             document.getElementById('dayDuplicateWarning').innerHTML = '';
+            
 
             // Clear future-limit state — same reason.
             hasFutureLimit = false;
@@ -1670,6 +1737,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Clear lesson-history indicator until the new IC is blurred.
             document.getElementById('historyIndicator').classList.add('hidden');
+
+            // Debounced re-check once the user pauses typing.
+            clearTimeout(_icDebounceTimer);
+            const ic = value.trim();
+            if (ic.length >= 8) {
+                _icDebounceTimer = setTimeout(checkICOnStep3, 500);
+            }
         });
         // Handle paste events for IC/Passport
         icnoInput.addEventListener('paste', function(e) {
