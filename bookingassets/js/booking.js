@@ -1651,10 +1651,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.value !== value) {
                 this.value = value;
             }
+            // Clear duplicate state — the IC changed, so any previous
+            // duplicate verdict for the old IC is stale.
             hasDayDuplicate = false;
+            window._dayDuplicateInfo = null;
+            document.getElementById('dayDuplicateWarning').innerHTML = '';
+
+            // Clear future-limit state — same reason.
             hasFutureLimit = false;
             futureLimitInfo = null;
-            document.getElementById('dayDuplicateWarning').innerHTML = '';
+
+            // Clear lesson-history indicator until the new IC is blurred.
             document.getElementById('historyIndicator').classList.add('hidden');
         });
         // Handle paste events for IC/Passport
