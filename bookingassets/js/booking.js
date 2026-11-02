@@ -17,6 +17,8 @@ let bookingData = {};
 let hasDayDuplicate = false;
 let activeModal = null;
 let isReadOnlyView = false;
+let hasFutureLimit = false;
+let futureLimitInfo = null;
 
 // ============================================
 // LESSON OPTIONS
@@ -214,6 +216,8 @@ function resetStep2State() {
     selectedSession = null;
     isReadOnlyView = false;
     hasDayDuplicate = false;
+    hasFutureLimit = false;
+    futureLimitInfo = null;
     window._dayDuplicateInfo = null;
     availableSessionsData = [];
 
@@ -550,6 +554,8 @@ async function onDateClick(dateStr) {
         selectedDate = null;
         selectedSession = null;
         hasDayDuplicate = false;
+        hasFutureLimit = false;
+        futureLimitInfo = null;
         window._dayDuplicateInfo = null;
         document.getElementById('selectedDateDisplay').textContent = '';
         document.getElementById('sessionsContainer').classList.add('hidden');
@@ -585,6 +591,8 @@ async function onDateClick(dateStr) {
         selectedDate = dateStr;
         selectedSession = null;
         hasDayDuplicate = false;
+        hasFutureLimit = false;
+        futureLimitInfo = null;
         window._dayDuplicateInfo = null;
 
         // Restore the previously-selected (green) cell, if any.
@@ -626,11 +634,15 @@ async function onDateClick(dateStr) {
     document.getElementById('selectedDateDisplay').innerHTML =
         `<span class="badge" data-variant="outline">Selected Date: ${formatMalaysiaDate(dateStr)}</span>`;
 
-    // Early duplicate check for the currently-entered IC.
+        // Early duplicate + future-limit checks for the currently-entered IC.
     const icnoValue = (document.getElementById('icno')?.value || '').trim();
     const dupResult = await checkDuplicateForDate(icnoValue, dateStr);
     hasDayDuplicate = dupResult.isDuplicate;
     window._dayDuplicateInfo = dupResult.existing || null;
+
+    const limitResult = await checkFutureLimit(icnoValue, dateStr);
+    hasFutureLimit = limitResult.limited;
+    futureLimitInfo = limitResult.info;
 
     await resetCalendarColors();
 
@@ -654,6 +666,18 @@ async function onDateClick(dateStr) {
             : '';
         showMessage(
             `⚠️ You already have a booking on this date${detail}. You can only have ONE booking per day. To book a different session, cancel your existing booking first via Manage My Bookings.`,
+            'error'
+        );
+    }
+
+    if (hasFutureLimit) {
+        const info = futureLimitInfo;
+        showMessage(
+            `⚠️ ${info.message}\n\n` +
+            info.existing.map(b =>
+                `• ${b.booking_date} — ${b.session_time} (${formatSlot(b.session_slot)})`
+            ).join('\n') +
+            `\n\nCancel one via Manage My Bookings, then try again.`,
             'error'
         );
     }
@@ -799,6 +823,8 @@ function goToStep3() {
 
 function goBackStep1() {
     hasDayDuplicate = false;
+    hasFutureLimit = false;
+    futureLimitInfo = null;
     isReadOnlyView = false;
     document.getElementById('dayDuplicateWarning').innerHTML = '';
     const banner = document.getElementById('fullDateBanner');
@@ -1010,6 +1036,13 @@ function goToStep4() {
         showMessage('⚠️ You cannot proceed with a duplicate booking. Please cancel your existing booking first.', 'error');
         return;
     }
+    if (hasFutureLimit) {
+        showMessage(
+            '⚠️ You already have the maximum 2 future bookings. Cancel one before booking another.',
+            'error'
+        );
+        return;
+    }
 
     const fullLesson = getFullLesson();
 
@@ -1069,6 +1102,8 @@ async function checkDayDuplicate() {
     if (!icno || icno.length < 8) {
         document.getElementById('dayDuplicateWarning').innerHTML = '';
         hasDayDuplicate = false;
+        hasFutureLimit = false;
+        futureLimitInfo = null;
         document.getElementById('historyIndicator').classList.add('hidden');
         return;
     }
@@ -1143,6 +1178,30 @@ async function checkDuplicateForDate(icno, dateStr) {
         // Fail open for the early-warning layer: don't block the user on a
         // network/transient error. The Confirm-time RPC is the enforcement layer.
         return { isDuplicate: false, existing: null };
+    }
+}
+
+async function checkFutureLimit(icno, dateStr) {
+    if (!icno || icno.length < 8 || !dateStr) {
+        return { limited: false, info: null };
+    }
+    try {
+        const { data, error } = await supabaseClient
+            .rpc('check_future_booking_limit', {
+                p_icno: icno,
+                p_booking_date: dateStr
+            });
+
+        if (error) throw error;
+
+        if (data && data.allowed === false) {
+            return { limited: true, info: data };
+        }
+        return { limited: false, info: data || null };
+    } catch (error) {
+        console.error('Error checking future booking limit:', error);
+        // Fail open — the trigger is the real gate.
+        return { limited: false, info: null };
     }
 }
 
@@ -1475,9 +1534,20 @@ async function confirmBooking() {
             .select('session_id')
             .single();
 
-        if (createError) {
+                if (createError) {
             if (createError.code === '23505') {
                 showMessage('This booking already exists. Please check your bookings.', 'error');
+                confirmBtn.innerHTML = originalHTML;
+                confirmBtn.disabled = false;
+                refreshIcons();
+                return;
+            }
+            if (createError.code === 'P0001' || /FUTURE_BOOKING_LIMIT/.test(createError.message || '')) {
+                showMessage(
+                    '⚠️ You already have the maximum 2 future bookings. ' +
+                    'Please cancel one of your existing bookings via Manage My Bookings before booking another.',
+                    'error'
+                );
                 confirmBtn.innerHTML = originalHTML;
                 confirmBtn.disabled = false;
                 refreshIcons();
@@ -1547,6 +1617,8 @@ function resetAll() {
     selectedSession = null;
     bookingData = {};
     hasDayDuplicate = false;
+    hasFutureLimit = false;
+    futureLimitInfo = null;
     isReadOnlyView = false;
     document.getElementById('icno').value = '';
     document.getElementById('name').value = '';
@@ -1580,6 +1652,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.value = value;
             }
             hasDayDuplicate = false;
+            hasFutureLimit = false;
+            futureLimitInfo = null;
             document.getElementById('dayDuplicateWarning').innerHTML = '';
             document.getElementById('historyIndicator').classList.add('hidden');
         });
