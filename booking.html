@@ -409,6 +409,14 @@
       <!-- Selected date -->
       <div id="selectedDateDisplay" class="text-center text-sm font-medium"></div>
 
+      <!-- Full-date banner (read-only view) -->
+      <div id="fullDateBanner" class="hidden alert" data-variant="destructive">
+        <i data-lucide="circle-alert" class="w-4 h-4"></i>
+        <span class="text-sm">
+          <strong>Fully booked:</strong> All sessions on this date are taken. Choose another date to book.
+        </span>
+      </div>
+
       <!-- Sessions -->
       <div id="sessionsContainer" class="hidden space-y-2">
         <h3 class="text-sm font-semibold flex items-center gap-1.5">
