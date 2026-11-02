@@ -16,6 +16,7 @@ let availableSessionsData = [];
 let bookingData = {};
 let hasDayDuplicate = false;
 let activeModal = null;
+let isReadOnlyView = false;
 
 // ============================================
 // LESSON OPTIONS
@@ -307,6 +308,48 @@ function updateTodayIndicator() {
     }
 }
 
+// ============================================
+// SHARED DAY-STATE HELPER
+// Single source of truth for a calendar cell's state.
+// Both checkAvailabilityForMonth() and resetCalendarColors() use this
+// so "red" is a stable fact regardless of which render ran last.
+// ============================================
+function computeDayState(dateStr, todayStr, sessionMap, statusMap) {
+    if (dateStr < todayStr || dateStr === todayStr) {
+        return { state: 'past', title: dateStr === todayStr ? 'Today - cannot book' : '' };
+    }
+
+    const status = statusMap[dateStr];
+    if (status && !status.is_active) {
+        return { state: 'inactive', title: status.reason || 'Date is closed for bookings' };
+    }
+
+    const sessions = sessionMap[dateStr] || [];
+    // Only sessions that are actually open count toward availability.
+    const openSessions = sessions.filter(s => s.is_available !== false);
+
+    const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
+    if (hasAvailable) {
+        return { state: 'available', title: 'Available' };
+    }
+    if (openSessions.length > 0) {
+        return { state: 'full', title: 'Fully Booked' };
+    }
+    return { state: 'none', title: 'No sessions available' };
+}
+
+// Build the sessionMap / statusMap pair used by the helper.
+function buildCalendarMaps(sessions, statuses) {
+    const sessionMap = {};
+    sessions.forEach(s => {
+        if (!sessionMap[s.session_date]) sessionMap[s.session_date] = [];
+        sessionMap[s.session_date].push(s);
+    });
+    const statusMap = {};
+    statuses.forEach(s => { statusMap[s.target_date] = s; });
+    return { sessionMap, statusMap };
+}
+
 async function checkAvailabilityForMonth() {
     const year = currentYear;
     const month = currentMonth;
@@ -335,48 +378,14 @@ async function checkAvailabilityForMonth() {
 
         if (statusError) throw statusError;
 
-        const sessionMap = {};
-        sessions.forEach(session => {
-            if (!sessionMap[session.session_date]) {
-                sessionMap[session.session_date] = [];
-            }
-            sessionMap[session.session_date].push(session);
-        });
-
-        const statusMap = {};
-        statuses.forEach(status => {
-            statusMap[status.target_date] = status;
-        });
+        const { sessionMap, statusMap } = buildCalendarMaps(sessions || [], statuses || []);
 
         const cells = document.querySelectorAll('#calendar button[data-date]');
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
-            if (dateStr < todayStr || dateStr === todayStr) return;
-
-            const sessions = sessionMap[dateStr] || [];
-            const status = statusMap[dateStr];
-            const isInactive = status ? !status.is_active : false;
-
-            if (isInactive) {
-                setCellState(cell, 'inactive');
-                cell.title = status.reason || 'Date is closed for bookings';
-                return;
-            }
-
-            // Only consider sessions that are actually open (is_available !== false)
-            const openSessions = sessions.filter(s => s.is_available !== false);
-
-            const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
-            if (hasAvailable) {
-                setCellState(cell, 'available');
-                cell.title = 'Available';
-            } else if (openSessions.length > 0) {
-                setCellState(cell, 'full');
-                cell.title = 'Fully Booked';
-            } else {
-                setCellState(cell, 'none');
-                cell.title = 'No sessions available';
-            }
+            const { state, title } = computeDayState(dateStr, todayStr, sessionMap, statusMap);
+            setCellState(cell, state);
+            cell.title = title;
         });
 
     } catch (error) {
@@ -386,7 +395,10 @@ async function checkAvailabilityForMonth() {
 
 async function resetCalendarColors() {
     const todayStr = getMalaysiaToday();
-    const cells = document.querySelectorAll('#calendar button[data-date]');
+
+    // Only repaint cells OTHER than the one currently viewed/selected.
+    // If nothing is being viewed, there is nothing to restore — skip the DB round-trip.
+    if (!selectedDate) return;
 
     const year = currentYear;
     const month = currentMonth;
@@ -414,51 +426,16 @@ async function resetCalendarColors() {
 
         if (statusError) throw statusError;
 
-        const sessionMap = {};
-        sessions.forEach(session => {
-            if (!sessionMap[session.session_date]) {
-                sessionMap[session.session_date] = [];
-            }
-            sessionMap[session.session_date].push(session);
-        });
+        const { sessionMap, statusMap } = buildCalendarMaps(sessions || [], statuses || []);
 
-        const statusMap = {};
-        statuses.forEach(status => {
-            statusMap[status.target_date] = status;
-        });
-
+        const cells = document.querySelectorAll('#calendar button[data-date]');
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
-            if (dateStr === selectedDate) return;
+            if (dateStr === selectedDate) return; // leave the active cell alone
 
-            if (dateStr < todayStr) {
-                setCellState(cell, 'past');
-                cell.title = '';
-            } else if (dateStr === todayStr) {
-                setCellState(cell, 'past');
-                cell.title = 'Today - cannot book';
-            } else {
-                const sessions = sessionMap[dateStr] || [];
-                const status = statusMap[dateStr];
-                const isInactive = status ? !status.is_active : false;
-
-                if (isInactive) {
-                    setCellState(cell, 'inactive');
-                    cell.title = status.reason || 'Date is closed for bookings';
-                } else {
-                    const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
-                    if (hasAvailable) {
-                        setCellState(cell, 'available');
-                        cell.title = 'Available';
-                    } else if (sessions.length > 0) {
-                        setCellState(cell, 'full');
-                        cell.title = 'Fully Booked';
-                    } else {
-                        setCellState(cell, 'none');
-                        cell.title = 'No sessions available';
-                    }
-                }
-            }
+            const { state, title } = computeDayState(dateStr, todayStr, sessionMap, statusMap);
+            setCellState(cell, state);
+            cell.title = title;
         });
 
     } catch (error) {
@@ -477,9 +454,12 @@ function changeMonth(delta) {
     }
     selectedDate = null;
     selectedSession = null;
+    isReadOnlyView = false;
     document.getElementById('selectedDateDisplay').textContent = '';
     document.getElementById('sessionsContainer').classList.add('hidden');
     document.getElementById('nextToDetailsBtn').classList.add('hidden');
+    const banner = document.getElementById('fullDateBanner');
+    if (banner) banner.classList.add('hidden');
     renderCalendar();
     checkAvailabilityForMonth();
 }
@@ -490,9 +470,12 @@ function goToToday() {
     currentYear = year;
     selectedDate = null;
     selectedSession = null;
+    isReadOnlyView = false;
     document.getElementById('selectedDateDisplay').textContent = '';
     document.getElementById('sessionsContainer').classList.add('hidden');
     document.getElementById('nextToDetailsBtn').classList.add('hidden');
+    const banner = document.getElementById('fullDateBanner');
+    if (banner) banner.classList.add('hidden');
     renderCalendar();
     checkAvailabilityForMonth();
 }
@@ -509,6 +492,7 @@ async function onDateClick(dateStr) {
         return;
     }
 
+    // --- Block inactive dates (unchanged) ---
     try {
         const { data: status, error } = await supabaseClient
             .from('date_status')
@@ -527,7 +511,23 @@ async function onDateClick(dateStr) {
         console.error('Error checking date status:', error);
     }
 
-    if (selectedDate === dateStr) {
+    // --- Toggle OFF the read-only view if the same full date is clicked again ---
+    if (isReadOnlyView && selectedDate === dateStr) {
+        isReadOnlyView = false;
+        selectedDate = null;
+        selectedSession = null;
+        document.getElementById('selectedDateDisplay').textContent = '';
+        document.getElementById('sessionsContainer').classList.add('hidden');
+        document.getElementById('nextToDetailsBtn').classList.add('hidden');
+        const banner = document.getElementById('fullDateBanner');
+        if (banner) banner.classList.add('hidden');
+        hideMessage();
+        await resetCalendarColors();
+        return;
+    }
+
+    // --- Toggle OFF a normal (green) selection (unchanged behaviour) ---
+    if (!isReadOnlyView && selectedDate === dateStr) {
         selectedDate = null;
         selectedSession = null;
         hasDayDuplicate = false;
@@ -540,18 +540,79 @@ async function onDateClick(dateStr) {
         return;
     }
 
+    // --- Determine this date's state before deciding how to handle the click ---
+    let dayState = 'none';
+    try {
+        const { data: rows, error } = await supabaseClient
+            .from('available_sessions')
+            .select('*')
+            .eq('class', selectedClass)
+            .eq('session_date', dateStr);
+
+        if (error) throw error;
+        const openSessions = (rows || []).filter(s => s.is_available !== false);
+        const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
+        dayState = hasAvailable ? 'available' : (openSessions.length > 0 ? 'full' : 'none');
+    } catch (error) {
+        console.error('Error checking day state:', error);
+        showMessage('Error checking availability. Please try again.', 'error');
+        return;
+    }
+
+    // --- FULL DATE: read-only view (option 2) ---
+    if (dayState === 'full') {
+        const previousDate = selectedDate;
+        isReadOnlyView = true;
+        selectedDate = dateStr;
+        selectedSession = null;
+        hasDayDuplicate = false;
+        window._dayDuplicateInfo = null;
+
+        // Restore the previously-selected (green) cell, if any.
+        if (previousDate && previousDate !== dateStr) {
+            await resetCalendarColors();
+        }
+
+        // Keep the clicked cell RED — do NOT paint it blue.
+        const cells = document.querySelectorAll('#calendar button[data-date]');
+        cells.forEach(cell => {
+            if (cell.dataset.date === dateStr) {
+                setCellState(cell, 'full');
+                cell.title = 'Fully Booked';
+            }
+        });
+
+        // Honest badge text + muted variant.
+        document.getElementById('selectedDateDisplay').innerHTML =
+            `<span class="badge" data-variant="destructive">Date: ${formatMalaysiaDate(dateStr)} (fully booked)</span>`;
+
+        // Date-level banner.
+        const banner = document.getElementById('fullDateBanner');
+        if (banner) banner.classList.remove('hidden');
+
+        await loadSessionsForDate(dateStr, { readOnlyFull: true });
+        return;
+    }
+
+    // --- NO SESSIONS AT ALL: treat like an inert date ---
+    if (dayState === 'none') {
+        showMessage('No sessions available for this date. Please choose another date.', 'error');
+        return;
+    }
+
+    // --- AVAILABLE DATE: normal selection path ---
+    isReadOnlyView = false;
     selectedDate = dateStr;
+
     document.getElementById('selectedDateDisplay').innerHTML =
         `<span class="badge" data-variant="outline">Selected Date: ${formatMalaysiaDate(dateStr)}</span>`;
 
-    // Early duplicate check for the currently-entered IC (Scenario 1).
-    // If the IC box is empty/short, helper short-circuits with no query.
-    // Always overwrite hasDayDuplicate — never carry a stale value across date clicks.
+    // Early duplicate check for the currently-entered IC.
     const icnoValue = (document.getElementById('icno')?.value || '').trim();
     const dupResult = await checkDuplicateForDate(icnoValue, dateStr);
     hasDayDuplicate = dupResult.isDuplicate;
     window._dayDuplicateInfo = dupResult.existing || null;
-    
+
     await resetCalendarColors();
 
     const cells = document.querySelectorAll('#calendar button[data-date]');
@@ -560,6 +621,10 @@ async function onDateClick(dateStr) {
             setCellState(cell, 'selected');
         }
     });
+
+    // Hide the full-date banner when a bookable date is selected.
+    const banner = document.getElementById('fullDateBanner');
+    if (banner) banner.classList.add('hidden');
 
     await loadSessionsForDate(dateStr, { silentInfoMessage: hasDayDuplicate });
 
@@ -576,6 +641,8 @@ async function onDateClick(dateStr) {
 }
 
 async function loadSessionsForDate(dateStr, opts = {}) {
+    const readOnlyFull = !!opts.readOnlyFull;
+
     try {
         const { data, error } = await supabaseClient
             .rpc('get_available_sessions_for_date', {
@@ -610,9 +677,11 @@ async function loadSessionsForDate(dateStr, opts = {}) {
                 </div>`;
             sessionsContainer.classList.remove('hidden');
             nextBtn.classList.add('hidden');
+            selectedSession = null;
             refreshIcons();
             return;
         }
+
         if (selectedSession !== null) {
             const prev = availableSessionsData[selectedSession];
             if (!prev || prev.current_bookings >= prev.max_bookings) {
@@ -620,13 +689,13 @@ async function loadSessionsForDate(dateStr, opts = {}) {
             }
         }
 
-       let html = '';
+        let html = '';
         data.forEach((session, index) => {
             const available = Math.max(0, session.max_bookings - session.current_bookings);
-            const isFull = available <= 0;
-        
+            // In read-only mode, force EVERY row to the disabled style.
+            const isFull = readOnlyFull || available <= 0;
+
             if (isFull) {
-                // Disabled row: full session, not selectable
                 html += `
                     <button type="button" disabled
                         class="w-full text-left rounded-lg border p-3 flex items-center gap-3 transition-colors border-red-200 bg-red-50 text-red-700 cursor-not-allowed opacity-80">
@@ -641,7 +710,6 @@ async function loadSessionsForDate(dateStr, opts = {}) {
                     </button>
                 `;
             } else {
-                // Available row: existing behavior
                 const isSelected = selectedSession === index;
                 html += `
                     <button type="button"
@@ -666,7 +734,7 @@ async function loadSessionsForDate(dateStr, opts = {}) {
         selectedSession = null;
         refreshIcons();
 
-        if (!opts.silentInfoMessage) {
+        if (!readOnlyFull && !opts.silentInfoMessage) {
             showMessage('Select a session time to continue.', 'info');
         }
 
@@ -699,6 +767,10 @@ function selectSession(index) {
 }
 
 function goToStep3() {
+    if (isReadOnlyView) {
+        showMessage('This date is fully booked. Please choose another date.', 'error');
+        return;
+    }
     if (selectedSession === null) {
         showMessage('Please select a session first.', 'error');
         return;
@@ -708,13 +780,19 @@ function goToStep3() {
 
 function goBackStep1() {
     hasDayDuplicate = false;
+    isReadOnlyView = false;
     document.getElementById('dayDuplicateWarning').innerHTML = '';
+    const banner = document.getElementById('fullDateBanner');
+    if (banner) banner.classList.add('hidden');
     showStep(1);
 }
 
 function goBackStep2() {
     hasDayDuplicate = false;
+    isReadOnlyView = false;
     document.getElementById('dayDuplicateWarning').innerHTML = '';
+    const banner = document.getElementById('fullDateBanner');
+    if (banner) banner.classList.add('hidden');
     showStep(2);
 }
 
@@ -1448,6 +1526,7 @@ function resetAll() {
     selectedSession = null;
     bookingData = {};
     hasDayDuplicate = false;
+    isReadOnlyView = false;
     document.getElementById('icno').value = '';
     document.getElementById('name').value = '';
     document.getElementById('contact').value = '';
@@ -1455,6 +1534,8 @@ function resetAll() {
     document.getElementById('sessionsContainer').classList.add('hidden');
     document.getElementById('nextToDetailsBtn').classList.add('hidden');
     document.getElementById('dayDuplicateWarning').innerHTML = '';
+    const banner = document.getElementById('fullDateBanner');
+    if (banner) banner.classList.add('hidden');
     hideMessage();
 }
 
