@@ -3,6 +3,7 @@ const SUPABASE_URL = 'https://yrrinzreyafiowehhhon.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4MnAXo4yxHMQX7fSn7hQjA_qV2X7t7o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const PRIVATE_TOKEN = new URLSearchParams(location.search).get('key') || null;
 
 // ============================================
 // STATE VARIABLES
@@ -691,7 +692,8 @@ async function loadSessionsForDate(dateStr, opts = {}) {
         const { data, error } = await supabaseClient
             .rpc('get_available_sessions_for_date', {
                 check_date: dateStr,
-                class_filter: selectedClass
+                class_filter: selectedClass,
+                p_token: PRIVATE_TOKEN
             });
 
         if (error) throw error;
