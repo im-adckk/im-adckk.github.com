@@ -209,6 +209,22 @@ function hideMessage() {
     messageDiv.classList.add('hidden');
 }
 
+function resetStep2State() {
+    selectedDate = null;
+    selectedSession = null;
+    isReadOnlyView = false;
+    hasDayDuplicate = false;
+    window._dayDuplicateInfo = null;
+    availableSessionsData = [];
+
+    document.getElementById('selectedDateDisplay').textContent = '';
+    document.getElementById('sessionsContainer').classList.add('hidden');
+    document.getElementById('nextToDetailsBtn').classList.add('hidden');
+    document.getElementById('dayDuplicateWarning').innerHTML = '';
+
+    const banner = document.getElementById('fullDateBanner');
+    if (banner) banner.classList.add('hidden');
+}
 // ============================================
 // STEP 1: Class Selection
 // ============================================
@@ -218,6 +234,7 @@ classForm.addEventListener('submit', async (e) => {
     document.getElementById('selectedClassDisplay').innerHTML =
         `<span class="badge" data-variant="secondary">Selected Class: ${selectedClass}</span>`;
 
+    resetStep2State();
     showStep(2);
     renderCalendar();
     await checkAvailabilityForMonth();
