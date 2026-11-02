@@ -352,16 +352,25 @@
                                                data-slot="sesi1" checked onchange="onSlotToggle('morning')">
                                         <span>sesi1</span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="9am-12pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                     <label class="flex items-center gap-2 text-sm cursor-pointer">
                                         <input type="checkbox" class="slot-cb morning-slot w-4 h-4 rounded border-border accent-primary"
                                                data-slot="sesi2" checked onchange="onSlotToggle('morning')">
                                         <span>sesi2</span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="9am-12pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                     <label class="flex items-center gap-2 text-sm cursor-pointer">
                                         <input type="checkbox" class="slot-cb morning-slot w-4 h-4 rounded border-border accent-primary"
                                                data-slot="sesi3" onchange="onSlotToggle('morning')">
                                         <span class="text-muted-foreground">sesi3 <span class="text-[10px]">(optional)</span></span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="9am-12pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                 </div>
                             </div>
                         
@@ -379,16 +388,25 @@
                                                data-slot="sesi1" checked onchange="onSlotToggle('noon')">
                                         <span>sesi1</span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="12pm – 3pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                     <label class="flex items-center gap-2 text-sm cursor-pointer">
                                         <input type="checkbox" class="slot-cb noon-slot w-4 h-4 rounded border-border accent-primary"
                                                data-slot="sesi2" checked onchange="onSlotToggle('noon')">
                                         <span>sesi2</span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="12pm – 3pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                     <label class="flex items-center gap-2 text-sm cursor-pointer">
                                         <input type="checkbox" class="slot-cb noon-slot w-4 h-4 rounded border-border accent-primary"
                                                data-slot="sesi3" onchange="onSlotToggle('noon')">
                                         <span class="text-muted-foreground">sesi3 <span class="text-[10px]">(optional)</span></span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="12pm – 3pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                 </div>
                             </div>
 
@@ -406,20 +424,34 @@
                                                data-slot="sesi1" checked onchange="onSlotToggle('eleven')">
                                         <span>sesi1</span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="11am – 2pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                     <label class="flex items-center gap-2 text-sm cursor-pointer">
                                         <input type="checkbox" class="slot-cb eleven-slot w-4 h-4 rounded border-border accent-primary"
                                                data-slot="sesi2" onchange="onSlotToggle('eleven')">
                                         <span class="text-muted-foreground">sesi2 <span class="text-[10px]">(optional)</span></span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="11am – 2pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                     <label class="flex items-center gap-2 text-sm cursor-pointer">
                                         <input type="checkbox" class="slot-cb eleven-slot w-4 h-4 rounded border-border accent-primary"
                                                data-slot="sesi3" onchange="onSlotToggle('eleven')">
                                         <span class="text-muted-foreground">sesi3 <span class="text-[10px]">(optional)</span></span>
                                     </label>
+                                    <input type="number" min="0" class="reserve-input input w-16 h-7 text-xs py-0.5 px-1.5"
+                                       data-session="11am – 2pm" data-slot="sesi1"
+                                       placeholder="0" title="Seats reserved for special-link users">
                                 </div>
                             </div>
                         
                             <div id="sessionToggleHint" class="text-xs text-muted-foreground"></div>
+                            <div class="text-xs font-medium text-muted-foreground mt-2 pt-2 border-t">
+                                <div id="reservedSlotsChips" class="flex flex-wrap gap-1.5 items-center">
+                                    <!-- chips injected by JS -->
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="flex gap-2 flex-wrap">
@@ -430,6 +462,12 @@
                             <button onclick="resetQuotaToDefault()" class="btn gap-2" data-variant="outline">
                                 <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                                 Reset to Default
+                            </button>
+                            <button onclick="generatePrivateToken()" class="btn gap-2" data-variant="ghost">
+                                <i data-lucide="link" class="w-4 h-4"></i> Generate Link
+                            </button>
+                            <button onclick="openTokenManager()" class="btn gap-2" data-variant="ghost">
+                                <i data-lucide="shield" class="w-4 h-4"></i> <span id="activeTokenCount">0</span> Active Links
                             </button>
                         </div>
                     </div>
@@ -449,7 +487,14 @@
                         </p>
                     </div>
                 </section>
+                <div id="tokenManagerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4" style="max-height: 85vh; overflow-y: auto;">
+                        <!-- populated by JS -->
+                    </div>
+                </div>
             </div>
+
+        
         
 
         <!-- Shadcn-Style Segmented Tabs Bar Navigation Control -->
