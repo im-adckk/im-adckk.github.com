@@ -728,7 +728,7 @@ async function loadSessionsForDate(dateStr, opts = {}) {
         if (selectedSession !== null) {
             const prev = availableSessionsData[selectedSession];
             if (!prev || prev.current_bookings >= prev.max_bookings) {
-                selectedSession = null;
+                // selectedSession = null;
             }
         }
 
@@ -822,23 +822,11 @@ function goToStep3() {
 }
 
 function goBackStep1() {
-    hasDayDuplicate = false;
-    hasFutureLimit = false;
-    futureLimitInfo = null;
-    isReadOnlyView = false;
-    document.getElementById('dayDuplicateWarning').innerHTML = '';
-    const banner = document.getElementById('fullDateBanner');
-    if (banner) banner.classList.add('hidden');
     resetStep2State();
     showStep(1);
 }
 
 function goBackStep2() {
-    hasDayDuplicate = false;
-    isReadOnlyView = false;
-    document.getElementById('dayDuplicateWarning').innerHTML = '';
-    const banner = document.getElementById('fullDateBanner');
-    if (banner) banner.classList.add('hidden');
     resetStep2State();
     showStep(2);
 }
@@ -963,27 +951,27 @@ function validateContactFormat(value) {
     return { valid: true };
 }
 
-detailsForm.addEventListener('submit', (e) => {
+detailsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    goToStep4();
+    await goToStep4();
 });
 
-function goToStep4() {
+async function goToStep4() {
     // Get and validate IC/Passport
     let icno = document.getElementById('icno').value.trim();
     icno = validateICPassport(icno);
     document.getElementById('icno').value = icno;
-    
+
     // Get and validate Name
     let name = document.getElementById('name').value.trim();
     name = validateName(name);
     document.getElementById('name').value = name;
-    
+
     // Get and validate Contact
     let contact = document.getElementById('contact').value.trim();
     contact = validateContact(contact);
     document.getElementById('contact').value = contact;
-    
+
     // Validate lesson selection
     if (!validateLesson()) {
         return;
@@ -995,7 +983,7 @@ function goToStep4() {
         document.getElementById('icno').focus();
         return;
     }
-    
+
     const icValidation = validateICPassportFormat(icno);
     if (!icValidation.valid) {
         showMessage(icValidation.message, 'error');
@@ -1009,7 +997,7 @@ function goToStep4() {
         document.getElementById('name').focus();
         return;
     }
-    
+
     const nameValidation = validateNameFormat(name);
     if (!nameValidation.valid) {
         showMessage(nameValidation.message, 'error');
@@ -1023,7 +1011,7 @@ function goToStep4() {
         document.getElementById('contact').focus();
         return;
     }
-    
+
     const contactValidation = validateContactFormat(contact);
     if (!contactValidation.valid) {
         showMessage(contactValidation.message, 'error');
@@ -1031,14 +1019,45 @@ function goToStep4() {
         return;
     }
 
-    // Check if there's a duplicate before proceeding
-    if (hasDayDuplicate) {
-        showMessage('⚠️ You cannot proceed with a duplicate booking. Please cancel your existing booking first.', 'error');
-        return;
-    }
-    if (hasFutureLimit) {
+    // --- Fresh duplicate + future-limit checks against the final IC ---
+    // Step 2 checked whatever was in the IC box at date-click time; the user
+    // may have typed/edited the IC since then. Re-query both rules now so the
+    // state we gate on matches what confirmBooking() will actually submit.
+    const dupResult = await checkDuplicateForDate(icno, selectedDate);
+    hasDayDuplicate = dupResult.isDuplicate;
+    window._dayDuplicateInfo = dupResult.existing || null;
+
+    const limitResult = await checkFutureLimit(icno, selectedDate);
+    hasFutureLimit = limitResult.limited;
+    futureLimitInfo = limitResult.info;
+
+    // --- Combine both problems into one message (don't let one overwrite the other) ---
+    if (hasDayDuplicate || hasFutureLimit) {
+        const problems = [];
+
+        if (hasDayDuplicate) {
+            const existing = window._dayDuplicateInfo;
+            const detail = existing
+                ? ` (Session: ${existing.session_time} - ${formatSlot(existing.session_slot)})`
+                : '';
+            problems.push(
+                `You already have a booking on this date${detail}. Only one booking per day is allowed.`
+            );
+        }
+
+        if (hasFutureLimit && futureLimitInfo) {
+            const info = futureLimitInfo;
+            const list = (info.existing || []).map(b =>
+                `• ${b.booking_date} — ${b.session_time} (${formatSlot(b.session_slot)})`
+            ).join('\n');
+            problems.push(
+                `You already have the maximum ${info.max} future bookings.\n${list}`
+            );
+        }
+
         showMessage(
-            '⚠️ You already have the maximum 2 future bookings. Cancel one before booking another.',
+            `⚠️ ${problems.join('\n\n')}\n\n` +
+            `Cancel an existing booking via Manage My Bookings to proceed.`,
             'error'
         );
         return;
@@ -1070,7 +1089,6 @@ function goToStep4() {
 
     showStep(4);
 }
-
 function buildSummaryRows(rows) {
     return `
         <dl class="divide-y divide-border rounded-lg border">
@@ -1612,23 +1630,12 @@ function showConfirmation(sessionId) {
 // RESET
 // ============================================
 function resetAll() {
+    resetStep2State();
     showStep(1);
-    selectedDate = null;
-    selectedSession = null;
     bookingData = {};
-    hasDayDuplicate = false;
-    hasFutureLimit = false;
-    futureLimitInfo = null;
-    isReadOnlyView = false;
     document.getElementById('icno').value = '';
     document.getElementById('name').value = '';
     document.getElementById('contact').value = '';
-    document.getElementById('selectedDateDisplay').textContent = '';
-    document.getElementById('sessionsContainer').classList.add('hidden');
-    document.getElementById('nextToDetailsBtn').classList.add('hidden');
-    document.getElementById('dayDuplicateWarning').innerHTML = '';
-    const banner = document.getElementById('fullDateBanner');
-    if (banner) banner.classList.add('hidden');
     hideMessage();
 }
 
