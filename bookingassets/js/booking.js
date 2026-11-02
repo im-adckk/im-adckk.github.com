@@ -1538,14 +1538,14 @@ document.addEventListener('keydown', function(event) {
 // STEP 4: Submit Booking
 // ============================================
 function showConfirmDialog() {
-    document.getElementById('confirmClass').textContent = bookingData.class;
-    document.getElementById('confirmDate').textContent = formatMalaysiaDate(bookingData.date);
+    document.getElementById('confirmClass').textContent   = bookingData.class;
+    document.getElementById('confirmDate').textContent    = formatMalaysiaDate(bookingData.date);
     document.getElementById('confirmSession').textContent = `${bookingData.session.session_time} - ${formatSlot(bookingData.session.session_slot)}`;
-    document.getElementById('confirmLesson').textContent = bookingData.lesson;
-    document.getElementById('confirmName').textContent = bookingData.name;
-    document.getElementById('confirmIC').textContent = bookingData.icno;
+    document.getElementById('confirmLesson').textContent  = bookingData.lesson;
+    document.getElementById('confirmName').textContent    = bookingData.name;
+    document.getElementById('confirmIC').textContent      = bookingData.icno;
     document.getElementById('confirmContact').textContent = bookingData.contact;
-    
+
     document.getElementById('confirmDialog').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     refreshIcons();
@@ -1557,43 +1557,161 @@ function closeConfirmDialog() {
 }
 
 function submitBooking() {
-    if (!bookingData || !bookingData.class || !bookingData.date || !bookingData.session || !bookingData.name) {
+    if (!bookingData
+        || !bookingData.class
+        || !bookingData.date
+        || !bookingData.session
+        || !bookingData.name
+        || !bookingData.icno
+        || !bookingData.contact
+        || !bookingData.lesson) {
         showMessage('Missing booking information. Please go back and check your details.', 'error');
         return;
     }
     showConfirmDialog();
 }
 
+function handleBookingError(err, confirmBtn, originalHTML) {
+    const code = err?.code || '';
+    const msg  = err?.message || '';
+    const hint = err?.hint || err?.details || '';
+
+    // Restore the button first so every path below leaves UI consistent.
+    const restore = () => {
+        confirmBtn.innerHTML = originalHTML;
+        confirmBtn.disabled = false;
+        refreshIcons();
+    };
+
+    // ---- Slot-level errors (raised by confirm_booking) ----
+    if (/SLOT_NOT_FOUND/.test(msg) || /SLOT_NOT_FOUND/.test(hint)) {
+        restore();
+        showMessage(
+            'This session is no longer available. Please pick another session.',
+            'error'
+        );
+        return true;
+    }
+
+    if (/SLOT_CLOSED/.test(msg) || /SLOT_CLOSED/.test(hint)) {
+        restore();
+        showMessage(
+            'This session has just been closed by the admin. Please pick another session.',
+            'error'
+        );
+        return true;
+    }
+
+    if (/SLOT_FULL/.test(msg) || /SLOT_FULL/.test(hint)) {
+        restore();
+        // Tailor the message: was this a reserved slot?
+        const wasReserved = !!bookingData?.session?.is_reserved;
+        if (wasReserved && !window._isSpecialViewer) {
+            showMessage(
+                'This session is reserved for private access and the remaining seats ' +
+                'are not available on the public booking page. Please choose another session, ' +
+                'or use the private link you were given.',
+                'error'
+            );
+        } else {
+            showMessage(
+                'This session just filled up. Please pick another session.',
+                'error'
+            );
+        }
+        return true;
+    }
+
+    if (/SLOT_RESERVED_ONLY/.test(msg) || /SLOT_RESERVED_ONLY/.test(hint)) {
+        restore();
+        showMessage(
+            'This session is reserved for private access. Please choose another session, ' +
+            'or use the private link you were given.',
+            'error'
+        );
+        return true;
+    }
+
+    if (/TOKEN_INVALID/.test(msg) || /TOKEN_INVALID/.test(hint)) {
+        restore();
+        showMessage(
+            'Your private link is no longer valid (it may have expired, been revoked, ' +
+            'or reached its usage limit). Please contact the admin for a new link, ' +
+            'or choose a public session.',
+            'error'
+        );
+        // Flag the token as bad for the rest of the session
+        window._isSpecialViewer = false;
+        return true;
+    }
+
+    // ---- Existing rules (still enforced by triggers inside confirm_booking) ----
+    if (code === 'P0001' && /FUTURE_BOOKING_LIMIT/.test(msg)) {
+        restore();
+        showMessage(
+            '⚠️ You already have the maximum 2 future bookings. ' +
+            'Please cancel one of your existing bookings via Manage My Bookings before booking another.',
+            'error'
+        );
+        return true;
+    }
+
+    if (code === 'P0001' && /DUPLICATE_BOOKING/.test(msg)) {
+        restore();
+        showMessage(
+            'You already have a confirmed booking on this date. ' +
+            'Cancel it via Manage My Bookings before booking another.',
+            'error'
+        );
+        return true;
+    }
+
+    // ---- Belt-and-braces: unique constraint ----
+    if (code === '23505') {
+        restore();
+        showMessage(
+            'This booking already exists. Please check Manage My Bookings.',
+            'error'
+        );
+        return true;
+    }
+
+    // ---- Unrecognised ----
+    return false;
+}
+
 async function confirmBooking() {
     closeConfirmDialog();
-    
-    const confirmBtn = document.querySelector('#step4 button[onclick="submitBooking()"]');
+
+    const confirmBtn  = document.querySelector('#step4 button[onclick="submitBooking()"]');
     const originalHTML = confirmBtn.innerHTML;
     confirmBtn.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Processing...';
     confirmBtn.disabled = true;
     refreshIcons();
 
     try {
+        // ---- 1) Pre-flight duplicate check (fast, gives a richer existing-booking card) ----
+        //     The RPC is still the authoritative gate; this is purely UX.
         showMessage('Checking for duplicate bookings...', 'info');
 
         const { data: duplicateCheck, error: dupError } = await supabaseClient
             .rpc('check_duplicate_booking', {
-                p_icno: bookingData.icno,
+                p_icno:         bookingData.icno,
                 p_booking_date: bookingData.date,
                 p_session_time: bookingData.session.session_time,
                 p_session_slot: bookingData.session.session_slot,
-                p_class: bookingData.class
+                p_class:        bookingData.class
             });
 
         if (dupError) throw dupError;
 
         if (duplicateCheck && duplicateCheck.is_duplicate) {
-            let message = duplicateCheck.message;
+            let message = duplicateCheck.message || 'You already have a booking on this date.';
             if (duplicateCheck.existing_session_time !== bookingData.session.session_time ||
                 duplicateCheck.existing_session_slot !== bookingData.session.session_slot) {
-                message += '\n\n💡 Tip: You can only have ONE booking per day. To book a different session, first cancel your existing booking using the Session ID above.';
+                message += '\n\n💡 You can only have ONE booking per day. To book a different session, first cancel your existing booking using the Session ID above.';
             } else {
-                message += '\n\n💡 Tip: You are trying to book the exact same session. Please check your existing booking.';
+                message += '\n\n💡 You are trying to book the exact same session. Please check your existing booking.';
             }
             showMessage(message, 'error');
             showExistingBooking(duplicateCheck);
@@ -1603,51 +1721,65 @@ async function confirmBooking() {
             return;
         }
 
+        // ---- 2) Create the booking through the server-side gate ----
         showMessage('Creating booking...', 'info');
 
         const { data: booking, error: createError } = await supabaseClient
-            .from('bookings')
-            .insert([{
-                icno: bookingData.icno,
-                name: bookingData.name,
-                contact_no: bookingData.contact,
-                class: bookingData.class,
-                booking_date: bookingData.date,
-                session_time: bookingData.session.session_time,
-                session_slot: bookingData.session.session_slot,
-                lesson: bookingData.lesson,
-                status: 'confirmed'
-            }])
-            .select('session_id')
-            .single();
+            .rpc('confirm_booking', {
+                p_icno:         bookingData.icno,
+                p_name:         bookingData.name,
+                p_contact_no:   bookingData.contact,
+                p_class:        bookingData.class,
+                p_booking_date: bookingData.date,
+                p_session_time: bookingData.session.session_time,
+                p_session_slot: bookingData.session.session_slot,
+                p_lesson:       bookingData.lesson,
+                p_token:        PRIVATE_TOKEN
+            });
 
-                if (createError) {
-            if (createError.code === '23505') {
-                showMessage('This booking already exists. Please check your bookings.', 'error');
-                confirmBtn.innerHTML = originalHTML;
-                confirmBtn.disabled = false;
-                refreshIcons();
-                return;
-            }
-            if (createError.code === 'P0001' || /FUTURE_BOOKING_LIMIT/.test(createError.message || '')) {
-                showMessage(
-                    '⚠️ You already have the maximum 2 future bookings. ' +
-                    'Please cancel one of your existing bookings via Manage My Bookings before booking another.',
-                    'error'
-                );
-                confirmBtn.innerHTML = originalHTML;
-                confirmBtn.disabled = false;
-                refreshIcons();
-                return;
-            }
+        // ---- 3) Handle any server error in one place ----
+        if (createError) {
+            const handled = handleBookingError(createError, confirmBtn, originalHTML);
+            if (handled) return;
             throw createError;
         }
 
+        // ---- 4) Defensive: RPC succeeded but returned no row ----
+        if (!booking || !booking.session_id) {
+            confirmBtn.innerHTML = originalHTML;
+            confirmBtn.disabled = false;
+            refreshIcons();
+            showMessage(
+                'Booking was submitted, but the confirmation could not be loaded. ' +
+                'Please check Manage My Bookings to verify.',
+                'error'
+            );
+            return;
+        }
+
+        // ---- 5) Success ----
         showConfirmation(booking.session_id);
 
     } catch (error) {
         console.error('Booking error:', error);
-        showMessage('Error creating booking: ' + error.message, 'error');
+
+        // Anything that escaped handleBookingError(): network failure, RPC missing, etc.
+        const msg = error?.message || 'Unknown error';
+        if (/function.*confirm_booking.*does not exist/i.test(msg)) {
+            showMessage(
+                'Booking system is not fully set up (confirm_booking RPC missing). ' +
+                'Please contact the admin.',
+                'error'
+            );
+        } else if (/Failed to fetch|NetworkError|network/i.test(msg)) {
+            showMessage(
+                'Network error while creating your booking. Please check your connection and try again.',
+                'error'
+            );
+        } else {
+            showMessage('Error creating booking: ' + msg, 'error');
+        }
+
         confirmBtn.innerHTML = originalHTML;
         confirmBtn.disabled = false;
         refreshIcons();
@@ -1711,45 +1843,89 @@ function resetAll() {
 // ============================================
 // INITIALIZE
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+
+    // ---- 1) Base init (unchanged) ----
     initMonthYear();
     showStep(1);
     updateTodayIndicator();
 
-    // IC/Passport input - only letters and numbers, auto uppercase
+    // ---- 2) Validate the private token ONCE at boot ----
+    // We do this before anything else so every later RPC and every
+    // UI decision (badge, messages, SLOT_FULL tailoring) uses the
+    // same verdict.
+    window._isSpecialViewer = false;
+
+    if (PRIVATE_TOKEN) {
+        try {
+            const { data, error } = await supabaseClient
+                .rpc('validate_private_token', { p_token: PRIVATE_TOKEN });
+
+            // Defensive: the RPC might return `true`, `{valid: true}`,
+            // or `{valid: true, label: '...'}` depending on how it's written.
+            // Normalise all of them.
+            let valid = false;
+            let label = null;
+
+            if (error) {
+                // Function missing (PGRST202) or other error → treat as invalid,
+                // but log so the admin can spot a missing migration.
+                console.warn('validate_private_token error:', error.message);
+            } else if (data === true) {
+                valid = true;
+            } else if (data && typeof data === 'object') {
+                valid = data.valid === true;
+                label = data.label || data.notes || null;
+            }
+
+            window._isSpecialViewer = valid;
+
+            if (valid) {
+                showPrivateBadge(label);
+            } else {
+                // Do NOT block the page — the user can still book public slots.
+                // Just warn once so they're not confused when reserved slots
+                // stay hidden.
+                showMessage(
+                    'The private link in your URL is invalid, expired, or has been revoked. ' +
+                    'You are browsing as a normal user. Contact the admin for a new link if needed.',
+                    'error'
+                );
+            }
+        } catch (err) {
+            console.error('Token validation failed:', err);
+            window._isSpecialViewer = false;
+        }
+    }
+
+    // ---- 3) IC/Passport input ----
     const icnoInput = document.getElementById('icno');
     if (icnoInput) {
         icnoInput.addEventListener('blur', checkICOnStep3);
-        icnoInput.addEventListener('input', function() {
-            // Auto-validate: remove special characters, convert to uppercase
+        icnoInput.addEventListener('input', function () {
             let value = this.value.replace(/[^a-zA-Z0-9]/g, '');
             value = value.toUpperCase();
             if (this.value !== value) {
                 this.value = value;
             }
-            // Clear duplicate state — the IC changed, so any previous
-            // duplicate verdict for the old IC is stale.
+
             hasDayDuplicate = false;
             window._dayDuplicateInfo = null;
             document.getElementById('dayDuplicateWarning').innerHTML = '';
-            
 
-            // Clear future-limit state — same reason.
             hasFutureLimit = false;
             futureLimitInfo = null;
 
-            // Clear lesson-history indicator until the new IC is blurred.
             document.getElementById('historyIndicator').classList.add('hidden');
 
-            // Debounced re-check once the user pauses typing.
             clearTimeout(_icDebounceTimer);
             const ic = value.trim();
             if (ic.length >= 8) {
                 _icDebounceTimer = setTimeout(checkICOnStep3, 500);
             }
         });
-        // Handle paste events for IC/Passport
-        icnoInput.addEventListener('paste', function(e) {
+
+        icnoInput.addEventListener('paste', function (e) {
             e.preventDefault();
             const paste = (e.clipboardData || window.clipboardData).getData('text');
             const cleaned = paste.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -1757,18 +1933,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Name input - force uppercase letters only
+    // ---- 4) Name input ----
     const nameInput = document.getElementById('name');
     if (nameInput) {
-        nameInput.addEventListener('input', function() {
+        nameInput.addEventListener('input', function () {
             let value = this.value.replace(/[^a-zA-Z\s]/g, '');
             value = value.toUpperCase();
             if (this.value !== value) {
                 this.value = value;
             }
         });
-        // Handle paste events for Name
-        nameInput.addEventListener('paste', function(e) {
+
+        nameInput.addEventListener('paste', function (e) {
             e.preventDefault();
             const paste = (e.clipboardData || window.clipboardData).getData('text');
             const cleaned = paste.replace(/[^a-zA-Z\s]/g, '').toUpperCase();
@@ -1776,17 +1952,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Contact input - only numbers
+    // ---- 5) Contact input ----
     const contactInput = document.getElementById('contact');
     if (contactInput) {
-        contactInput.addEventListener('input', function() {
+        contactInput.addEventListener('input', function () {
             let value = this.value.replace(/\D/g, '');
             if (this.value !== value) {
                 this.value = value;
             }
         });
-        // Handle paste events for Contact
-        contactInput.addEventListener('paste', function(e) {
+
+        contactInput.addEventListener('paste', function (e) {
             e.preventDefault();
             const paste = (e.clipboardData || window.clipboardData).getData('text');
             const cleaned = paste.replace(/\D/g, '');
@@ -1796,3 +1972,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     refreshIcons();
 });
+
+
+// ============================================
+// PRIVATE BADGE HELPER
+// ============================================
+/**
+ * Inject a small "🔒 Private access enabled" chip just below the header
+ * subtitle. Called only when a token is validated at boot.
+ *
+ * Falls back silently if #privateBadge is not present in the HTML
+ * (so you can roll this out without touching booking.html first).
+ */
+function showPrivateBadge(label) {
+    const badge = document.getElementById('privateBadge');
+    if (!badge) {
+        // Fallback: prepend to the message bar area if the dedicated
+        // element wasn't added. Still gives the user a visible cue.
+        showMessage(
+            '🔒 Private access enabled' +
+            (label ? ` (${label})` : '') +
+            '. Reserved seats are visible to you.',
+            'success'
+        );
+        return;
+    }
+
+    badge.innerHTML = `
+        <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+        <span>Private access enabled${label ? ` · ${label}` : ''}</span>
+    `;
+    badge.classList.remove('hidden');
+    refreshIcons();
+}
