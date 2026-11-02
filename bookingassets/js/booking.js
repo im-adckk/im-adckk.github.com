@@ -477,7 +477,9 @@ function changeMonth(delta) {
     document.getElementById('nextToDetailsBtn').classList.add('hidden');
     const banner = document.getElementById('fullDateBanner');
     if (banner) banner.classList.add('hidden');
+    
     renderCalendar();
+    resetStep2State();
     checkAvailabilityForMonth();
 }
 
@@ -801,6 +803,7 @@ function goBackStep1() {
     document.getElementById('dayDuplicateWarning').innerHTML = '';
     const banner = document.getElementById('fullDateBanner');
     if (banner) banner.classList.add('hidden');
+    resetStep2State();
     showStep(1);
 }
 
@@ -810,6 +813,7 @@ function goBackStep2() {
     document.getElementById('dayDuplicateWarning').innerHTML = '';
     const banner = document.getElementById('fullDateBanner');
     if (banner) banner.classList.add('hidden');
+    resetStep2State();
     showStep(2);
 }
 
