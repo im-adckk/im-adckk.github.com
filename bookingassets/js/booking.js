@@ -19,6 +19,7 @@ let activeModal = null;
 let isReadOnlyView = false;
 let hasFutureLimit = false;
 let futureLimitInfo = null;
+let _icDebounceTimer = null;
 
 // ============================================
 // LESSON OPTIONS
