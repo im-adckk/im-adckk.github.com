@@ -619,6 +619,115 @@ async function fetchSlotOpenState(date) {
     }
 }
 
+async function loadReservedChips() {
+    const container = document.getElementById('reservedSlotsChips');
+    const dateRef = document.getElementById('quotaDateSelect').value || getMalaysiaToday();
+    const d = new Date(dateRef + 'T00:00:00');
+    const start = toMalaysiaDateStr(new Date(d.getFullYear(), d.getMonth(), 1));
+    const end   = toMalaysiaDateStr(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+
+    const { data } = await supabaseClient
+        .from('available_sessions')
+        .select('session_date, session_time, session_slot, reserved_quota')
+        .gte('session_date', start).lte('session_date', end)
+        .eq('is_reserved', true)
+        .gt('reserved_quota', 0)
+        .order('session_date');
+
+    if (!data || data.length === 0) {
+        container.innerHTML = '<span class="italic">🔒 No reservations this month</span>';
+        return;
+    }
+
+    container.innerHTML = '<span class="font-semibold">🔒 Reserved this month:</span> ' +
+        data.map(r => `
+            <button onclick="jumpToReserved('${r.session_date}')"
+                    class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200 text-[11px]"
+                    title="Reserved: ${r.reserved_quota} seats">
+                ${formatShortDate(r.session_date)} · ${r.session_time.replace(':00','').replace('-', '–')}/${r.session_slot} · ×${r.reserved_quota}
+            </button>
+        `).join('');
+}
+
+function jumpToReserved(date) {
+    document.getElementById('quotaDateSelect').value = date;
+    loadQuotaSettings(date);
+}
+
+
+async function generatePrivateToken() {
+    const notes = prompt('Optional note for this link (e.g. "Nov batch"):') || null;
+    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 24);  // 24-char URL-safe
+
+    const { data, error } = await supabaseClient
+        .from('private_slot_tokens')
+        .insert([{ token, notes }])
+        .select('token').single();
+    if (error) return showMessage(error.message, 'error');
+
+    const url = `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${data.token}`;
+    await navigator.clipboard.writeText(url).catch(() => {});
+    showMessage(`✅ Link copied to clipboard:\n${url}`, 'success');
+    loadActiveTokenCount();
+}
+
+async function loadActiveTokenCount() {
+    const { count } = await supabaseClient
+        .from('private_slot_tokens')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+    document.getElementById('activeTokenCount').textContent = count || 0;
+}
+
+async function openTokenManager() {
+    const { data } = await supabaseClient
+        .from('private_slot_tokens')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    const modal = document.getElementById('tokenManagerModal');
+    const body  = modal.querySelector('div');
+
+    body.innerHTML = `
+        <div class="flex items-center justify-between">
+            <h3 class="font-semibold text-lg">Private Links</h3>
+            <button onclick="document.getElementById('tokenManagerModal').classList.add('hidden')"
+                    class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+        ${data.length === 0 ? '<p class="text-sm text-muted-foreground">No tokens yet.</p>' : `
+        <table class="w-full text-xs border-collapse">
+            <thead><tr class="bg-muted text-muted-foreground">
+                <th class="p-2 text-left">Created</th><th class="p-2 text-left">Note</th>
+                <th class="p-2 text-center">Uses</th><th class="p-2 text-left">Status</th>
+                <th class="p-2"></th>
+            </tr></thead>
+            <tbody>
+            ${data.map(t => `
+                <tr class="border-b">
+                    <td class="p-2">${new Date(t.created_at).toLocaleDateString('en-MY')}</td>
+                    <td class="p-2">${t.notes || '—'}</td>
+                    <td class="p-2 text-center">${t.used_count}${t.max_uses ? '/' + t.max_uses : ''}</td>
+                    <td class="p-2">${t.is_active ? '🟢 Active' : '🔴 Revoked'}</td>
+                    <td class="p-2 text-right">
+                        ${t.is_active ? `<button onclick="revokePrivateToken('${t.id}')"
+                            class="text-red-600 hover:underline">Revoke</button>` : ''}
+                    </td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`}
+    `;
+    modal.classList.remove('hidden');
+}
+
+async function revokePrivateToken(id) {
+    if (!confirm('Revoke this link? Bookings already made with it stay valid.')) return;
+    await supabaseClient.from('private_slot_tokens').update({ is_active: false }).eq('id', id);
+    openTokenManager();
+    loadActiveTokenCount();
+}
+
+
 /**
  * Apply open/closed state to a single (date, session_time, session_slot)
  * across BOTH classes (class-agnostic toggle).
@@ -627,20 +736,28 @@ async function fetchSlotOpenState(date) {
  * - Missing rows are INSERTED via upsert so enabling sesi3 works even
  *   if the daily cron never created it (or for dates beyond cron window).
  */
-async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas) {
+async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas, reservedQuota = 0) {
     const quotaB  = quotas?.B  ?? DEFAULT_QUOTA.B;
     const quotaB2 = quotas?.B2 ?? DEFAULT_QUOTA.B2;
 
-    // 1) Flip existing rows (both classes)
+    // Normalise: a closed slot can't have a reservation
+    const reserved = isOpen ? Math.max(0, reservedQuota | 0) : 0;
+    const isReserved = reserved > 0;
+
+    // 1) Flip existing rows (both classes) — now also write reserved fields
     const { error: updErr } = await supabaseClient
         .from('available_sessions')
-        .update({ is_available: isOpen })
+        .update({
+            is_available:   isOpen,
+            reserved_quota: reserved,     // NEW
+            is_reserved:    isReserved    // NEW
+        })
         .eq('session_date', date)
         .eq('session_time', sessionTime)
         .eq('session_slot', sessionSlot);
     if (updErr) throw updErr;
 
-    // 2) Upsert missing rows for both classes
+    // 2) Upsert missing rows for both classes (now with reserved fields)
     const rows = ['B', 'B2'].map(cls => ({
         class: cls,
         session_date: date,
@@ -648,7 +765,9 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         session_slot: sessionSlot,
         max_bookings: cls === 'B' ? quotaB : quotaB2,
         current_bookings: 0,
-        is_available: isOpen
+        is_available:   isOpen,
+        reserved_quota: reserved,     // NEW
+        is_reserved:    isReserved    // NEW
     }));
 
     const { error: upsErr } = await supabaseClient
@@ -905,24 +1024,55 @@ async function saveQuotaSettings() {
 
         const quotas = { B: classBQuota, B2: classB2Quota };
 
-        // Build a flat list of { sessionTime, slot, open } for every slot
+        // Build a flat list of { sessionTime, slot, open, reservedQuota } for every slot
         const effectiveSlots = [];
         for (const cfg of sessionConfigs) {
             const sessionOpen = document.getElementById(cfg.sessionCbId)?.checked ?? true;
             const slotCbs = [...document.querySelectorAll(`#${cfg.containerId} .slot-cb`)];
             for (const cb of slotCbs) {
+                const slot = cb.dataset.slot;
+
+                // NEW: read the reserve input paired with this slot checkbox.
+                // Disabled (unchecked slot) => force 0, since you can't reserve
+                // a slot that's closed.
+                const reserveInput = document.querySelector(
+                    `.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"]`
+                );
+                const rawReserved  = parseInt(reserveInput?.value, 10);
+                const reservedQuota = (!isNaN(rawReserved) && rawReserved > 0) ? rawReserved : 0;
+                const slotOpen      = sessionOpen && cb.checked;
+
                 effectiveSlots.push({
                     sessionTime: cfg.time,
-                    slot: cb.dataset.slot,
-                    open: sessionOpen && cb.checked
+                    slot: slot,
+                    open: slotOpen,
+                    reservedQuota: slotOpen ? reservedQuota : 0   // NEW
                 });
+            }
+        }
+
+        // NEW: validate that no reservation exceeds the class quota it applies to.
+        // reserved_quota must be <= max_bookings for BOTH classes on that slot,
+        // otherwise the DB check constraint (reserved_le_max) will reject the upsert.
+        // We validate up-front so the user gets a clear message instead of a raw
+        // constraint violation mid-loop.
+        for (const s of effectiveSlots) {
+            if (s.reservedQuota > classBQuota || s.reservedQuota > classB2Quota) {
+                showQuotaMessage(
+                    `❌ Reservation for ${s.sessionTime}/${s.slot} is ${s.reservedQuota}, ` +
+                    `but the smaller class quota is ${Math.min(classBQuota, classB2Quota)}. ` +
+                    `Reserved seats cannot exceed the total quota.`,
+                    'error'
+                );
+                if (progressDiv) progressDiv.style.display = 'none';
+                return;
             }
         }
 
         let successCount = 0;
 
         for (const targetDate of datesToUpdate) {
-            // --- 1) Upsert quota_settings row ---
+            // --- 1) Upsert quota_settings row (unchanged) ---
             const { data: existing, error: checkError } = await supabaseClient
                 .from('quota_settings')
                 .select('id')
@@ -952,7 +1102,7 @@ async function saveQuotaSettings() {
                 if (insertError) throw insertError;
             }
 
-            // --- 2) Sync max_bookings on existing available_sessions rows ---
+            // --- 2) Sync max_bookings on existing available_sessions rows (unchanged) ---
             const { error: syncBErr } = await supabaseClient
                 .from('available_sessions')
                 .update({ max_bookings: classBQuota })
@@ -967,15 +1117,15 @@ async function saveQuotaSettings() {
                 .eq('class', 'B2');
             if (syncB2Err) throw syncB2Err;
 
-            // --- 3) Apply per-slot open/closed state (upserts missing rows) ---
-            for (const { sessionTime, slot, open } of effectiveSlots) {
-                await applySlotOpenState(targetDate, sessionTime, slot, open, quotas);
+            // --- 3) Apply per-slot open/closed + reserved state (NEW: reservedQuota) ---
+            for (const { sessionTime, slot, open, reservedQuota } of effectiveSlots) {
+                await applySlotOpenState(targetDate, sessionTime, slot, open, quotas, reservedQuota);
             }
 
             successCount++;
         }
 
-        // --- 4) Build success message reflecting what was actually closed ---
+        // --- 4) Build success message reflecting what was actually closed/reserved (NEW) ---
         const modeText = applyMode === 'single' ? 'date' : 'date range';
 
         const closedParts = [];
@@ -985,28 +1135,38 @@ async function saveQuotaSettings() {
         }
 
         const closedSlots = [];
+        const reservedParts = [];
         for (const s of effectiveSlots) {
+            const cfg = sessionConfigs.find(c => c.time === s.sessionTime);
+            const short = cfg ? cfg.shortLabel : '??';
+
             if (!s.open) {
-                const cfg = sessionConfigs.find(c => c.time === s.sessionTime);
-                closedSlots.push(`${cfg ? cfg.shortLabel : '??'}/${s.slot}`);
+                closedSlots.push(`${short}/${s.slot}`);
+            } else if (s.reservedQuota > 0) {
+                reservedParts.push(`${short}/${s.slot}×${s.reservedQuota}`);
             }
         }
 
-        let closedMsg = '';
+        let summaryMsg = '';
         if (closedParts.length) {
-            closedMsg = ` (${closedParts.join(' & ')} closed)`;
-        } else if (closedSlots.length) {
-            closedMsg = ` (slots closed: ${closedSlots.join(', ')})`;
+            summaryMsg += ` (${closedParts.join(' & ')} closed)`;
+        }
+        if (closedSlots.length) {
+            summaryMsg += ` · slots closed: ${closedSlots.join(', ')}`;
+        }
+        if (reservedParts.length) {
+            summaryMsg += ` · reserved: ${reservedParts.join(', ')}`;
         }
 
         showQuotaMessage(
-            `✅ Quota updated successfully for ${successCount} ${modeText}(s)${closedMsg}!`,
+            `✅ Quota updated successfully for ${successCount} ${modeText}(s)${summaryMsg}!`,
             'success'
         );
 
-        // --- Refresh UI ---
+        // --- 5) Refresh UI (NEW: chips) ---
         await loadQuotaSettings(date);
         await loadAdminCalendarData();
+        await loadReservedChips();              // NEW
 
         if (selectedAdminDate) {
             await onAdminDateClick(selectedAdminDate);
@@ -2384,7 +2544,7 @@ async function loadAdminCalendarData() {
     try {
         const { data: sessions, error: sessionsError } = await supabaseClient
             .from('available_sessions')
-            .select('*')
+            .select('*')                                    // already includes is_reserved + reserved_quota
             .gte('session_date', startDateStr)
             .lte('session_date', endDateStr);
 
@@ -2455,7 +2615,7 @@ async function loadAdminCalendarData() {
                 const hasQuota = quota !== undefined && quota !== null;
                 // Check availability based on actual sessions
                 const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
-                
+
                 if (hasAvailable) {
                     bgColor = '#2ecc71';
                     textColor = 'white';
@@ -2483,6 +2643,8 @@ async function loadAdminCalendarData() {
             if (existingDot) existingDot.remove();
             const existingQuotaBadge = cell.querySelector('.quota-badge');
             if (existingQuotaBadge) existingQuotaBadge.remove();
+            const existingReservedBadge = cell.querySelector('.reserved-badge');
+            if (existingReservedBadge) existingReservedBadge.remove();
 
             // Add custom quota indicator
             if (quota && dateStr >= today) {
@@ -2500,6 +2662,17 @@ async function loadAdminCalendarData() {
                 dot.className = 'availability-dot';
                 dot.style.cssText = 'position:absolute;bottom:4px;right:6px;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);';
                 cell.appendChild(dot);
+            }
+
+            // 🆕 Add reserved-slot indicator (🔒) — shown only on future / today cells
+            const hasReservation = sessions.some(s => s.is_reserved && s.reserved_quota > 0);
+            if (hasReservation && dateStr >= today) {
+                const lock = document.createElement('span');
+                lock.className = 'reserved-badge';
+                lock.style.cssText = 'position:absolute;top:2px;right:4px;font-size:8px;line-height:1;';
+                lock.textContent = '🔒';
+                lock.title = 'This date has reserved slots (special-link only)';
+                cell.appendChild(lock);
             }
         });
 
