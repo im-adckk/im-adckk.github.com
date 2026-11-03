@@ -74,7 +74,30 @@
             tracking: 0.05em;
         }
 
-
+        /* Larger B / B2 labels in the Quota Management reserve rows */
+       .reserve-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.8125rem;       /* 13px */
+            font-weight: 600;
+            line-height: 1;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid currentColor;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        
+        /* Optional: make the colour dot scale with the label */
+        .reserve-label .inline-block {
+            width: 0.375rem;         /* was 1.5 = 0.375rem already, keep */
+            height: 0.375rem;
+        }
+        
+        /* Optional: if you want them even bigger, override on the container */
+        #quotaManagement .reserve-label {
+            font-size: 0.8125rem;    /* 13px */
+        }
 
         /* Notification animations */
             #dateStatusMessage {
@@ -397,7 +420,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -407,7 +430,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -428,7 +451,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -438,7 +461,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -459,7 +482,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -469,7 +492,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -502,7 +525,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -512,7 +535,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -533,7 +556,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -543,7 +566,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -564,7 +587,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -574,7 +597,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -607,7 +630,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -617,7 +640,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -638,7 +661,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -648,7 +671,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
@@ -669,7 +692,7 @@
                                         </label>
                                         <div class="flex items-center gap-3 flex-1 justify-end">
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-blue-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                                     B
                                                 </span>
@@ -679,7 +702,7 @@
                                                        placeholder="0" title="Seats reserved for Class B (special-link only)">
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700">
+                                                <span class="reserve-label inline-flex items-center gap-1 font-semibold text-pink-700">
                                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-pink-600"></span>
                                                     B2
                                                 </span>
