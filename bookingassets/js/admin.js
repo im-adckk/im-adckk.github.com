@@ -620,34 +620,51 @@ async function fetchSlotOpenState(date) {
 }
 
 async function loadReservedChips() {
-    const container = document.getElementById('reservedSlotsChips');
-    const dateRef = document.getElementById('quotaDateSelect').value || getMalaysiaToday();
-    const d = new Date(dateRef + 'T00:00:00');
-    const start = toMalaysiaDateStr(new Date(d.getFullYear(), d.getMonth(), 1));
-    const end   = toMalaysiaDateStr(new Date(d.getFullYear(), d.getMonth() + 1, 0));
-
     const { data } = await supabaseClient
         .from('available_sessions')
-        .select('session_date, session_time, session_slot, reserved_quota')
+        .select('session_date, session_time, session_slot, class, reserved_quota_b, reserved_quota_b2')
         .gte('session_date', start).lte('session_date', end)
         .eq('is_reserved', true)
-        .gt('reserved_quota', 0)
+        .or('reserved_quota_b.gt.0,reserved_quota_b2.gt.0')
         .order('session_date');
-
+    
     if (!data || data.length === 0) {
         container.innerHTML = '<span class="italic">🔒 No reservations this month</span>';
         return;
     }
-
+    
+    // Group by (date, time, slot) so a slot with both B and B2 reservations
+    // renders as ONE chip ("B×2 · B2×1") instead of two.
+    const grouped = new Map();
+    for (const r of data) {
+        const key = `${r.session_date}|${r.session_time}|${r.session_slot}`;
+        if (!grouped.has(key)) {
+            grouped.set(key, {
+                session_date: r.session_date,
+                session_time: r.session_time,
+                session_slot: r.session_slot,
+                B: 0,
+                B2: 0
+            });
+        }
+        const g = grouped.get(key);
+        g.B  += r.reserved_quota_b  || 0;
+        g.B2 += r.reserved_quota_b2 || 0;
+    }
+    
     container.innerHTML = '<span class="font-semibold">🔒 Reserved this month:</span> ' +
-        data.map(r => `
-            <button onclick="jumpToReserved('${r.session_date}')"
-                    class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200 text-[11px]"
-                    title="Reserved: ${r.reserved_quota} seats">
-                ${formatShortDate(r.session_date)} · ${r.session_time.replace(':00','').replace('-', '–')}/${r.session_slot} · ×${r.reserved_quota}
-            </button>
-        `).join('');
-}
+        [...grouped.values()].map(r => {
+            const parts = [];
+            if (r.B  > 0) parts.push(`B×${r.B}`);
+            if (r.B2 > 0) parts.push(`B2×${r.B2}`);
+            return `
+                <button onclick="jumpToReserved('${r.session_date}')"
+                        class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200 text-[11px]"
+                        title="Reserved: ${parts.join(', ')}">
+                    ${formatShortDate(r.session_date)} · ${r.session_time.replace(':00','').replace('-', '–')}/${r.session_slot} · ${parts.join(' · ')}
+                </button>
+            `;
+        }).join('');
 
 function jumpToReserved(date) {
     document.getElementById('quotaDateSelect').value = date;
@@ -738,46 +755,94 @@ async function revokePrivateToken(id) {
 
 
 /**
- * Apply open/closed state to a single (date, session_time, session_slot)
- * across BOTH classes (class-agnostic toggle).
+ * Apply open/closed state + per-class reservations to a single
+ * (date, session_time, session_slot) across BOTH classes.
  *
- * - Existing rows are UPDATEd to is_available = isOpen.
- * - Missing rows are INSERTED via upsert so enabling sesi3 works even
- *   if the daily cron never created it (or for dates beyond cron window).
+ * - Existing rows are UPDATEd in two targeted passes:
+ *     • B  row gets  reserved_quota_b  = reserved.B,  reserved_quota_b2 = 0
+ *     • B2 row gets  reserved_quota_b  = 0,          reserved_quota_b2 = reserved.B2
+ *   Splitting by class is required because PostgREST's .update() applies
+ *   one payload to all matched rows, and B/B2 need different column values.
+ *
+ * - Missing rows are INSERTED via upsert with the same per-class values,
+ *   so enabling sesi3 or a date beyond the cron window still works.
+ *
+ * - current_bookings is never touched by the UPDATE pass, so existing
+ *   bookings are preserved. It is only ever set to 0 on brand-new rows.
+ *
+ * @param {string} date          YYYY-MM-DD
+ * @param {string} sessionTime   '9am-12pm' | '12pm-3pm' | '11am-2pm'
+ * @param {string} sessionSlot   'sesi1' | 'sesi2' | 'sesi3'
+ * @param {boolean} isOpen       whether the slot is bookable
+ * @param {{B:number,B2:number}} quotas    class quotas (max_bookings)
+ * @param {{B:number,B2:number}} [reserved] reserved seats per class
  */
-async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas, reservedQuota = 0) {
+async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas, reserved = {}) {
     const quotaB  = quotas?.B  ?? DEFAULT_QUOTA.B;
     const quotaB2 = quotas?.B2 ?? DEFAULT_QUOTA.B2;
 
-    // Normalise: a closed slot can't have a reservation
-    const reserved = isOpen ? Math.max(0, reservedQuota | 0) : 0;
-    const isReserved = reserved > 0;
+    // A closed slot cannot carry a reservation.
+    const reservedB  = isOpen ? Math.max(0, (reserved.B  | 0)) : 0;
+    const reservedB2 = isOpen ? Math.max(0, (reserved.B2 | 0)) : 0;
 
-    // 1) Flip existing rows (both classes) — now also write reserved fields
-    const { error: updErr } = await supabaseClient
+    // ---- 1) Targeted UPDATE for the B row ----
+    const { error: updBErr } = await supabaseClient
         .from('available_sessions')
         .update({
-            is_available:   isOpen,
-            reserved_quota: reserved,     // NEW
-            is_reserved:    isReserved    // NEW
+            is_available:      isOpen,
+            reserved_quota_b:  reservedB,
+            reserved_quota_b2: 0,
+            is_reserved:       reservedB > 0
         })
         .eq('session_date', date)
         .eq('session_time', sessionTime)
-        .eq('session_slot', sessionSlot);
-    if (updErr) throw updErr;
+        .eq('session_slot', sessionSlot)
+        .eq('class', 'B');
+    if (updBErr) throw updBErr;
 
-    // 2) Upsert missing rows for both classes (now with reserved fields)
-    const rows = ['B', 'B2'].map(cls => ({
-        class: cls,
-        session_date: date,
-        session_time: sessionTime,
-        session_slot: sessionSlot,
-        max_bookings: cls === 'B' ? quotaB : quotaB2,
-        current_bookings: 0,
-        is_available:   isOpen,
-        reserved_quota: reserved,     // NEW
-        is_reserved:    isReserved    // NEW
-    }));
+    // ---- 2) Targeted UPDATE for the B2 row ----
+    const { error: updB2Err } = await supabaseClient
+        .from('available_sessions')
+        .update({
+            is_available:      isOpen,
+            reserved_quota_b:  0,
+            reserved_quota_b2: reservedB2,
+            is_reserved:       reservedB2 > 0
+        })
+        .eq('session_date', date)
+        .eq('session_time', sessionTime)
+        .eq('session_slot', sessionSlot)
+        .eq('class', 'B2');
+    if (updB2Err) throw updB2Err;
+
+    // ---- 3) Upsert missing rows for both classes ----
+    //   current_bookings: 0 is correct here — these rows don't exist yet.
+    const rows = [
+        {
+            class:             'B',
+            session_date:      date,
+            session_time:      sessionTime,
+            session_slot:      sessionSlot,
+            max_bookings:      quotaB,
+            current_bookings:  0,
+            is_available:      isOpen,
+            reserved_quota_b:  reservedB,
+            reserved_quota_b2: 0,
+            is_reserved:       reservedB > 0
+        },
+        {
+            class:             'B2',
+            session_date:      date,
+            session_time:      sessionTime,
+            session_slot:      sessionSlot,
+            max_bookings:      quotaB2,
+            current_bookings:  0,
+            is_available:      isOpen,
+            reserved_quota_b:  0,
+            reserved_quota_b2: reservedB2,
+            is_reserved:       reservedB2 > 0
+        }
+    ];
 
     const { error: upsErr } = await supabaseClient
         .from('available_sessions')
@@ -1033,7 +1098,7 @@ async function saveQuotaSettings() {
 
         const quotas = { B: classBQuota, B2: classB2Quota };
 
-        // Build a flat list of { sessionTime, slot, open, reservedQuota } for every slot
+        // Build a flat list of { sessionTime, slot, open, reservedB, reservedB2 } for every slot
         const effectiveSlots = [];
         for (const cfg of sessionConfigs) {
             const sessionOpen = document.getElementById(cfg.sessionCbId)?.checked ?? true;
@@ -1041,36 +1106,46 @@ async function saveQuotaSettings() {
             for (const cb of slotCbs) {
                 const slot = cb.dataset.slot;
 
-                // NEW: read the reserve input paired with this slot checkbox.
-                // Disabled (unchecked slot) => force 0, since you can't reserve
-                // a slot that's closed.
-                const reserveInput = document.querySelector(
-                    `.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"]`
+                const inputB  = document.querySelector(
+                    `.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`
                 );
-                const rawReserved  = parseInt(reserveInput?.value, 10);
-                const reservedQuota = (!isNaN(rawReserved) && rawReserved > 0) ? rawReserved : 0;
-                const slotOpen      = sessionOpen && cb.checked;
+                const inputB2 = document.querySelector(
+                    `.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`
+                );
+
+                const rawB  = parseInt(inputB?.value, 10);
+                const rawB2 = parseInt(inputB2?.value, 10);
+                const reservedB  = (!isNaN(rawB)  && rawB  > 0) ? rawB  : 0;
+                const reservedB2 = (!isNaN(rawB2) && rawB2 > 0) ? rawB2 : 0;
+                const slotOpen   = sessionOpen && cb.checked;
 
                 effectiveSlots.push({
                     sessionTime: cfg.time,
-                    slot: slot,
-                    open: slotOpen,
-                    reservedQuota: slotOpen ? reservedQuota : 0   // NEW
+                    slot:        slot,
+                    open:        slotOpen,
+                    reservedB:   slotOpen ? reservedB  : 0,
+                    reservedB2:  slotOpen ? reservedB2 : 0
                 });
             }
         }
 
-        // NEW: validate that no reservation exceeds the class quota it applies to.
-        // reserved_quota must be <= max_bookings for BOTH classes on that slot,
-        // otherwise the DB check constraint (reserved_le_max) will reject the upsert.
-        // We validate up-front so the user gets a clear message instead of a raw
-        // constraint violation mid-loop.
+        // Per-class validation: each reservation must fit its own class quota.
+        // A B reservation of 0 with a B2 reservation of 10 is now valid even
+        // when classBQuota = 4, because they're independent constraints.
         for (const s of effectiveSlots) {
-            if (s.reservedQuota > classBQuota || s.reservedQuota > classB2Quota) {
+            if (s.reservedB > classBQuota) {
                 showQuotaMessage(
-                    `❌ Reservation for ${s.sessionTime}/${s.slot} is ${s.reservedQuota}, ` +
-                    `but the smaller class quota is ${Math.min(classBQuota, classB2Quota)}. ` +
-                    `Reserved seats cannot exceed the total quota.`,
+                    `❌ Class B reservation for ${s.sessionTime}/${s.slot} is ${s.reservedB}, ` +
+                    `but the Class B quota is only ${classBQuota}.`,
+                    'error'
+                );
+                if (progressDiv) progressDiv.style.display = 'none';
+                return;
+            }
+            if (s.reservedB2 > classB2Quota) {
+                showQuotaMessage(
+                    `❌ Class B2 reservation for ${s.sessionTime}/${s.slot} is ${s.reservedB2}, ` +
+                    `but the Class B2 quota is only ${classB2Quota}.`,
                     'error'
                 );
                 if (progressDiv) progressDiv.style.display = 'none';
@@ -1126,15 +1201,22 @@ async function saveQuotaSettings() {
                 .eq('class', 'B2');
             if (syncB2Err) throw syncB2Err;
 
-            // --- 3) Apply per-slot open/closed + reserved state (NEW: reservedQuota) ---
-            for (const { sessionTime, slot, open, reservedQuota } of effectiveSlots) {
-                await applySlotOpenState(targetDate, sessionTime, slot, open, quotas, reservedQuota);
+            // --- 3) Apply per-slot open/closed + per-class reserved state ---
+            for (const { sessionTime, slot, open, reservedB, reservedB2 } of effectiveSlots) {
+                await applySlotOpenState(
+                    targetDate,
+                    sessionTime,
+                    slot,
+                    open,
+                    quotas,
+                    { B: reservedB, B2: reservedB2 }
+                );
             }
 
             successCount++;
         }
 
-        // --- 4) Build success message reflecting what was actually closed/reserved (NEW) ---
+        // --- 4) Build success message reflecting what was actually closed/reserved ---
         const modeText = applyMode === 'single' ? 'date' : 'date range';
 
         const closedParts = [];
@@ -1151,8 +1233,9 @@ async function saveQuotaSettings() {
 
             if (!s.open) {
                 closedSlots.push(`${short}/${s.slot}`);
-            } else if (s.reservedQuota > 0) {
-                reservedParts.push(`${short}/${s.slot}×${s.reservedQuota}`);
+            } else {
+                if (s.reservedB  > 0) reservedParts.push(`${short}/${s.slot}·B×${s.reservedB}`);
+                if (s.reservedB2 > 0) reservedParts.push(`${short}/${s.slot}·B2×${s.reservedB2}`);
             }
         }
 
@@ -1172,10 +1255,10 @@ async function saveQuotaSettings() {
             'success'
         );
 
-        // --- 5) Refresh UI (NEW: chips) ---
+        // --- 5) Refresh UI ---
         await loadQuotaSettings(date);
         await loadAdminCalendarData();
-        await loadReservedChips();              // NEW
+        await loadReservedChips();
 
         if (selectedAdminDate) {
             await onAdminDateClick(selectedAdminDate);
@@ -1188,7 +1271,6 @@ async function saveQuotaSettings() {
         if (progressDiv) progressDiv.style.display = 'none';
     }
 }
-
 async function resetQuotaToDefault() {
     const date = document.getElementById('quotaDateSelect').value;
 
@@ -2674,7 +2756,9 @@ async function loadAdminCalendarData() {
             }
 
             // 🆕 Add reserved-slot indicator (🔒) — shown only on future / today cells
-            const hasReservation = sessions.some(s => s.is_reserved && s.reserved_quota > 0);
+            const hasReservation = sessions.some(
+                s => s.is_reserved && ((s.reserved_quota_b ?? 0) > 0 || (s.reserved_quota_b2 ?? 0) > 0)
+            );
             if (hasReservation && dateStr >= today) {
                 const lock = document.createElement('span');
                 lock.className = 'reserved-badge';
