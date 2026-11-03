@@ -122,6 +122,11 @@ function refreshIcons() {
     }
 }
 
+function buildBookingUrl(token) {
+    const dir = location.pathname.replace(/[^/]*$/, '');   // strip filename, keep dir + trailing /
+    return `${location.origin}${dir}booking.html?key=${encodeURIComponent(token)}`;
+}
+
 // ============================================
 // ADMIN SESSION MANAGEMENT
 // ============================================
@@ -693,6 +698,7 @@ async function generatePrivateToken() {
     const notes = prompt('Optional note for this link (e.g. "Nov batch"):') || null;
     const tokenClass = document.getElementById('tokenClass')?.value || null;
     const token = crypto.randomUUID().replace(/-/g, '').slice(0, 24);
+    
 
     const { data, error } = await supabaseClient
         .from('private_slot_tokens')
@@ -700,7 +706,7 @@ async function generatePrivateToken() {
         .select('token').single();
     if (error) return showMessage(error.message, 'error');
 
-    const url = `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${data.token}`;
+    const url = buildBookingUrl(data.token);
 
     // Try to copy; regardless, open the manager so the admin can see the link
     let copied = false;
@@ -741,8 +747,7 @@ async function openTokenManager() {
     const modal = document.getElementById('tokenManagerModal');
     const body  = modal.querySelector('div');
 
-    const buildUrl = (t) =>
-        `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${t.token}`;
+    const buildUrl = (t) => buildBookingUrl(t.token);
 
     // Most recently generated token (top row, since ordered by created_at desc)
     const latest = data && data.length > 0 ? data[0] : null;
@@ -817,7 +822,7 @@ async function copyTokenUrl(id) {
         .single();
     if (error || !data) return showMessage('Could not load link.', 'error');
 
-    const url = `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${data.token}`;
+    const url = buildBookingUrl(data.token);
     await navigator.clipboard.writeText(url).catch(() => {});
     showMessage('✅ Link copied to clipboard.', 'success');
 }
