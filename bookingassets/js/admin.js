@@ -864,15 +864,17 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
     const quotaB2 = quotas?.B2 ?? DEFAULT_QUOTA.B2;
 
     // A closed slot cannot carry a reservation.
-    const reservedB  = isOpen ? Math.max(0, (reserved.B  | 0)) : 0;
-    const reservedB2 = isOpen ? Math.max(0, (reserved.B2 | 0)) : 0;
+    // Also clamp to max_bookings so we can never violate reserved_le_max,
+    // even if the caller passed bad numbers.
+    const reservedB  = isOpen ? Math.min(Math.max(0, (reserved.B  | 0)), quotaB)  : 0;
+    const reservedB2 = isOpen ? Math.min(Math.max(0, (reserved.B2 | 0)), quotaB2) : 0;
 
     // ---- 1) Targeted UPDATE for the B row ----
     const { error: updBErr } = await supabaseClient
         .from('available_sessions')
         .update({
             is_available:      isOpen,
-             max_bookings:      quotaB,
+            max_bookings:      quotaB,
             reserved_quota_b:  reservedB,
             reserved_quota_b2: 0,
             is_reserved:       reservedB > 0
@@ -899,10 +901,24 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .eq('class', 'B2');
     if (updB2Err) throw updB2Err;
 
-    // ---- 3) Upsert missing rows for both classes ----
-    //   current_bookings: 0 is correct here — these rows don't exist yet.
-    const rows = [
-        {
+    // ---- 3) Insert only missing rows ----
+    //   We can't use upsert({ignoreDuplicates:true}) reliably here because
+    //   Postgres evaluates CHECK constraints on the candidate INSERT row
+    //   BEFORE ON CONFLICT resolution, so a stray bad value fails hard.
+    //   Instead: check existence first, then insert with clamped values.
+    const { data: existingRows, error: existErr } = await supabaseClient
+        .from('available_sessions')
+        .select('class')
+        .eq('session_date', date)
+        .eq('session_time', sessionTime)
+        .eq('session_slot', sessionSlot);
+    if (existErr) throw existErr;
+
+    const existingClasses = new Set((existingRows || []).map(r => r.class));
+
+    const rowsToInsert = [];
+    if (!existingClasses.has('B')) {
+        rowsToInsert.push({
             class:             'B',
             session_date:      date,
             session_time:      sessionTime,
@@ -913,8 +929,10 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
             reserved_quota_b:  reservedB,
             reserved_quota_b2: 0,
             is_reserved:       reservedB > 0
-        },
-        {
+        });
+    }
+    if (!existingClasses.has('B2')) {
+        rowsToInsert.push({
             class:             'B2',
             session_date:      date,
             session_time:      sessionTime,
@@ -925,18 +943,18 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
             reserved_quota_b:  0,
             reserved_quota_b2: reservedB2,
             is_reserved:       reservedB2 > 0
-        }
-    ];
-
-    const { error: upsErr } = await supabaseClient
-        .from('available_sessions')
-        .upsert(rows, {
-            onConflict: 'class,session_date,session_time,session_slot',
-            ignoreDuplicates: true 
         });
-    if (upsErr) throw upsErr;
-}
+    }
 
+    if (rowsToInsert.length > 0) {
+        const { error: insErr } = await supabaseClient
+            .from('available_sessions')
+            .insert(rowsToInsert);
+        // Swallow unique-violation (race: another tab inserted between our
+        // SELECT and INSERT). Anything else is a real error.
+        if (insErr && insErr.code !== '23505') throw insErr;
+    }
+}
 /**
  * Convenience: apply open/closed state to ALL slots of a session.
  * Used by callers that want session-level semantics.
