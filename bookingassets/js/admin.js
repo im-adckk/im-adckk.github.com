@@ -1197,9 +1197,25 @@ async function saveQuotaSettings() {
         showQuotaMessage('No dates to update.', 'error');
         return;
     }
+    // ---- Button spinner + paint yield ----
+    const saveBtn   = document.getElementById('saveQuotaBtn');
+    const btnLabel  = saveBtn?.querySelector('.btn-label');
+    const originalBtnHTML = saveBtn ? saveBtn.innerHTML : null;
+
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.classList.add('opacity-60', 'cursor-not-allowed');
+        saveBtn.innerHTML = `
+            <i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i>
+            <span class="btn-label">Saving…</span>
+        `;
+    }
 
     const progressDiv = document.getElementById('quotaProgress');
     if (progressDiv) progressDiv.style.display = 'block';
+
+    refreshIcons();
+    await new Promise(requestAnimationFrame);
 
     try {
         // --- Capture per-slot UI state ONCE (before looping dates) ---
