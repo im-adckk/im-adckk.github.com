@@ -1459,7 +1459,7 @@ async function saveQuotaSettings() {
                 if (syncB2Err) throw syncB2Err;
 
                 // --- 3) Apply per-slot open/closed + per-class reserved state ---
-                for (const { sessionTime, slot, open, reservedB, reservedB2 } of effectiveSlots) {
+                for (const { sessionTime, slot, open, openFor, reservedB, reservedB2 } of effectiveSlots) {
                     await applySlotOpenState(
                         targetDate,
                         sessionTime,
@@ -1536,7 +1536,6 @@ async function saveQuotaSettings() {
         if (closedSlots.length) summaryMsg += ` · slots closed: ${closedSlots.join(', ')}`;
         if (classClosed.length) summaryMsg += ` · class closed: ${classClosed.join(', ')}`;
         if (reservedParts.length) summaryMsg += ` · reserved: ${reservedParts.join(', ')}`;
-        }
 
         if (failureDetails.length > 0) {
             // Partial failure — report both what worked and what didn't
