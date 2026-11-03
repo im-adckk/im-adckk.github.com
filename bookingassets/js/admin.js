@@ -1176,10 +1176,19 @@ async function loadQuotaSettings(date) {
 
 async function saveQuotaSettings() {
     const date           = document.getElementById('quotaDateSelect').value;
-    const classBQuota    = parseInt(document.getElementById('quotaClassB').value)  || DEFAULT_QUOTA.B;
-    const classB2Quota   = parseInt(document.getElementById('quotaClassB2').value) || DEFAULT_QUOTA.B2;
     const applyMode      = document.getElementById('quotaApplyMode').value;
     const rangeEnd       = document.getElementById('quotaRangeEnd').value;
+    const rawB  = document.getElementById('quotaClassB').value.trim();
+    const rawB2 = document.getElementById('quotaClassB2').value.trim();
+    
+    const classBQuota  = rawB  === '' ? DEFAULT_QUOTA.B  : parseInt(rawB,  10);
+    const classB2Quota = rawB2 === '' ? DEFAULT_QUOTA.B2 : parseInt(rawB2, 10);
+    
+    if (!Number.isFinite(classBQuota) || !Number.isFinite(classB2Quota) ||
+        classBQuota < 0 || classB2Quota < 0) {
+        showQuotaMessage('Quota must be a non-negative number.', 'error');
+        return;
+    }
 
     if (!date) {
         showQuotaMessage('Please select a date first.', 'error');
