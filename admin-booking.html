@@ -731,9 +731,9 @@
                     <!-- Row 3: Action toolbar                                        -->
                     <!-- ============================================================ -->
                     <div class="flex flex-wrap items-center justify-end gap-2 pt-3 border-t">
-                        <button onclick="saveQuotaSettings()" class="btn gap-2 h-9" data-variant="secondary">
+                        <button id="saveQuotaBtn" onclick="saveQuotaSettings()" class="btn gap-2 h-9" data-variant="secondary">
                             <i data-lucide="save" class="w-4 h-4"></i>
-                            Save Quota
+                            <span class="btn-label">Save Quota</span>
                         </button>
                         <button onclick="resetQuotaToDefault()" class="btn gap-2 h-9" data-variant="outline">
                             <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
