@@ -532,6 +532,18 @@ function setDateRange(range) {
 // QUOTA MANAGEMENT
 // ============================================
 
+
+function publicAvailable(row) {
+    if (!row) return 0;
+    const reserved = row.class === 'B'
+        ? (row.reserved_quota_b  || 0)
+        : row.class === 'B2'
+            ? (row.reserved_quota_b2 || 0)
+            : 0;
+    const reservedToSubtract = row.is_reserved ? reserved : 0;
+    return Math.max(0, (row.max_bookings || 0) - (row.current_bookings || 0) - reservedToSubtract);
+}
+
 // ============================================
 // SESSION & SLOT OPEN/CLOSE HELPERS (R3)
 // ============================================
@@ -801,6 +813,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .from('available_sessions')
         .update({
             is_available:      isOpen,
+             max_bookings:      quotaB,
             reserved_quota_b:  reservedB,
             reserved_quota_b2: 0,
             is_reserved:       reservedB > 0
@@ -816,6 +829,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .from('available_sessions')
         .update({
             is_available:      isOpen,
+            max_bookings:      quotaB2,
             reserved_quota_b:  0,
             reserved_quota_b2: reservedB2,
             is_reserved:       reservedB2 > 0
@@ -2646,7 +2660,7 @@ async function loadAdminCalendarData() {
     try {
         const { data: sessions, error: sessionsError } = await supabaseClient
             .from('available_sessions')
-            .select('*')                                    // already includes is_reserved + reserved_quota
+            .select('*')
             .gte('session_date', startDateStr)
             .lte('session_date', endDateStr);
 
@@ -2695,6 +2709,10 @@ async function loadAdminCalendarData() {
             const isToday = dateStr === today;
             const isActive = status ? status.is_active : true;
 
+            // Public-facing availability: reserved seats are NOT counted as
+            // free, because a member of the public cannot book them.
+            const anyPublicAvailable = sessions.some(s => publicAvailable(s) > 0);
+
             let bgColor = '#95a5a6';
             let textColor = 'white';
             let cursor = 'default';
@@ -2713,12 +2731,7 @@ async function loadAdminCalendarData() {
                 textColor = 'white';
                 cursor = 'pointer';
             } else {
-                // Check if custom quota exists
-                const hasQuota = quota !== undefined && quota !== null;
-                // Check availability based on actual sessions
-                const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
-
-                if (hasAvailable) {
+                if (anyPublicAvailable) {
                     bgColor = '#2ecc71';
                     textColor = 'white';
                     cursor = 'pointer';
@@ -2757,16 +2770,15 @@ async function loadAdminCalendarData() {
                 cell.appendChild(badge);
             }
 
-            // Add availability dot
-            const hasAvailable = sessions.some(s => s.current_bookings < s.max_bookings);
-            if (hasAvailable && dateStr >= today && isActive) {
+            // Add availability dot — only when there is genuinely public availability
+            if (anyPublicAvailable && dateStr >= today && isActive) {
                 const dot = document.createElement('span');
                 dot.className = 'availability-dot';
                 dot.style.cssText = 'position:absolute;bottom:4px;right:6px;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);';
                 cell.appendChild(dot);
             }
 
-            // 🆕 Add reserved-slot indicator (🔒) — shown only on future / today cells
+            // Reserved-slot indicator (🔒)
             const hasReservation = sessions.some(
                 s => s.is_reserved && ((s.reserved_quota_b ?? 0) > 0 || (s.reserved_quota_b2 ?? 0) > 0)
             );
@@ -2895,15 +2907,7 @@ async function onAdminDateClick(dateStr) {
             </div>
         `;
 
-        // ---- Closed / not-offered state analysis ----
-        // Rules:
-        //   • Session "fully closed"  = rows exist for that session AND every row is is_available=false
-        //   • Slot "closed"           = rows exist for that (session, slot) AND every row is is_available=false
-        //   • Slot "not offered"      = no rows exist for that (session, slot) at all
-        //                                (only meaningful for sesi3, which defaults off)
-        //
-        // TOGGLE: set REPORT_NOT_OFFERED = true to also surface "sesi3 (not offered)"
-        // on every date. Default false keeps the badge quiet unless something is truly closed.
+        // ---- Closed / not-offered state analysis (unchanged) ----
         const REPORT_NOT_OFFERED = false;
         const closedLabels = [];
 
@@ -2923,10 +2927,9 @@ async function onAdminDateClick(dateStr) {
             const sessionFullyClosed = tRows.every(r => r.is_available === false);
             if (sessionFullyClosed) {
                 closedLabels.push(`${tLabel} (session closed)`);
-                continue; // no need to enumerate slots if whole session is closed
+                continue;
             }
 
-            // Enumerate per-slot closures (and optionally missing slots)
             for (const s of ALL_SLOTS) {
                 const sRows = tRows.filter(r => r.session_slot === s);
                 const shortLabel = `${t === '9am-12pm' ? 'AM' : t === '12pm-3pm' ? 'PM' : 'EL'}/${s}`;
@@ -2949,6 +2952,51 @@ async function onAdminDateClick(dateStr) {
             `;
         }
 
+        // ---- Helper: render a class table with Booked / Reserved / Public ----
+        // "Available" here means *public* available (capacity minus reservations
+        // minus current bookings). The Reserved column exposes the carve-out
+        // explicitly so the admin can see why a slot that shows 0 available
+        // isn't a bug — it's spoken for.
+        const renderClassTable = (rows, className, classQuota, reservedField) => {
+            if (rows.length === 0) {
+                return `<p class="text-xs text-muted-foreground italic p-2">No open ${className} sessions for this date.</p>`;
+            }
+            return `
+                <div class="border rounded-lg overflow-hidden bg-card text-xs">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-muted text-muted-foreground font-semibold border-b">
+                                <th class="p-2">Time</th>
+                                <th class="p-2">Slot</th>
+                                <th class="p-2 text-center">Booked</th>
+                                <th class="p-2 text-center">Reserved</th>
+                                <th class="p-2 text-center">Public Left</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            ${rows.map(s => {
+                                const reserved = s.is_reserved ? (s[reservedField] || 0) : 0;
+                                const publicLeft = publicAvailable(s);
+                                return `
+                                    <tr>
+                                        <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
+                                        <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
+                                        <td class="p-2 text-center">${s.current_bookings || 0}/${s.max_bookings ?? classQuota}</td>
+                                        <td class="p-2 text-center ${reserved > 0 ? 'text-amber-700 font-semibold' : 'text-muted-foreground'}">
+                                            ${reserved > 0 ? '🔒 ' + reserved : '—'}
+                                        </td>
+                                        <td class="p-2 text-center font-bold ${publicLeft > 0 ? 'text-emerald-600' : 'text-destructive'}">
+                                            ${publicLeft > 0 ? '✅ ' + publicLeft : '❌ Full'}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        };
+
         // ---- Class B table ----
         html += `
             <div class="space-y-2">
@@ -2956,34 +3004,7 @@ async function onAdminDateClick(dateStr) {
                     <span>🏍️ Class B</span>
                     <span class="text-xs text-muted-foreground font-normal">Quota: ${classBQuota}</span>
                 </h4>
-                ${classBData.length > 0 ? `
-                    <div class="border rounded-lg overflow-hidden bg-card text-xs">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-muted text-muted-foreground font-semibold border-b">
-                                    <th class="p-2">Time</th>
-                                    <th class="p-2">Slot</th>
-                                    <th class="p-2">Booked</th>
-                                    <th class="p-2">Available</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y">
-                                ${classBData.map(s => `
-                                    <tr>
-                                        <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
-                                        <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
-                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings ?? classBQuota}</td>
-                                        <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
-                                            ${s.current_bookings < s.max_bookings
-                                                ? '✅ ' + (s.max_bookings - s.current_bookings)
-                                                : '❌ Full'}
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : '<p class="text-xs text-muted-foreground italic p-2">No open Class B sessions for this date.</p>'}
+                ${renderClassTable(classBData, 'Class B', classBQuota, 'reserved_quota_b')}
             </div>
         `;
 
@@ -2994,47 +3015,27 @@ async function onAdminDateClick(dateStr) {
                     <span>🏍️ Class B2</span>
                     <span class="text-xs text-muted-foreground font-normal">Quota: ${classB2Quota}</span>
                 </h4>
-                ${classB2Data.length > 0 ? `
-                    <div class="border rounded-lg overflow-hidden bg-card text-xs">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-muted text-muted-foreground font-semibold border-b">
-                                    <th class="p-2">Time</th>
-                                    <th class="p-2">Slot</th>
-                                    <th class="p-2">Booked</th>
-                                    <th class="p-2">Available</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y">
-                                ${classB2Data.map(s => `
-                                    <tr>
-                                        <td class="p-2 font-semibold">${s.session_time || 'N/A'}</td>
-                                        <td class="p-2 text-muted-foreground">${s.session_slot || 'N/A'}</td>
-                                        <td class="p-2">${s.current_bookings || 0}/${s.max_bookings ?? classB2Quota}</td>
-                                        <td class="p-2 font-bold ${s.current_bookings < s.max_bookings ? 'text-emerald-600' : 'text-destructive'}">
-                                            ${s.current_bookings < s.max_bookings
-                                                ? '✅ ' + (s.max_bookings - s.current_bookings)
-                                                : '❌ Full'}
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : '<p class="text-xs text-muted-foreground italic p-2">No open Class B2 sessions for this date.</p>'}
+                ${renderClassTable(classB2Data, 'Class B2', classB2Quota, 'reserved_quota_b2')}
             </div>
         `;
 
-        // ---- Totals (open rows only) ----
-        const totalB  = classBData.reduce((sum, s)  => sum + Math.max(0, s.max_bookings - s.current_bookings), 0);
-        const totalB2 = classB2Data.reduce((sum, s) => sum + Math.max(0, s.max_bookings - s.current_bookings), 0);
-        const totalAvailable = totalB + totalB2;
+        // ---- Totals: public-facing + reserved carve-out ----
+        const totalBPublic  = classBData.reduce((sum, s)  => sum + publicAvailable(s), 0);
+        const totalB2Public = classB2Data.reduce((sum, s) => sum + publicAvailable(s), 0);
+        const totalPublic   = totalBPublic + totalB2Public;
+
+        const totalBReserved  = classBData.reduce((sum, s)  => sum + (s.is_reserved ? (s.reserved_quota_b  || 0) : 0), 0);
+        const totalB2Reserved = classB2Data.reduce((sum, s) => sum + (s.is_reserved ? (s.reserved_quota_b2 || 0) : 0), 0);
+        const totalReserved   = totalBReserved + totalB2Reserved;
 
         html += `
             <div class="mt-4 p-3 bg-card border rounded-lg text-xs font-medium space-y-1">
-                <p class="text-muted-foreground">Class B Available: <span class="${totalB > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB} slots</span></p>
-                <p class="text-muted-foreground">Class B2 Available: <span class="${totalB2 > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB2} slots</span></p>
-                <p class="border-t pt-1 font-bold text-foreground flex justify-between text-sm"><span>Total Remaining:</span> <span>${totalAvailable} slots</span></p>
+                <p class="text-muted-foreground">Class B Public Available: <span class="${totalBPublic > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalBPublic} slots</span></p>
+                <p class="text-muted-foreground">Class B2 Public Available: <span class="${totalB2Public > 0 ? 'text-emerald-600 font-bold' : 'text-muted-foreground'}">${totalB2Public} slots</span></p>
+                ${totalReserved > 0
+                    ? `<p class="text-amber-700">🔒 Held for private links: <span class="font-bold">${totalReserved} seat${totalReserved > 1 ? 's' : ''}</span> (B: ${totalBReserved}, B2: ${totalB2Reserved})</p>`
+                    : ''}
+                <p class="border-t pt-1 font-bold text-foreground flex justify-between text-sm"><span>Public Remaining:</span> <span>${totalPublic} slots</span></p>
             </div>
         `;
 
@@ -3055,6 +3056,8 @@ async function onAdminDateClick(dateStr) {
         showMessage('Error loading date details: ' + error.message, 'error');
     }
 }
+
+
 // ============================================
 // TABS
 // ============================================
