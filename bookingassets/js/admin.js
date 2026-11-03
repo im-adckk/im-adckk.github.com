@@ -875,7 +875,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .update({
             is_available:      isOpen,
             max_bookings:      quotaB,
-            reserved_quota:    legacyReserved,
+            reserved_quota:    0,
             reserved_quota_b:  reservedB,
             reserved_quota_b2: 0,
             is_reserved:       reservedB > 0
@@ -892,7 +892,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .update({
             is_available:      isOpen,
             max_bookings:      quotaB2,
-            reserved_quota:    legacyReserved,
+            reserved_quota:    0,
             reserved_quota_b:  0,
             reserved_quota_b2: reservedB2,
             is_reserved:       reservedB2 > 0
