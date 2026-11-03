@@ -1645,6 +1645,22 @@ function handleBookingError(err, confirmBtn, originalHTML) {
         return true;
     }
 
+    // NEW: token is valid but belongs to the other class.
+    // Only raised when the slot is reserved AND the token's class ≠ booking class.
+    // The token itself is fine — it just doesn't grant access to THIS reserved slot.
+    if (/TOKEN_CLASS_MISMATCH/.test(msg) || /TOKEN_CLASS_MISMATCH/.test(hint)) {
+        restore();
+        const tokenClass = window._privateTokenClass || null;
+        const classLabel = tokenClass ? `Class ${tokenClass}` : 'a different class';
+        showMessage(
+            `This private link is for ${classLabel} only. ` +
+            `You can still book public sessions, or contact the admin for the correct link.`,
+            'error'
+        );
+        // Do NOT flip window._isSpecialViewer — the token is still valid.
+        return true;
+    }
+
     // ---- Existing rules (still enforced by triggers inside confirm_booking) ----
     if (code === 'P0001' && /FUTURE_BOOKING_LIMIT/.test(msg)) {
         restore();
@@ -1854,38 +1870,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     // We do this before anything else so every later RPC and every
     // UI decision (badge, messages, SLOT_FULL tailoring) uses the
     // same verdict.
-    window._isSpecialViewer = false;
+        window._isSpecialViewer = false;
+    window._privateTokenClass = null;   // NEW: 'B' | 'B2' | null
 
     if (PRIVATE_TOKEN) {
         try {
             const { data, error } = await supabaseClient
                 .rpc('validate_private_token', { p_token: PRIVATE_TOKEN });
 
-            // Defensive: the RPC might return `true`, `{valid: true}`,
-            // or `{valid: true, label: '...'}` depending on how it's written.
-            // Normalise all of them.
+            // Normalise whatever shape the RPC returns:
+            //   true  |  {valid: true}  |  {valid: true, label, class}
             let valid = false;
             let label = null;
+            let tokenClass = null;      // NEW
 
             if (error) {
-                // Function missing (PGRST202) or other error → treat as invalid,
-                // but log so the admin can spot a missing migration.
                 console.warn('validate_private_token error:', error.message);
             } else if (data === true) {
                 valid = true;
             } else if (data && typeof data === 'object') {
                 valid = data.valid === true;
                 label = data.label || data.notes || null;
+                tokenClass = data.class || null;    // NEW
             }
 
-            window._isSpecialViewer = valid;
+            window._isSpecialViewer  = valid;
+            window._privateTokenClass = valid ? tokenClass : null;   // NEW
 
             if (valid) {
-                showPrivateBadge(label);
+                showPrivateBadge(label, tokenClass);                 // NEW: pass class
             } else {
-                // Do NOT block the page — the user can still book public slots.
-                // Just warn once so they're not confused when reserved slots
-                // stay hidden.
                 showMessage(
                     'The private link in your URL is invalid, expired, or has been revoked. ' +
                     'You are browsing as a normal user. Contact the admin for a new link if needed.',
@@ -1894,7 +1908,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (err) {
             console.error('Token validation failed:', err);
-            window._isSpecialViewer = false;
+            window._isSpecialViewer  = false;
+            window._privateTokenClass = null;
         }
     }
 
@@ -1984,13 +1999,16 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Falls back silently if #privateBadge is not present in the HTML
  * (so you can roll this out without touching booking.html first).
  */
-function showPrivateBadge(label) {
+function showPrivateBadge(label, tokenClass) {
+    // Build the class segment: ' · Class B' / ' · Class B2' / '' (legacy = both)
+    const classSegment = tokenClass ? ` · Class ${tokenClass}` : '';
+
     const badge = document.getElementById('privateBadge');
     if (!badge) {
-        // Fallback: prepend to the message bar area if the dedicated
-        // element wasn't added. Still gives the user a visible cue.
+        // Fallback: no dedicated badge element — use the message bar.
         showMessage(
             '🔒 Private access enabled' +
+            classSegment +
             (label ? ` (${label})` : '') +
             '. Reserved seats are visible to you.',
             'success'
@@ -2000,7 +2018,7 @@ function showPrivateBadge(label) {
 
     badge.innerHTML = `
         <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-        <span>Private access enabled${label ? ` · ${label}` : ''}</span>
+        <span>Private access${classSegment}${label ? ` · ${label}` : ''}</span>
     `;
     badge.classList.remove('hidden');
     refreshIcons();
