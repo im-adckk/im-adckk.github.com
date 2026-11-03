@@ -859,7 +859,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .from('available_sessions')
         .upsert(rows, {
             onConflict: 'class,session_date,session_time,session_slot',
-            ignoreDuplicates: false
+            ignoreDuplicates: true 
         });
     if (upsErr) throw upsErr;
 }
