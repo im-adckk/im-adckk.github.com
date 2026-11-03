@@ -55,17 +55,6 @@ function formatSlot(slot) {
     return SESSION_SLOT_LABELS[slot] || slot;
 }
 
-function publicAvailable(row) {
-    if (!row) return 0;
-    const reserved = row.class === 'B'
-        ? (row.reserved_quota_b  || 0)
-        : row.class === 'B2'
-            ? (row.reserved_quota_b2 || 0)
-            : 0;
-    const reservedToSubtract = row.is_reserved ? reserved : 0;
-    return Math.max(0, (row.max_bookings || 0) - (row.current_bookings || 0) - reservedToSubtract);
-}
-
 const LESSON_TYPES_SIMPLE = {
     'KPP02': { label: 'KPP02', max: 5 },
     'KPP03': { label: 'KPP03', max: 3 },
@@ -359,22 +348,10 @@ function computeDayState(dateStr, todayStr, sessionMap, statusMap) {
     }
 
     const sessions = sessionMap[dateStr] || [];
+    // Only sessions that are actually open count toward availability.
     const openSessions = sessions.filter(s => s.is_available !== false);
 
-    // --- Who is looking? ---
-    // Public viewer: only unreserved seats count as bookable.
-    // Token viewer: reserved seats are also bookable by them (their token
-    // grants access), so use raw capacity minus bookings.
-    const isPrivateViewer = window._isSpecialViewer === true;
-
-    const hasAvailable = openSessions.some(s => {
-        if (isPrivateViewer) {
-            // Seats already booked are gone; reserved seats are fair game.
-            return ((s.max_bookings || 0) - (s.current_bookings || 0)) > 0;
-        }
-        return publicAvailable(s) > 0;
-    });
-
+    const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
     if (hasAvailable) {
         return { state: 'available', title: 'Available' };
     }
@@ -601,13 +578,7 @@ async function onDateClick(dateStr) {
 
         if (error) throw error;
         const openSessions = (rows || []).filter(s => s.is_available !== false);
-        const isPrivateViewer = window._isSpecialViewer === true;
-        const hasAvailable = openSessions.some(s => {
-            if (isPrivateViewer) {
-                return ((s.max_bookings || 0) - (s.current_bookings || 0)) > 0;
-            }
-            return publicAvailable(s) > 0;
-        });
+        const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
         dayState = hasAvailable ? 'available' : (openSessions.length > 0 ? 'full' : 'none');
     } catch (error) {
         console.error('Error checking day state:', error);
