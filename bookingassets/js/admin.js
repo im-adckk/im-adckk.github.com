@@ -986,9 +986,9 @@ async function fetchQuotaForDate(date) {
  */
 function onSessionToggle(sessionKey) {
     const map = {
-        morning: { cbId: 'sessionOpenMorning', containerId: 'morningSlots' },
-        noon:    { cbId: 'sessionOpenNoon',    containerId: 'noonSlots'    },
-        eleven:  { cbId: 'sessionOpenEleven',  containerId: 'elevenSlots'  }
+        morning: { cbId: 'sessionOpenMorning', containerId: 'morningSlots', time: '9am-12pm'  },
+        noon:    { cbId: 'sessionOpenNoon',    containerId: 'noonSlots',    time: '12pm-3pm'  },
+        eleven:  { cbId: 'sessionOpenEleven',  containerId: 'elevenSlots',  time: '11am-2pm'  }
     };
     const cfg = map[sessionKey];
     if (!cfg) return;
@@ -999,14 +999,59 @@ function onSessionToggle(sessionKey) {
 
     slotCbs.forEach(cb => {
         cb.disabled = !open;
+        const slot = cb.dataset.slot;
+        const cbB  = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`);
+        const cbB2 = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`);
+        const inputB  = document.querySelector(`.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`);
+        const inputB2 = document.querySelector(`.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`);
+
         if (!open) {
             cb.checked = false;
-        } else if (DEFAULT_SLOTS.includes(cb.dataset.slot)) {
-            cb.checked = true;
+            if (cbB)  { cbB.checked  = false; cbB.disabled  = true; }
+            if (cbB2) { cbB2.checked = false; cbB2.disabled = true; }
+            if (inputB)  { inputB.disabled  = true; inputB.value  = ''; }
+            if (inputB2) { inputB2.disabled = true; inputB2.value = ''; }
+        } else {
+            if (DEFAULT_SLOTS.includes(slot)) cb.checked = true;
+            const slotOn = cb.checked;
+            if (cbB)  { cbB.checked  = slotOn; cbB.disabled  = !slotOn; }
+            if (cbB2) { cbB2.checked = slotOn; cbB2.disabled = !slotOn; }
+            if (inputB)  inputB.disabled  = !slotOn;
+            if (inputB2) inputB2.disabled = !slotOn;
         }
-        // For 'eleven', sesi1 is the default-open slot; the DEFAULT_SLOTS
-        // array already includes sesi1, so this works unchanged.
     });
+    refreshSessionHint();
+}
+
+
+/**
+ * Called when a per-class open checkbox toggles.
+ * - If both classes become unchecked → the slot itself is effectively closed,
+ *   so also uncheck the slot checkbox.
+ * - Enables/disables the corresponding reserve input.
+ */
+function onClassToggle(sessionTime, slot) {
+    const cbB  = document.querySelector(`.class-open-cb[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B"]`);
+    const cbB2 = document.querySelector(`.class-open-cb[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B2"]`);
+    if (!cbB || !cbB2) return;
+
+    const anyOpen = cbB.checked || cbB2.checked;
+
+    // Sync the slot-level checkbox (represents "either class open")
+    const slotCb = document.querySelector(`.slot-cb[data-slot="${slot}"]`);
+    // Find the one inside the right session container
+    const containerId = sessionTime === '9am-12pm' ? 'morningSlots'
+                      : sessionTime === '12pm-3pm' ? 'noonSlots'
+                      : 'elevenSlots';
+    const slotCbScoped = document.querySelector(`#${containerId} .slot-cb[data-slot="${slot}"]`);
+    if (slotCbScoped) slotCbScoped.checked = anyOpen;
+
+    // Enable/disable reserve inputs per class
+    const inputB  = document.querySelector(`.reserve-input[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B"]`);
+    const inputB2 = document.querySelector(`.reserve-input[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B2"]`);
+    if (inputB)  { inputB.disabled  = !cbB.checked;  if (!cbB.checked)  inputB.value  = ''; }
+    if (inputB2) { inputB2.disabled = !cbB2.checked; if (!cbB2.checked) inputB2.value = ''; }
+
     refreshSessionHint();
 }
 
@@ -1017,19 +1062,39 @@ function onSessionToggle(sessionKey) {
  */
 function onSlotToggle(sessionKey) {
     const map = {
-        morning: { cbId: 'sessionOpenMorning', containerId: 'morningSlots' },
-        noon:    { cbId: 'sessionOpenNoon',    containerId: 'noonSlots'    },
-        eleven:  { cbId: 'sessionOpenEleven',  containerId: 'elevenSlots'  }
+        morning: { cbId: 'sessionOpenMorning', containerId: 'morningSlots', time: '9am-12pm'  },
+        noon:    { cbId: 'sessionOpenNoon',    containerId: 'noonSlots',    time: '12pm-3pm'  },
+        eleven:  { cbId: 'sessionOpenEleven',  containerId: 'elevenSlots',  time: '11am-2pm'  }
     };
     const cfg = map[sessionKey];
     if (!cfg) return;
 
-    const slotCbs   = [...document.querySelectorAll(`#${cfg.containerId} .slot-cb`)];
+    const slotCbs = [...document.querySelectorAll(`#${cfg.containerId} .slot-cb`)];
     const sessionCb = document.getElementById(cfg.cbId);
     const anyChecked = slotCbs.some(cb => cb.checked);
 
     sessionCb.checked = anyChecked;
-    slotCbs.forEach(cb => { cb.disabled = !anyChecked; });
+    slotCbs.forEach(cb => {
+        cb.disabled = !anyChecked;
+        const slot = cb.dataset.slot;
+        const cbB  = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`);
+        const cbB2 = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`);
+        const inputB  = document.querySelector(`.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`);
+        const inputB2 = document.querySelector(`.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`);
+
+        if (!anyChecked) {
+            if (cbB)  { cbB.checked  = false; cbB.disabled  = true; }
+            if (cbB2) { cbB2.checked = false; cbB2.disabled = true; }
+            if (inputB)  { inputB.disabled  = true; inputB.value  = ''; }
+            if (inputB2) { inputB2.disabled = true; inputB2.value = ''; }
+        } else if (cb.checked) {
+            // Slot is enabled and checked → re-enable both classes (default both open)
+            if (cbB)  { cbB.checked  = true; cbB.disabled  = false; }
+            if (cbB2) { cbB2.checked = true; cbB2.disabled = false; }
+            if (inputB)  inputB.disabled  = false;
+            if (inputB2) inputB2.disabled = false;
+        }
+    });
     refreshSessionHint();
 }
 
@@ -1042,29 +1107,32 @@ function refreshSessionHint() {
     if (!hint) return;
 
     const parts = [];
-    const mSession = document.getElementById('sessionOpenMorning')?.checked;
-    const nSession = document.getElementById('sessionOpenNoon')?.checked;
-    const eSession = document.getElementById('sessionOpenEleven')?.checked;
-
-    if (!mSession) parts.push('Morning closed');
-    if (!nSession) parts.push('Noon closed');
-    if (!eSession) parts.push('11am-2pm closed');
+    if (!document.getElementById('sessionOpenMorning')?.checked) parts.push('Morning closed');
+    if (!document.getElementById('sessionOpenNoon')?.checked)    parts.push('Noon closed');
+    if (!document.getElementById('sessionOpenEleven')?.checked)  parts.push('11am-2pm closed');
 
     const closedSlots = [];
-    document.querySelectorAll('#morningSlots .slot-cb').forEach(cb => {
-        if (!cb.checked) closedSlots.push(`AM/${cb.dataset.slot}`);
-    });
-    document.querySelectorAll('#noonSlots .slot-cb').forEach(cb => {
-        if (!cb.checked) closedSlots.push(`PM/${cb.dataset.slot}`);
-    });
-    document.querySelectorAll('#elevenSlots .slot-cb').forEach(cb => {
-        if (!cb.checked) closedSlots.push(`EL/${cb.dataset.slot}`);
-    });
-    if (closedSlots.length) parts.push(`slots: ${closedSlots.join(', ')}`);
+    const classOnlyClosed = [];
+    const map = [
+        { time: '9am-12pm',  container: 'morningSlots', short: 'AM' },
+        { time: '12pm-3pm',  container: 'noonSlots',    short: 'PM' },
+        { time: '11am-2pm',  container: 'elevenSlots',  short: 'EL' },
+    ];
+    for (const cfg of map) {
+        document.querySelectorAll(`#${cfg.container} .slot-cb`).forEach(cb => {
+            const slot = cb.dataset.slot;
+            if (!cb.checked) { closedSlots.push(`${cfg.short}/${slot}`); return; }
+            const cbB  = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`);
+            const cbB2 = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`);
+            if (cbB  && !cbB.checked)  classOnlyClosed.push(`${cfg.short}/${slot}·B`);
+            if (cbB2 && !cbB2.checked) classOnlyClosed.push(`${cfg.short}/${slot}·B2`);
+        });
+    }
+    if (closedSlots.length)     parts.push(`slots: ${closedSlots.join(', ')}`);
+    if (classOnlyClosed.length) parts.push(`class-closed: ${classOnlyClosed.join(', ')}`);
 
     hint.textContent = parts.length ? `🔒 ${parts.join(' · ')}` : '';
 }
-
 async function loadQuotaSettings(date) {
     if (!date) return;
 
@@ -1093,9 +1161,8 @@ async function loadQuotaSettings(date) {
         }
 
         // ---- 2) available_sessions: fills the reserve inputs (per-class) ----
-        //   This is the query that was missing — without it, the reserve
-        //   <input>s keep whatever the admin last typed and never reflect
-        //   the saved state for the newly selected date.
+        //   Loads reserved_quota_b / reserved_quota_b2 per (session, slot, class)
+        //   so the reserve <input>s reflect the saved state for the selected date.
         const { data: reservedRows, error: reservedErr } = await supabaseClient
             .from('available_sessions')
             .select('session_time, session_slot, class, reserved_quota_b, reserved_quota_b2, is_reserved')
@@ -1117,7 +1184,8 @@ async function loadQuotaSettings(date) {
             }
         });
 
-        // ---- 3) available_sessions: per-slot open/closed state (checkboxes) ----
+        // ---- 3) available_sessions: per-slot + per-class open/closed state ----
+        //   fetchSlotOpenState now returns { [time]: { [slot]: { B: bool, B2: bool } } }
         const state = await fetchSlotOpenState(date);
 
         const sessionMap = {
@@ -1128,33 +1196,55 @@ async function loadQuotaSettings(date) {
 
         for (const [sessionTime, cfg] of Object.entries(sessionMap)) {
             const slotCbs = [...document.querySelectorAll(`#${cfg.containerId} .slot-cb`)];
+
+            // Slot checkbox = "either class is open"
             slotCbs.forEach(cb => {
-                cb.checked = !!state[sessionTime]?.[cb.dataset.slot];
+                const slotState = state[sessionTime]?.[cb.dataset.slot];
+                const slotOpen  = !!slotState && (slotState.B || slotState.B2);
+                cb.checked = slotOpen;
             });
+
             const anyOpen = slotCbs.some(cb => cb.checked);
             const sessionCb = document.getElementById(cfg.cbId);
             if (sessionCb) sessionCb.checked = anyOpen;
             slotCbs.forEach(cb => { cb.disabled = !anyOpen; });
-        }
 
-        // ---- 4) Populate the per-class reserve <input>s from step 2 ----
-        //   Empty string when 0, so the placeholder "0" shows through and
-        //   the admin sees a blank/empty field rather than a literal zero
-        //   that they'd have to clear before typing.
-        for (const [sessionTime, cfg] of Object.entries(sessionMap)) {
+            // Per-class open checkboxes + reserve input enabled/disabled state
             for (const slot of ALL_SLOTS) {
-                const inputB  = document.querySelector(
+                const slotState = state[sessionTime]?.[slot] || { B: false, B2: false };
+                const slotCb = slotCbs.find(cb => cb.dataset.slot === slot);
+                const slotChecked = !!slotCb?.checked;
+
+                const cbB  = document.querySelector(
+                    `.class-open-cb[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B"]`
+                );
+                const cbB2 = document.querySelector(
+                    `.class-open-cb[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B2"]`
+                );
+                const inputB = document.querySelector(
                     `.reserve-input[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B"]`
                 );
                 const inputB2 = document.querySelector(
                     `.reserve-input[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B2"]`
                 );
 
+                // Only show a class as "open" if the slot itself is open
+                const classBOpen  = slotChecked && slotState.B;
+                const classB2Open = slotChecked && slotState.B2;
+
+                if (cbB)  { cbB.checked  = classBOpen;  cbB.disabled  = !slotChecked; }
+                if (cbB2) { cbB2.checked = classB2Open; cbB2.disabled = !slotChecked; }
+
+                // Reserve input is only usable when its class is open
+                if (inputB)  inputB.disabled  = !classBOpen;
+                if (inputB2) inputB2.disabled = !classB2Open;
+
+                // Fill reserve values (empty string when 0, so placeholder shows)
                 const rB  = reservedByKey[sessionTime][slot].B;
                 const rB2 = reservedByKey[sessionTime][slot].B2;
 
-                if (inputB)  inputB.value  = rB  > 0 ? String(rB)  : '';
-                if (inputB2) inputB2.value = rB2 > 0 ? String(rB2) : '';
+                if (inputB)  inputB.value  = (classBOpen  && rB  > 0) ? String(rB)  : '';
+                if (inputB2) inputB2.value = (classB2Open && rB2 > 0) ? String(rB2) : '';
             }
         }
 
@@ -1273,28 +1363,31 @@ async function saveQuotaSettings() {
         for (const cfg of sessionConfigs) {
             const sessionOpen = document.getElementById(cfg.sessionCbId)?.checked ?? true;
             const slotCbs = [...document.querySelectorAll(`#${cfg.containerId} .slot-cb`)];
+        
             for (const cb of slotCbs) {
                 const slot = cb.dataset.slot;
-
-                const inputB  = document.querySelector(
-                    `.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`
-                );
-                const inputB2 = document.querySelector(
-                    `.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`
-                );
-
+        
+                const inputB  = document.querySelector(`.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`);
+                const inputB2 = document.querySelector(`.reserve-input[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`);
+                const cbB  = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B"]`);
+                const cbB2 = document.querySelector(`.class-open-cb[data-session="${cfg.time}"][data-slot="${slot}"][data-class="B2"]`);
+        
                 const rawB  = parseInt(inputB?.value, 10);
                 const rawB2 = parseInt(inputB2?.value, 10);
                 const reservedB  = (!isNaN(rawB)  && rawB  > 0) ? rawB  : 0;
                 const reservedB2 = (!isNaN(rawB2) && rawB2 > 0) ? rawB2 : 0;
+        
                 const slotOpen   = sessionOpen && cb.checked;
-
+                const classBOpen  = slotOpen && (cbB?.checked  ?? true);
+                const classB2Open = slotOpen && (cbB2?.checked ?? true);
+        
                 effectiveSlots.push({
                     sessionTime: cfg.time,
                     slot:        slot,
-                    open:        slotOpen,
-                    reservedB:   slotOpen ? reservedB  : 0,
-                    reservedB2:  slotOpen ? reservedB2 : 0
+                    open:        slotOpen,                       // slot "active" at all
+                    openFor:     { B: classBOpen, B2: classB2Open },
+                    reservedB:   classBOpen  ? reservedB  : 0,
+                    reservedB2:  classB2Open ? reservedB2 : 0
                 });
             }
         }
@@ -1306,16 +1399,12 @@ async function saveQuotaSettings() {
         // was larger than the newly-entered quota.
         const clampedWarnings = [];
         for (const s of effectiveSlots) {
-            if (s.reservedB > classBQuota) {
-                clampedWarnings.push(
-                    `${s.sessionTime}/${s.slot} B: ${s.reservedB}→${classBQuota}`
-                );
+            if (s.openFor.B && s.reservedB > classBQuota) {
+                clampedWarnings.push(`${s.sessionTime}/${s.slot} B: ${s.reservedB}→${classBQuota}`);
                 s.reservedB = classBQuota;
             }
-            if (s.reservedB2 > classB2Quota) {
-                clampedWarnings.push(
-                    `${s.sessionTime}/${s.slot} B2: ${s.reservedB2}→${classB2Quota}`
-                );
+            if (s.openFor.B2 && s.reservedB2 > classB2Quota) {
+                clampedWarnings.push(`${s.sessionTime}/${s.slot} B2: ${s.reservedB2}→${classB2Quota}`);
                 s.reservedB2 = classB2Quota;
             }
         }
@@ -1377,7 +1466,8 @@ async function saveQuotaSettings() {
                         slot,
                         open,
                         quotas,
-                        { B: reservedB, B2: reservedB2 }
+                        { B: reservedB, B2: reservedB2 },
+                        openFor
                     );
                 }
 
@@ -1425,28 +1515,27 @@ async function saveQuotaSettings() {
         }
 
         const closedSlots = [];
+        const classClosed = [];
         const reservedParts = [];
         for (const s of effectiveSlots) {
             const cfg = sessionConfigs.find(c => c.time === s.sessionTime);
             const short = cfg ? cfg.shortLabel : '??';
-
+        
             if (!s.open) {
                 closedSlots.push(`${short}/${s.slot}`);
             } else {
-                if (s.reservedB  > 0) reservedParts.push(`${short}/${s.slot}·B×${s.reservedB}`);
-                if (s.reservedB2 > 0) reservedParts.push(`${short}/${s.slot}·B2×${s.reservedB2}`);
+                if (!s.openFor.B)  classClosed.push(`${short}/${s.slot}·B`);
+                if (!s.openFor.B2) classClosed.push(`${short}/${s.slot}·B2`);
+                if (s.openFor.B  && s.reservedB  > 0) reservedParts.push(`${short}/${s.slot}·B×${s.reservedB}`);
+                if (s.openFor.B2 && s.reservedB2 > 0) reservedParts.push(`${short}/${s.slot}·B2×${s.reservedB2}`);
             }
         }
-
+        
         let summaryMsg = '';
-        if (closedParts.length) {
-            summaryMsg += ` (${closedParts.join(' & ')} closed)`;
-        }
-        if (closedSlots.length) {
-            summaryMsg += ` · slots closed: ${closedSlots.join(', ')}`;
-        }
-        if (reservedParts.length) {
-            summaryMsg += ` · reserved: ${reservedParts.join(', ')}`;
+        if (closedParts.length) summaryMsg += ` (${closedParts.join(' & ')} closed)`;
+        if (closedSlots.length) summaryMsg += ` · slots closed: ${closedSlots.join(', ')}`;
+        if (classClosed.length) summaryMsg += ` · class closed: ${classClosed.join(', ')}`;
+        if (reservedParts.length) summaryMsg += ` · reserved: ${reservedParts.join(', ')}`;
         }
 
         if (failureDetails.length > 0) {
