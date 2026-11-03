@@ -1057,6 +1057,7 @@ async function loadQuotaSettings(date) {
     if (!date) return;
 
     try {
+        // ---- 1) quota_settings: fills the Class B / Class B2 quota inputs ----
         const { data, error } = await supabaseClient
             .from('quota_settings')
             .select('*')
@@ -1079,7 +1080,32 @@ async function loadQuotaSettings(date) {
             document.getElementById('quotaStatus').className = 'text-sm text-muted-foreground';
         }
 
-        // Reflect per-slot open/closed state in checkboxes
+        // ---- 2) available_sessions: fills the reserve inputs (per-class) ----
+        //   This is the query that was missing — without it, the reserve
+        //   <input>s keep whatever the admin last typed and never reflect
+        //   the saved state for the newly selected date.
+        const { data: reservedRows, error: reservedErr } = await supabaseClient
+            .from('available_sessions')
+            .select('session_time, session_slot, class, reserved_quota_b, reserved_quota_b2, is_reserved')
+            .eq('session_date', date);
+        if (reservedErr) throw reservedErr;
+
+        // Build reservedByKey[sessionTime][slot] = { B, B2 }
+        const reservedByKey = {};
+        for (const t of SESSION_TIMES) {
+            reservedByKey[t] = {};
+            for (const s of ALL_SLOTS) reservedByKey[t][s] = { B: 0, B2: 0 };
+        }
+        (reservedRows || []).forEach(r => {
+            if (!reservedByKey[r.session_time]?.[r.session_slot]) return;
+            if (r.class === 'B') {
+                reservedByKey[r.session_time][r.session_slot].B  = r.reserved_quota_b  || 0;
+            } else if (r.class === 'B2') {
+                reservedByKey[r.session_time][r.session_slot].B2 = r.reserved_quota_b2 || 0;
+            }
+        });
+
+        // ---- 3) available_sessions: per-slot open/closed state (checkboxes) ----
         const state = await fetchSlotOpenState(date);
 
         const sessionMap = {
@@ -1097,6 +1123,27 @@ async function loadQuotaSettings(date) {
             const sessionCb = document.getElementById(cfg.cbId);
             if (sessionCb) sessionCb.checked = anyOpen;
             slotCbs.forEach(cb => { cb.disabled = !anyOpen; });
+        }
+
+        // ---- 4) Populate the per-class reserve <input>s from step 2 ----
+        //   Empty string when 0, so the placeholder "0" shows through and
+        //   the admin sees a blank/empty field rather than a literal zero
+        //   that they'd have to clear before typing.
+        for (const [sessionTime, cfg] of Object.entries(sessionMap)) {
+            for (const slot of ALL_SLOTS) {
+                const inputB  = document.querySelector(
+                    `.reserve-input[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B"]`
+                );
+                const inputB2 = document.querySelector(
+                    `.reserve-input[data-session="${sessionTime}"][data-slot="${slot}"][data-class="B2"]`
+                );
+
+                const rB  = reservedByKey[sessionTime][slot].B;
+                const rB2 = reservedByKey[sessionTime][slot].B2;
+
+                if (inputB)  inputB.value  = rB  > 0 ? String(rB)  : '';
+                if (inputB2) inputB2.value = rB2 > 0 ? String(rB2) : '';
+            }
         }
 
         refreshSessionHint();
@@ -3973,6 +4020,7 @@ async function initializeAdmin() {
     await loadStats();
     await loadAllBookings();
     await loadInstructors();
+    await loadActiveTokenCount(); 
 
     renderAdminCalendar();
     setTimeout(() => {
