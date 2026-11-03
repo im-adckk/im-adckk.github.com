@@ -55,6 +55,17 @@ function formatSlot(slot) {
     return SESSION_SLOT_LABELS[slot] || slot;
 }
 
+function publicAvailable(row) {
+    if (!row) return 0;
+    const reserved = row.class === 'B'
+        ? (row.reserved_quota_b  || 0)
+        : row.class === 'B2'
+            ? (row.reserved_quota_b2 || 0)
+            : 0;
+    const reservedToSubtract = row.is_reserved ? reserved : 0;
+    return Math.max(0, (row.max_bookings || 0) - (row.current_bookings || 0) - reservedToSubtract);
+}
+
 const LESSON_TYPES_SIMPLE = {
     'KPP02': { label: 'KPP02', max: 5 },
     'KPP03': { label: 'KPP03', max: 3 },
@@ -350,8 +361,9 @@ function computeDayState(dateStr, todayStr, sessionMap, statusMap) {
     const sessions = sessionMap[dateStr] || [];
     const openSessions = sessions.filter(s => s.is_available !== false);
 
-    // Use PUBLIC availability (capacity − bookings − reserved) instead of
-    // raw capacity, so a fully-reserved date correctly goes red.
+    // Public availability = capacity − bookings − reserved-for-private.
+    // If every open slot is fully reserved, the date is effectively FULL
+    // for a public viewer and must be painted red.
     const hasPublicAvailable = openSessions.some(s => publicAvailable(s) > 0);
 
     if (hasPublicAvailable) {
@@ -580,7 +592,7 @@ async function onDateClick(dateStr) {
 
         if (error) throw error;
         const openSessions = (rows || []).filter(s => s.is_available !== false);
-        const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
+        const hasAvailable = openSessions.some(s => publicAvailable(s) > 0);
         dayState = hasAvailable ? 'available' : (openSessions.length > 0 ? 'full' : 'none');
     } catch (error) {
         console.error('Error checking day state:', error);
