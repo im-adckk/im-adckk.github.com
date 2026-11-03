@@ -875,6 +875,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .update({
             is_available:      isOpen,
             max_bookings:      quotaB,
+            reserved_quota:    legacyReserved,
             reserved_quota_b:  reservedB,
             reserved_quota_b2: 0,
             is_reserved:       reservedB > 0
@@ -891,6 +892,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .update({
             is_available:      isOpen,
             max_bookings:      quotaB2,
+            reserved_quota:    legacyReserved,
             reserved_quota_b:  0,
             reserved_quota_b2: reservedB2,
             is_reserved:       reservedB2 > 0
@@ -1351,7 +1353,10 @@ async function saveQuotaSettings() {
                 // --- 2) Sync max_bookings on existing available_sessions rows ---
                 const { error: syncBErr } = await supabaseClient
                     .from('available_sessions')
-                    .update({ max_bookings: classBQuota })
+                    .update({
+                            max_bookings:   classBQuota,
+                            reserved_quota: 0     // legacy column no longer used per-class
+                        })
                     .eq('session_date', targetDate)
                     .eq('class', 'B');
                 if (syncBErr) throw syncBErr;
