@@ -574,18 +574,13 @@ const DEFAULT_QUOTA = { B: 3, B2: 10 };
  *   - If no rows exist at all                 -> fall back to the per-session default above
  */
 async function fetchSlotOpenState(date) {
-    // ---- Build the per-session fallback defaults ----
+    // Fallback defaults — per-session, same for both classes
     const fallback = {};
     for (const t of SESSION_TIMES) {
         fallback[t] = {};
         for (const s of ALL_SLOTS) {
-            if (t === '11am-2pm') {
-                // Sunday-only override session: closed by default
-                fallback[t][s] = false;
-            } else {
-                // Weekday sessions: sesi1/sesi2 open, sesi3 closed
-                fallback[t][s] = DEFAULT_SLOTS.includes(s);
-            }
+            const def = (t === '11am-2pm') ? false : DEFAULT_SLOTS.includes(s);
+            fallback[t][s] = { B: def, B2: def };
         }
     }
 
@@ -596,35 +591,34 @@ async function fetchSlotOpenState(date) {
             .eq('session_date', date);
         if (error) throw error;
 
-        // ---- Group rows by (session_time, session_slot) -> array of rows (one per class) ----
+        // Group rows by (time, slot) → { B: row|null, B2: row|null }
         const grouped = {};
         for (const t of SESSION_TIMES) {
             grouped[t] = {};
-            for (const s of ALL_SLOTS) grouped[t][s] = [];
+            for (const s of ALL_SLOTS) grouped[t][s] = { B: null, B2: null };
         }
         (data || []).forEach(r => {
-            if (grouped[r.session_time] && grouped[r.session_time][r.session_slot]) {
-                grouped[r.session_time][r.session_slot].push(r);
+            if (grouped[r.session_time]?.[r.session_slot]) {
+                grouped[r.session_time][r.session_slot][r.class] = r;
             }
         });
 
-        // ---- Resolve each (session, slot) to an open/closed boolean ----
         const result = {};
         for (const t of SESSION_TIMES) {
             result[t] = {};
             for (const s of ALL_SLOTS) {
-                const rows = grouped[t][s];
-                if (rows.length === 0) {
-                    // No rows -> use per-session default
-                    result[t][s] = fallback[t][s];
-                } else {
-                    // Open if ANY class row is open
-                    result[t][s] = rows.some(r => r.is_available !== false);
-                }
+                const { B: rowB, B2: rowB2 } = grouped[t][s];
+                // If a class row is missing, fall back to the session default
+                const defB  = fallback[t][s].B;
+                const defB2 = fallback[t][s].B2;
+
+                result[t][s] = {
+                    B:  rowB  ? (rowB.is_available  !== false) : defB,
+                    B2: rowB2 ? (rowB2.is_available !== false) : defB2
+                };
             }
         }
         return result;
-
     } catch (err) {
         console.error('fetchSlotOpenState error:', err);
         return fallback;
@@ -859,21 +853,25 @@ async function revokePrivateToken(id) {
  * @param {{B:number,B2:number}} quotas    class quotas (max_bookings)
  * @param {{B:number,B2:number}} [reserved] reserved seats per class
  */
-async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas, reserved = {}) {
+async function applySlotOpenState(
+    date, sessionTime, sessionSlot, isOpen, quotas, reserved = {},
+    openFor = { B: true, B2: true }
+) {
     const quotaB  = quotas?.B  ?? DEFAULT_QUOTA.B;
     const quotaB2 = quotas?.B2 ?? DEFAULT_QUOTA.B2;
 
-    // A closed slot cannot carry a reservation.
-    // Also clamp to max_bookings so we can never violate reserved_le_max,
-    // even if the caller passed bad numbers.
-    const reservedB  = isOpen ? Math.min(Math.max(0, (reserved.B  | 0)), quotaB)  : 0;
-    const reservedB2 = isOpen ? Math.min(Math.max(0, (reserved.B2 | 0)), quotaB2) : 0;
+    const classBOpen  = isOpen && openFor.B  !== false;
+    const classB2Open = isOpen && openFor.B2 !== false;
 
-    // ---- 1) Targeted UPDATE for the B row ----
+    // A closed class cannot carry a reservation.
+    const reservedB  = classBOpen  ? Math.min(Math.max(0, (reserved.B  | 0)), quotaB)  : 0;
+    const reservedB2 = classB2Open ? Math.min(Math.max(0, (reserved.B2 | 0)), quotaB2) : 0;
+
+    // ---- 1) UPDATE the B row ----
     const { error: updBErr } = await supabaseClient
         .from('available_sessions')
         .update({
-            is_available:      isOpen,
+            is_available:      classBOpen,
             max_bookings:      quotaB,
             reserved_quota:    0,
             reserved_quota_b:  reservedB,
@@ -886,11 +884,11 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         .eq('class', 'B');
     if (updBErr) throw updBErr;
 
-    // ---- 2) Targeted UPDATE for the B2 row ----
+    // ---- 2) UPDATE the B2 row ----
     const { error: updB2Err } = await supabaseClient
         .from('available_sessions')
         .update({
-            is_available:      isOpen,
+            is_available:      classB2Open,
             max_bookings:      quotaB2,
             reserved_quota:    0,
             reserved_quota_b:  0,
@@ -904,10 +902,6 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
     if (updB2Err) throw updB2Err;
 
     // ---- 3) Insert only missing rows ----
-    //   We can't use upsert({ignoreDuplicates:true}) reliably here because
-    //   Postgres evaluates CHECK constraints on the candidate INSERT row
-    //   BEFORE ON CONFLICT resolution, so a stray bad value fails hard.
-    //   Instead: check existence first, then insert with clamped values.
     const { data: existingRows, error: existErr } = await supabaseClient
         .from('available_sessions')
         .select('class')
@@ -927,7 +921,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
             session_slot:      sessionSlot,
             max_bookings:      quotaB,
             current_bookings:  0,
-            is_available:      isOpen,
+            is_available:      classBOpen,
             reserved_quota_b:  reservedB,
             reserved_quota_b2: 0,
             is_reserved:       reservedB > 0
@@ -941,7 +935,7 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
             session_slot:      sessionSlot,
             max_bookings:      quotaB2,
             current_bookings:  0,
-            is_available:      isOpen,
+            is_available:      classB2Open,
             reserved_quota_b:  0,
             reserved_quota_b2: reservedB2,
             is_reserved:       reservedB2 > 0
@@ -952,8 +946,6 @@ async function applySlotOpenState(date, sessionTime, sessionSlot, isOpen, quotas
         const { error: insErr } = await supabaseClient
             .from('available_sessions')
             .insert(rowsToInsert);
-        // Swallow unique-violation (race: another tab inserted between our
-        // SELECT and INSERT). Anything else is a real error.
         if (insErr && insErr.code !== '23505') throw insErr;
     }
 }
