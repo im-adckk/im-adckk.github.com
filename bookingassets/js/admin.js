@@ -697,21 +697,36 @@ function jumpToReserved(date) {
 
 async function generatePrivateToken() {
     const notes = prompt('Optional note for this link (e.g. "Nov batch"):') || null;
-    const tokenClass = document.getElementById('tokenClass')?.value || null;  // '' → null (legacy)
+    const tokenClass = document.getElementById('tokenClass')?.value || null;
     const token = crypto.randomUUID().replace(/-/g, '').slice(0, 24);
 
     const { data, error } = await supabaseClient
         .from('private_slot_tokens')
-        .insert([{ token, notes, class: tokenClass }])   // NEW: class
+        .insert([{ token, notes, class: tokenClass }])
         .select('token').single();
     if (error) return showMessage(error.message, 'error');
 
     const url = `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${data.token}`;
-    await navigator.clipboard.writeText(url).catch(() => {});
+
+    // Try to copy; regardless, open the manager so the admin can see the link
+    let copied = false;
+    try {
+        await navigator.clipboard.writeText(url);
+        copied = true;
+    } catch (e) {
+        copied = false;
+    }
 
     const classLabel = tokenClass ? `Class ${tokenClass}` : 'Both classes';
-    showMessage(`✅ Link (${classLabel}) copied to clipboard:\n${url}`, 'success');
-    loadActiveTokenCount();
+    showMessage(
+        copied
+            ? `✅ Link (${classLabel}) copied to clipboard.`
+            : `⚠️ Link (${classLabel}) generated, but clipboard was blocked. Copy it from the modal.`,
+        copied ? 'success' : 'warning'
+    );
+
+    await loadActiveTokenCount();
+    await openTokenManager();   // ← always opens, so the link is right there
 }
 
 async function loadActiveTokenCount() {
@@ -732,19 +747,43 @@ async function openTokenManager() {
     const modal = document.getElementById('tokenManagerModal');
     const body  = modal.querySelector('div');
 
+    const buildUrl = (t) =>
+        `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${t.token}`;
+
+    // Most recently generated token (top row, since ordered by created_at desc)
+    const latest = data && data.length > 0 ? data[0] : null;
+
     body.innerHTML = `
         <div class="flex items-center justify-between">
             <h3 class="font-semibold text-lg">Private Links</h3>
             <button onclick="document.getElementById('tokenManagerModal').classList.add('hidden')"
                     class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
         </div>
-        ${data.length === 0 ? '<p class="text-sm text-muted-foreground">No tokens yet.</p>' : `
+
+        ${latest && latest.is_active ? `
+        <div class="p-3 rounded-lg border border-amber-200 bg-amber-50 space-y-2">
+            <p class="text-xs font-semibold text-amber-800">
+                🔗 Latest link ${latest.class ? `(Class ${latest.class})` : '(Both classes)'}
+                ${latest.notes ? `· ${latest.notes}` : ''}
+            </p>
+            <div class="flex items-center gap-2">
+                <input type="text" readonly value="${buildUrl(latest)}"
+                       class="input flex-1 text-xs font-mono py-1 px-2 bg-white"
+                       onclick="this.select()">
+                <button onclick="copyTokenUrl('${latest.id}')"
+                        class="btn text-xs py-1 px-2.5 shrink-0" data-variant="secondary">
+                    📋 Copy
+                </button>
+            </div>
+        </div>` : ''}
+
+        ${(!data || data.length === 0) ? '<p class="text-sm text-muted-foreground">No tokens yet.</p>' : `
         <table class="w-full text-xs border-collapse">
             <thead><tr class="bg-muted text-muted-foreground">
                 <th class="p-2 text-left">Created</th><th class="p-2 text-left">Note</th>
                 <th class="p-2 text-left">Class</th>
                 <th class="p-2 text-center">Uses</th><th class="p-2 text-left">Status</th>
-                <th class="p-2"></th>
+                <th class="p-2 text-right">Actions</th>
             </tr></thead>
             <tbody>
             ${data.map(t => `
@@ -758,15 +797,35 @@ async function openTokenManager() {
                     }</td>
                     <td class="p-2 text-center">${t.used_count}${t.max_uses ? '/' + t.max_uses : ''}</td>
                     <td class="p-2">${t.is_active ? '🟢 Active' : '🔴 Revoked'}</td>
-                    <td class="p-2 text-right">
-                        ${t.is_active ? `<button onclick="revokePrivateToken('${t.id}')"
-                            class="text-red-600 hover:underline">Revoke</button>` : ''}
+                    <td class="p-2 text-right whitespace-nowrap">
+                        ${t.is_active ? `
+                            <button onclick="copyTokenUrl('${t.id}')"
+                                    class="text-blue-600 hover:underline mr-2"
+                                    title="Copy this link">Copy</button>
+                            <button onclick="revokePrivateToken('${t.id}')"
+                                    class="text-red-600 hover:underline">Revoke</button>
+                        ` : `<span class="text-muted-foreground text-xs">—</span>`}
                     </td>
                 </tr>`).join('')}
             </tbody>
         </table>`}
     `;
     modal.classList.remove('hidden');
+}
+
+async function copyTokenUrl(id) {
+    // Fetch the token value for this id (the modal's table doesn't carry it
+    // in data-attributes to keep the HTML small; one extra round-trip is fine)
+    const { data, error } = await supabaseClient
+        .from('private_slot_tokens')
+        .select('token')
+        .eq('id', id)
+        .single();
+    if (error || !data) return showMessage('Could not load link.', 'error');
+
+    const url = `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${data.token}`;
+    await navigator.clipboard.writeText(url).catch(() => {});
+    showMessage('✅ Link copied to clipboard.', 'success');
 }
 
 async function revokePrivateToken(id) {
