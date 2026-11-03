@@ -348,11 +348,13 @@ function computeDayState(dateStr, todayStr, sessionMap, statusMap) {
     }
 
     const sessions = sessionMap[dateStr] || [];
-    // Only sessions that are actually open count toward availability.
     const openSessions = sessions.filter(s => s.is_available !== false);
 
-    const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
-    if (hasAvailable) {
+    // Use PUBLIC availability (capacity − bookings − reserved) instead of
+    // raw capacity, so a fully-reserved date correctly goes red.
+    const hasPublicAvailable = openSessions.some(s => publicAvailable(s) > 0);
+
+    if (hasPublicAvailable) {
         return { state: 'available', title: 'Available' };
     }
     if (openSessions.length > 0) {
