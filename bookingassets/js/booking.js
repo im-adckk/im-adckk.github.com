@@ -601,7 +601,13 @@ async function onDateClick(dateStr) {
 
         if (error) throw error;
         const openSessions = (rows || []).filter(s => s.is_available !== false);
-        const hasAvailable = openSessions.some(s => publicAvailable(s) > 0);
+        const isPrivateViewer = window._isSpecialViewer === true;
+        const hasAvailable = openSessions.some(s => {
+            if (isPrivateViewer) {
+                return ((s.max_bookings || 0) - (s.current_bookings || 0)) > 0;
+            }
+            return publicAvailable(s) > 0;
+        });
         dayState = hasAvailable ? 'available' : (openSessions.length > 0 ? 'full' : 'none');
     } catch (error) {
         console.error('Error checking day state:', error);
