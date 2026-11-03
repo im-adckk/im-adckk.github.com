@@ -1197,9 +1197,9 @@ async function saveQuotaSettings() {
         showQuotaMessage('No dates to update.', 'error');
         return;
     }
+
     // ---- Button spinner + paint yield ----
-    const saveBtn   = document.getElementById('saveQuotaBtn');
-    const btnLabel  = saveBtn?.querySelector('.btn-label');
+    const saveBtn         = document.getElementById('saveQuotaBtn');
     const originalBtnHTML = saveBtn ? saveBtn.innerHTML : null;
 
     if (saveBtn) {
@@ -1211,10 +1211,15 @@ async function saveQuotaSettings() {
         `;
     }
 
+    // #quotaProgress has class="hidden" (which sets display: none !important).
+    // Must toggle the class, NOT style.display, or the browser won't show it.
     const progressDiv = document.getElementById('quotaProgress');
-    if (progressDiv) progressDiv.style.display = 'block';
+    if (progressDiv) progressDiv.classList.remove('hidden');
 
     refreshIcons();
+
+    // Force the browser to paint the disabled/spinner state BEFORE the
+    // synchronous work (effectiveSlots build) and the first network call.
     await new Promise(requestAnimationFrame);
 
     try {
@@ -1277,7 +1282,7 @@ async function saveQuotaSettings() {
         }
 
         // Per-class validation: each reservation must fit its own class quota.
-        // A B reservation of 0 with a B2 reservation of 10 is now valid even
+        // A B reservation of 0 with a B2 reservation of 10 is valid even
         // when classBQuota = 4, because they're independent constraints.
         for (const s of effectiveSlots) {
             if (s.reservedB > classBQuota) {
@@ -1286,8 +1291,7 @@ async function saveQuotaSettings() {
                     `but the Class B quota is only ${classBQuota}.`,
                     'error'
                 );
-                if (progressDiv) progressDiv.style.display = 'none';
-                return;
+                return;   // finally block restores the button
             }
             if (s.reservedB2 > classB2Quota) {
                 showQuotaMessage(
@@ -1295,15 +1299,14 @@ async function saveQuotaSettings() {
                     `but the Class B2 quota is only ${classB2Quota}.`,
                     'error'
                 );
-                if (progressDiv) progressDiv.style.display = 'none';
-                return;
+                return;   // finally block restores the button
             }
         }
 
         let successCount = 0;
 
         for (const targetDate of datesToUpdate) {
-            // --- 1) Upsert quota_settings row (unchanged) ---
+            // --- 1) Upsert quota_settings row ---
             const { data: existing, error: checkError } = await supabaseClient
                 .from('quota_settings')
                 .select('id')
@@ -1333,7 +1336,7 @@ async function saveQuotaSettings() {
                 if (insertError) throw insertError;
             }
 
-            // --- 2) Sync max_bookings on existing available_sessions rows (unchanged) ---
+            // --- 2) Sync max_bookings on existing available_sessions rows ---
             const { error: syncBErr } = await supabaseClient
                 .from('available_sessions')
                 .update({ max_bookings: classBQuota })
@@ -1415,7 +1418,13 @@ async function saveQuotaSettings() {
         console.error('Error saving quota settings:', error);
         showMessage('Error saving quota settings: ' + error.message, 'error');
     } finally {
-        if (progressDiv) progressDiv.style.display = 'none';
+        if (progressDiv) progressDiv.classList.add('hidden');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+            saveBtn.innerHTML = originalBtnHTML;
+            refreshIcons();
+        }
     }
 }
 async function resetQuotaToDefault() {
