@@ -620,6 +620,12 @@ async function fetchSlotOpenState(date) {
 }
 
 async function loadReservedChips() {
+    const container = document.getElementById('reservedSlotsChips');
+    const dateRef = document.getElementById('quotaDateSelect').value || getMalaysiaToday();
+    const d = new Date(dateRef + 'T00:00:00');
+    const start = toMalaysiaDateStr(new Date(d.getFullYear(), d.getMonth(), 1));
+    const end   = toMalaysiaDateStr(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+
     const { data } = await supabaseClient
         .from('available_sessions')
         .select('session_date, session_time, session_slot, class, reserved_quota_b, reserved_quota_b2')
@@ -627,14 +633,12 @@ async function loadReservedChips() {
         .eq('is_reserved', true)
         .or('reserved_quota_b.gt.0,reserved_quota_b2.gt.0')
         .order('session_date');
-    
+
     if (!data || data.length === 0) {
         container.innerHTML = '<span class="italic">🔒 No reservations this month</span>';
         return;
     }
-    
-    // Group by (date, time, slot) so a slot with both B and B2 reservations
-    // renders as ONE chip ("B×2 · B2×1") instead of two.
+
     const grouped = new Map();
     for (const r of data) {
         const key = `${r.session_date}|${r.session_time}|${r.session_slot}`;
@@ -651,7 +655,7 @@ async function loadReservedChips() {
         g.B  += r.reserved_quota_b  || 0;
         g.B2 += r.reserved_quota_b2 || 0;
     }
-    
+
     container.innerHTML = '<span class="font-semibold">🔒 Reserved this month:</span> ' +
         [...grouped.values()].map(r => {
             const parts = [];
@@ -665,6 +669,13 @@ async function loadReservedChips() {
                 </button>
             `;
         }).join('');
+}  
+
+function formatShortDate(dateString) {
+    if (!dateString) return '';
+    const d = new Date(dateString + 'T00:00:00');
+    return d.toLocaleDateString('en-MY', { month: 'short', day: 'numeric' });
+}
 
 function jumpToReserved(date) {
     document.getElementById('quotaDateSelect').value = date;
