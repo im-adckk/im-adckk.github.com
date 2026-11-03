@@ -657,17 +657,20 @@ function jumpToReserved(date) {
 
 async function generatePrivateToken() {
     const notes = prompt('Optional note for this link (e.g. "Nov batch"):') || null;
-    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 24);  // 24-char URL-safe
+    const tokenClass = document.getElementById('tokenClass')?.value || null;  // '' → null (legacy)
+    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 24);
 
     const { data, error } = await supabaseClient
         .from('private_slot_tokens')
-        .insert([{ token, notes }])
+        .insert([{ token, notes, class: tokenClass }])   // NEW: class
         .select('token').single();
     if (error) return showMessage(error.message, 'error');
 
     const url = `${location.origin}${location.pathname.replace('admin-booking.html', 'booking.html')}?key=${data.token}`;
     await navigator.clipboard.writeText(url).catch(() => {});
-    showMessage(`✅ Link copied to clipboard:\n${url}`, 'success');
+
+    const classLabel = tokenClass ? `Class ${tokenClass}` : 'Both classes';
+    showMessage(`✅ Link (${classLabel}) copied to clipboard:\n${url}`, 'success');
     loadActiveTokenCount();
 }
 
@@ -699,6 +702,7 @@ async function openTokenManager() {
         <table class="w-full text-xs border-collapse">
             <thead><tr class="bg-muted text-muted-foreground">
                 <th class="p-2 text-left">Created</th><th class="p-2 text-left">Note</th>
+                <th class="p-2 text-left">Class</th>
                 <th class="p-2 text-center">Uses</th><th class="p-2 text-left">Status</th>
                 <th class="p-2"></th>
             </tr></thead>
@@ -707,6 +711,11 @@ async function openTokenManager() {
                 <tr class="border-b">
                     <td class="p-2">${new Date(t.created_at).toLocaleDateString('en-MY')}</td>
                     <td class="p-2">${t.notes || '—'}</td>
+                    <td class="p-2">${
+                        t.class === 'B'  ? '<span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">B</span>'  :
+                        t.class === 'B2' ? '<span class="px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 border border-pink-200 font-medium">B2</span>' :
+                                           '<span class="text-muted-foreground">—</span>'
+                    }</td>
                     <td class="p-2 text-center">${t.used_count}${t.max_uses ? '/' + t.max_uses : ''}</td>
                     <td class="p-2">${t.is_active ? '🟢 Active' : '🔴 Revoked'}</td>
                     <td class="p-2 text-right">
