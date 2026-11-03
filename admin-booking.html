@@ -453,22 +453,30 @@
                             </div>
                         </div>
                         
-                        <div class="flex gap-2 flex-wrap">
-                            <button onclick="saveQuotaSettings()" class="btn gap-2" data-variant="secondary">
-                                <i data-lucide="save" class="w-4 h-4"></i>
-                                Save Quota
-                            </button>
-                            <button onclick="resetQuotaToDefault()" class="btn gap-2" data-variant="outline">
-                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-                                Reset to Default
-                            </button>
-                            <button onclick="generatePrivateToken()" class="btn gap-2" data-variant="ghost">
-                                <i data-lucide="link" class="w-4 h-4"></i> Generate Link
-                            </button>
-                            <button onclick="openTokenManager()" class="btn gap-2" data-variant="ghost">
-                                <i data-lucide="shield" class="w-4 h-4"></i> <span id="activeTokenCount">0</span> Active Links
-                            </button>
-                        </div>
+                       <div class="flex gap-2 flex-wrap items-center">
+                        <button onclick="saveQuotaSettings()" class="btn gap-2" data-variant="secondary">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Save Quota
+                        </button>
+                        <button onclick="resetQuotaToDefault()" class="btn gap-2" data-variant="outline">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            Reset to Default
+                        </button>
+                    
+                        <!-- NEW: class selector for the link being generated -->
+                        <select id="tokenClass" class="input h-9 text-xs py-1 px-2 w-auto" title="Which class this private link grants access to">
+                            <option value="">Both (legacy)</option>
+                            <option value="B">Class B only</option>
+                            <option value="B2">Class B2 only</option>
+                        </select>
+                    
+                        <button onclick="generatePrivateToken()" class="btn gap-2" data-variant="ghost">
+                            <i data-lucide="link" class="w-4 h-4"></i> Generate Link
+                        </button>
+                        <button onclick="openTokenManager()" class="btn gap-2" data-variant="ghost">
+                            <i data-lucide="shield" class="w-4 h-4"></i> <span id="activeTokenCount">0</span> Active Links
+                        </button>
+                    </div>
                     </div>
                 </section>
                 <section>
