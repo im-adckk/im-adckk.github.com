@@ -361,12 +361,21 @@ function computeDayState(dateStr, todayStr, sessionMap, statusMap) {
     const sessions = sessionMap[dateStr] || [];
     const openSessions = sessions.filter(s => s.is_available !== false);
 
-    // Public availability = capacity − bookings − reserved-for-private.
-    // If every open slot is fully reserved, the date is effectively FULL
-    // for a public viewer and must be painted red.
-    const hasPublicAvailable = openSessions.some(s => publicAvailable(s) > 0);
+    // --- Who is looking? ---
+    // Public viewer: only unreserved seats count as bookable.
+    // Token viewer: reserved seats are also bookable by them (their token
+    // grants access), so use raw capacity minus bookings.
+    const isPrivateViewer = window._isSpecialViewer === true;
 
-    if (hasPublicAvailable) {
+    const hasAvailable = openSessions.some(s => {
+        if (isPrivateViewer) {
+            // Seats already booked are gone; reserved seats are fair game.
+            return ((s.max_bookings || 0) - (s.current_bookings || 0)) > 0;
+        }
+        return publicAvailable(s) > 0;
+    });
+
+    if (hasAvailable) {
         return { state: 'available', title: 'Available' };
     }
     if (openSessions.length > 0) {
