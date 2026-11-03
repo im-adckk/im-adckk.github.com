@@ -1211,15 +1211,12 @@ async function saveQuotaSettings() {
         `;
     }
 
-    // #quotaProgress has class="hidden" (which sets display: none !important).
-    // Must toggle the class, NOT style.display, or the browser won't show it.
     const progressDiv = document.getElementById('quotaProgress');
     if (progressDiv) progressDiv.classList.remove('hidden');
 
     refreshIcons();
 
-    // Force the browser to paint the disabled/spinner state BEFORE the
-    // synchronous work (effectiveSlots build) and the first network call.
+    // Force paint before synchronous work + first network call
     await new Promise(requestAnimationFrame);
 
     try {
@@ -1281,92 +1278,120 @@ async function saveQuotaSettings() {
             }
         }
 
-        // Per-class validation: each reservation must fit its own class quota.
-        // A B reservation of 0 with a B2 reservation of 10 is valid even
-        // when classBQuota = 4, because they're independent constraints.
+        // --- Per-class validation with CLAMPING (not aborting) ---
+        // If a reservation exceeds the new quota, clamp it down to the quota
+        // and warn the admin — but STILL SAVE the quota change. Aborting here
+        // was the root cause of "quota won't update" when a stale reservation
+        // was larger than the newly-entered quota.
+        const clampedWarnings = [];
         for (const s of effectiveSlots) {
             if (s.reservedB > classBQuota) {
-                showQuotaMessage(
-                    `❌ Class B reservation for ${s.sessionTime}/${s.slot} is ${s.reservedB}, ` +
-                    `but the Class B quota is only ${classBQuota}.`,
-                    'error'
+                clampedWarnings.push(
+                    `${s.sessionTime}/${s.slot} B: ${s.reservedB}→${classBQuota}`
                 );
-                return;   // finally block restores the button
+                s.reservedB = classBQuota;
             }
             if (s.reservedB2 > classB2Quota) {
-                showQuotaMessage(
-                    `❌ Class B2 reservation for ${s.sessionTime}/${s.slot} is ${s.reservedB2}, ` +
-                    `but the Class B2 quota is only ${classB2Quota}.`,
-                    'error'
+                clampedWarnings.push(
+                    `${s.sessionTime}/${s.slot} B2: ${s.reservedB2}→${classB2Quota}`
                 );
-                return;   // finally block restores the button
+                s.reservedB2 = classB2Quota;
             }
+        }
+        if (clampedWarnings.length) {
+            showQuotaMessage(
+                `⚠️ Reservations clamped to fit new quota — ${clampedWarnings.join(', ')}. ` +
+                `Continuing to save…`,
+                'warning'
+            );
+            // Give the browser a moment to paint the warning before we continue
+            await new Promise(requestAnimationFrame);
         }
 
         let successCount = 0;
+        const failureDetails = [];
 
         for (const targetDate of datesToUpdate) {
-            // --- 1) Upsert quota_settings row ---
-            const { data: existing, error: checkError } = await supabaseClient
-                .from('quota_settings')
-                .select('id')
-                .eq('target_date', targetDate)
-                .maybeSingle();
-
-            if (checkError && checkError.code !== 'PGRST116') throw checkError;
-
-            if (existing) {
-                const { error: updateError } = await supabaseClient
+            try {
+                // --- 1) Upsert quota_settings row ---
+                // Use `.upsert()` with onConflict so this is atomic and doesn't
+                // depend on a prior SELECT round-trip. Much more reliable than
+                // check-then-insert/update.
+                const { error: upsertQuotaErr } = await supabaseClient
                     .from('quota_settings')
-                    .update({
-                        class_b_quota:  classBQuota,
-                        class_b2_quota: classB2Quota,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', existing.id);
-                if (updateError) throw updateError;
-            } else {
-                const { error: insertError } = await supabaseClient
+                    .upsert(
+                        {
+                            target_date:    targetDate,
+                            class_b_quota:  classBQuota,
+                            class_b2_quota: classB2Quota,
+                            updated_at:     new Date().toISOString()
+                        },
+                        { onConflict: 'target_date' }
+                    );
+                if (upsertQuotaErr) throw upsertQuotaErr;
+
+                // --- 2) Sync max_bookings on existing available_sessions rows ---
+                const { error: syncBErr } = await supabaseClient
+                    .from('available_sessions')
+                    .update({ max_bookings: classBQuota })
+                    .eq('session_date', targetDate)
+                    .eq('class', 'B');
+                if (syncBErr) throw syncBErr;
+
+                const { error: syncB2Err } = await supabaseClient
+                    .from('available_sessions')
+                    .update({ max_bookings: classB2Quota })
+                    .eq('session_date', targetDate)
+                    .eq('class', 'B2');
+                if (syncB2Err) throw syncB2Err;
+
+                // --- 3) Apply per-slot open/closed + per-class reserved state ---
+                for (const { sessionTime, slot, open, reservedB, reservedB2 } of effectiveSlots) {
+                    await applySlotOpenState(
+                        targetDate,
+                        sessionTime,
+                        slot,
+                        open,
+                        quotas,
+                        { B: reservedB, B2: reservedB2 }
+                    );
+                }
+
+                // --- 4) Verify the quota_settings row was actually persisted ---
+                // This catches silent RLS rejections where Supabase returns
+                // { data: null, error: null } but nothing was written.
+                const { data: verifyRow, error: verifyErr } = await supabaseClient
                     .from('quota_settings')
-                    .insert([{
-                        target_date: targetDate,
-                        class_b_quota:  classBQuota,
-                        class_b2_quota: classB2Quota
-                    }]);
-                if (insertError) throw insertError;
+                    .select('class_b_quota, class_b2_quota')
+                    .eq('target_date', targetDate)
+                    .maybeSingle();
+                if (verifyErr) throw verifyErr;
+
+                if (!verifyRow) {
+                    throw new Error(
+                        `quota_settings row for ${targetDate} was not persisted. ` +
+                        `Possible RLS policy block or table permission issue.`
+                    );
+                }
+                if (verifyRow.class_b_quota !== classBQuota ||
+                    verifyRow.class_b2_quota !== classB2Quota) {
+                    throw new Error(
+                        `Quota verification failed for ${targetDate}. ` +
+                        `Expected B=${classBQuota}, B2=${classB2Quota}, ` +
+                        `got B=${verifyRow.class_b_quota}, B2=${verifyRow.class_b2_quota}. ` +
+                        `Likely an RLS UPDATE policy is silently rejecting the write.`
+                    );
+                }
+
+                successCount++;
+
+            } catch (dateErr) {
+                console.error(`Error saving quota for ${targetDate}:`, dateErr);
+                failureDetails.push(`${targetDate}: ${dateErr.message}`);
             }
-
-            // --- 2) Sync max_bookings on existing available_sessions rows ---
-            const { error: syncBErr } = await supabaseClient
-                .from('available_sessions')
-                .update({ max_bookings: classBQuota })
-                .eq('session_date', targetDate)
-                .eq('class', 'B');
-            if (syncBErr) throw syncBErr;
-
-            const { error: syncB2Err } = await supabaseClient
-                .from('available_sessions')
-                .update({ max_bookings: classB2Quota })
-                .eq('session_date', targetDate)
-                .eq('class', 'B2');
-            if (syncB2Err) throw syncB2Err;
-
-            // --- 3) Apply per-slot open/closed + per-class reserved state ---
-            for (const { sessionTime, slot, open, reservedB, reservedB2 } of effectiveSlots) {
-                await applySlotOpenState(
-                    targetDate,
-                    sessionTime,
-                    slot,
-                    open,
-                    quotas,
-                    { B: reservedB, B2: reservedB2 }
-                );
-            }
-
-            successCount++;
         }
 
-        // --- 4) Build success message reflecting what was actually closed/reserved ---
+        // --- 5) Build success/failure message ---
         const modeText = applyMode === 'single' ? 'date' : 'date range';
 
         const closedParts = [];
@@ -1400,12 +1425,21 @@ async function saveQuotaSettings() {
             summaryMsg += ` · reserved: ${reservedParts.join(', ')}`;
         }
 
-        showQuotaMessage(
-            `✅ Quota updated successfully for ${successCount} ${modeText}(s)${summaryMsg}!`,
-            'success'
-        );
+        if (failureDetails.length > 0) {
+            // Partial failure — report both what worked and what didn't
+            showQuotaMessage(
+                `⚠️ Quota saved for ${successCount} of ${datesToUpdate.length} ${modeText}(s)${summaryMsg}. ` +
+                `Failed: ${failureDetails.join(' | ')}`,
+                'error'
+            );
+        } else {
+            showQuotaMessage(
+                `✅ Quota updated (B=${classBQuota}, B2=${classB2Quota}) for ${successCount} ${modeText}(s)${summaryMsg}!`,
+                'success'
+            );
+        }
 
-        // --- 5) Refresh UI ---
+        // --- 6) Refresh UI from DB ---
         await loadQuotaSettings(date);
         await loadAdminCalendarData();
         await loadReservedChips();
@@ -1416,7 +1450,7 @@ async function saveQuotaSettings() {
 
     } catch (error) {
         console.error('Error saving quota settings:', error);
-        showMessage('Error saving quota settings: ' + error.message, 'error');
+        showQuotaMessage('Error saving quota settings: ' + error.message, 'error');
     } finally {
         if (progressDiv) progressDiv.classList.add('hidden');
         if (saveBtn) {
