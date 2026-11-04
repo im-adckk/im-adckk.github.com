@@ -331,13 +331,43 @@ function updateTodayIndicator() {
     }
 }
 
+// A session is "fully reserved" when every seat is earmarked for a
+// reserved quota that matches its class. Quota columns are not-null
+// default 0, but we coalesce defensively.
+function isFullyReserved(s) {
+    if (!s) return false;
+    if (s.class === 'B')  return (s.reserved_quota_b  || 0) >= s.max_bookings;
+    if (s.class === 'B2') return (s.reserved_quota_b2 || 0) >= s.max_bookings;
+    return false;
+}
+
+// Snapshot of the current viewer's private-access state. Read fresh
+// each call because _isSpecialViewer / _privateTokenClass are set
+// asynchronously at boot from validate_private_token().
+function getViewer() {
+    return {
+        isSpecial: !!window._isSpecialViewer,
+        tokenClass: window._privateTokenClass || null
+    };
+}
+
+// Can this viewer actually book this session?
+// (class-null token = legacy/global, grants both classes.)
+function isBookableByViewer(s, viewer) {
+    if (s.is_available === false) return false;
+    if (s.current_bookings >= s.max_bookings) return false;
+    if (!isFullyReserved(s)) return true;
+    return viewer.isSpecial
+        && (viewer.tokenClass === null || viewer.tokenClass === s.class);
+}
+
 // ============================================
 // SHARED DAY-STATE HELPER
 // Single source of truth for a calendar cell's state.
 // Both checkAvailabilityForMonth() and resetCalendarColors() use this
 // so "red" is a stable fact regardless of which render ran last.
 // ============================================
-function computeDayState(dateStr, todayStr, sessionMap, statusMap) {
+function computeDayState(dateStr, todayStr, sessionMap, statusMap, viewer) {
     if (dateStr < todayStr || dateStr === todayStr) {
         return { state: 'past', title: dateStr === todayStr ? 'Today - cannot book' : '' };
     }
@@ -348,10 +378,9 @@ function computeDayState(dateStr, todayStr, sessionMap, statusMap) {
     }
 
     const sessions = sessionMap[dateStr] || [];
-    // Only sessions that are actually open count toward availability.
     const openSessions = sessions.filter(s => s.is_available !== false);
 
-    const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
+    const hasAvailable = openSessions.some(s => isBookableByViewer(s, viewer));
     if (hasAvailable) {
         return { state: 'available', title: 'Available' };
     }
@@ -406,7 +435,7 @@ async function checkAvailabilityForMonth() {
         const cells = document.querySelectorAll('#calendar button[data-date]');
         cells.forEach(cell => {
             const dateStr = cell.dataset.date;
-            const { state, title } = computeDayState(dateStr, todayStr, sessionMap, statusMap);
+            const { state, title } = computeDayState(dateStr, todayStr, sessionMap, statusMap, getViewer());
             setCellState(cell, state);
             cell.title = title;
         });
@@ -456,7 +485,7 @@ async function resetCalendarColors() {
             const dateStr = cell.dataset.date;
             if (dateStr === selectedDate) return; // leave the active cell alone
 
-            const { state, title } = computeDayState(dateStr, todayStr, sessionMap, statusMap);
+            const { state, title } = computeDayState(dateStr, todayStr, sessionMap, statusMap, getViewer());
             setCellState(cell, state);
             cell.title = title;
         });
@@ -575,10 +604,12 @@ async function onDateClick(dateStr) {
             .select('*')
             .eq('class', selectedClass)
             .eq('session_date', dateStr);
-
+    
         if (error) throw error;
+    
+        const viewer = getViewer();
         const openSessions = (rows || []).filter(s => s.is_available !== false);
-        const hasAvailable = openSessions.some(s => s.current_bookings < s.max_bookings);
+        const hasAvailable = openSessions.some(s => isBookableByViewer(s, viewer));
         dayState = hasAvailable ? 'available' : (openSessions.length > 0 ? 'full' : 'none');
     } catch (error) {
         console.error('Error checking day state:', error);
