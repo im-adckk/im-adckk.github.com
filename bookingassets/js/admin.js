@@ -354,8 +354,8 @@ async function loadAllBookings() {
         const toRow = fromRow + rowsPerPage - 1;
         
         query = query
+            .order('created_at', { ascending: false })
             .order('booking_date', { ascending: true })
-            .order('session_time', { ascending: true })
             .range(fromRow, toRow);
             
         const { data, error, count } = await query;
