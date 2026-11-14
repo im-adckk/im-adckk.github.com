@@ -3836,6 +3836,7 @@ function renderDutyReport(data, date) {
 
     const session1 = data.filter(d => d.session_time === '9am-12pm');
     const session2 = data.filter(d => d.session_time === '12pm-3pm');
+    const session3 = data.filter(d => d.session_time === '11am-2pm');
 
     function renderSessionTable(sessionData, sessionLabel) {
         if (sessionData.length === 0) {
@@ -3869,7 +3870,6 @@ function renderDutyReport(data, date) {
                     <td class="p-2.5 font-medium">${item.total_students || 0}</td>
                     <td class="p-2.5 font-medium">${item.instructor_name || ''}</td>
                     <td class="p-2.5">
-                        <!-- Sign column - left empty for manual signature -->
                         <span style="color: transparent;">.</span>
                     </td>
                     <td class="p-2.5">
@@ -3887,31 +3887,33 @@ function renderDutyReport(data, date) {
             `;
         });
 
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-
+        html += `</tbody></table></div>`;
         return html;
     }
 
+    // Session section config — add more here if you add more sessions later
+    const sessions = [
+        { rows: session1, label: 'SESSION (9AM-12PM)',  color: 'bg-blue-100 text-blue-700',     always: true  },
+        { rows: session2, label: 'SESSION (12PM-3PM)',  color: 'bg-purple-100 text-purple-700', always: true  },
+        // 11am-2pm is Sunday-only — only render when assignments exist
+        { rows: session3, label: 'SESSION (11AM-2PM) · SUNDAY', color: 'bg-amber-100 text-amber-800', always: false }
+    ];
+
+    const sessionBlocks = sessions
+        .filter(s => s.always || s.rows.length > 0)
+        .map(s => `
+            <div>
+                <h4 class="font-semibold text-base mb-3 flex items-center gap-2">
+                    <span class="${s.color} px-3 py-1 rounded-full text-sm">${s.label}</span>
+                </h4>
+                ${renderSessionTable(s.rows, s.label.replace(/SESSION \(([^)]+)\).*/, '$1').toLowerCase())}
+            </div>
+        `)
+        .join('');
+
     container.innerHTML = `
         <div class="bg-white rounded-xl border p-6 space-y-6">
-            <div>
-                <h4 class="font-semibold text-base mb-3 flex items-center gap-2">
-                    <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">SESSION (9AM-12PM)</span>
-                </h4>
-                ${renderSessionTable(session1, '9am-12pm')}
-            </div>
-            
-            <div>
-                <h4 class="font-semibold text-base mb-3 flex items-center gap-2">
-                    <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">SESSION (12PM-3PM)</span>
-                </h4>
-                ${renderSessionTable(session2, '12pm-3pm')}
-            </div>
-            
+            ${sessionBlocks}
             <div class="text-center text-xs text-muted-foreground border-t pt-4">
                 Generated on: ${new Date().toLocaleString('en-MY')}
             </div>
@@ -3929,44 +3931,98 @@ async function exportDutyPDF() {
         return;
     }
 
-    try {
-        const date = document.getElementById('dutyDate').value;
-        const dateObj = new Date(date + 'T00:00:00');
-        const filename = `duty_schedule_${dateObj.toISOString().split('T')[0]}`;
+    const date = document.getElementById('dutyDate').value;
+    if (!date) {
+        showMessage('Please select a date first.', 'error');
+        return;
+    }
 
-        // Clone the container to not modify the original
-        const cloneContainer = container.cloneNode(true);
-        
-        // Remove all buttons from the clone
-        cloneContainer.querySelectorAll('button').forEach(el => el.remove());
-        
-        // Remove all onclick attributes
-        cloneContainer.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
-        
-        // Remove all icon elements
-        cloneContainer.querySelectorAll('i[data-lucide]').forEach(el => el.remove());
-        
-        // Remove the ACTIONS column (last column) from each table
-        // IMPORTANT: Only remove the LAST column (ACTIONS), keep all others including CLASS
-        cloneContainer.querySelectorAll('table').forEach(table => {
-            // Remove the last th in thead (ACTIONS header)
-            const headers = table.querySelectorAll('thead th');
-            if (headers.length > 0) {
-                // Only remove the last one (ACTIONS)
-                headers[headers.length - 1].remove();
+    try {
+        // ------------------------------------------------------------------
+        // 1) Figure out which sessions actually have assignments for this date
+        //    so the PDF header only lists the ones present (no "11AM-2PM" on
+        //    a weekday with no Sunday-override data).
+        // ------------------------------------------------------------------
+        let presentSessions = [];
+        try {
+            let { data: sessionRows, error: sessionErr } = await supabaseClient
+                .from('duty_report_view')
+                .select('session_time')
+                .eq('duty_date', date);
+
+            if (sessionErr) {
+                // Fallback to the base table if the view is unavailable
+                const fb = await supabaseClient
+                    .from('duty_schedule')
+                    .select('session_time')
+                    .eq('duty_date', date);
+                if (fb.error) throw fb.error;
+                sessionRows = fb.data;
             }
-            // Remove the last td in each row (ACTIONS cell)
-            table.querySelectorAll('tbody tr').forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length > 0) {
-                    // Only remove the last one (ACTIONS cell)
-                    cells[cells.length - 1].remove();
-                }
-            });
+
+            presentSessions = [
+                ...new Set((sessionRows || []).map(r => r.session_time).filter(Boolean))
+            ];
+        } catch (err) {
+            // Non-fatal: fall back to default header labels
+            console.warn('Could not determine present sessions for PDF header:', err);
+        }
+
+        const SESSION_ORDER = ['9am-12pm', '12pm-3pm', '11am-2pm'];
+        const SESSION_LABELS = {
+            '9am-12pm': '9AM-12PM',
+            '12pm-3pm': '12PM-3PM',
+            '11am-2pm': '11AM-2PM (SUNDAY)'
+        };
+
+        const sessionHeader = SESSION_ORDER
+            .filter(s => presentSessions.includes(s))
+            .map(s => SESSION_LABELS[s])
+            .join(' | ') || '(9AM-12PM) | (12PM-3PM)';
+
+        // ------------------------------------------------------------------
+        // 2) Clone the rendered report and sanitize it for print/PDF
+        // ------------------------------------------------------------------
+        const cloneContainer = container.cloneNode(true);
+
+        // Remove interactive elements and their handlers
+        cloneContainer.querySelectorAll('button').forEach(el => el.remove());
+        cloneContainer.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+        cloneContainer.querySelectorAll('i[data-lucide]').forEach(el => el.remove());
+
+        // ------------------------------------------------------------------
+        // 3) Strip the ACTIONS column safely.
+        //    We read the LAST header text — if it's ACTIONS we drop that
+        //    column (header + matching cell in every row). If the last column
+        //    is something else (CLASS, SIGN, etc.) we leave it alone. This
+        //    prevents the previous bug where "the last column" was assumed
+        //    to be ACTIONS and CLASS got removed instead.
+        // ------------------------------------------------------------------
+        cloneContainer.querySelectorAll('table').forEach(table => {
+            const headers = [...table.querySelectorAll('thead th')];
+            if (headers.length === 0) return;
+
+            const lastHeader = headers[headers.length - 1];
+            const lastHeaderText = (lastHeader.textContent || '').trim().toUpperCase();
+
+            if (lastHeaderText === 'ACTIONS') {
+                const lastIndex = headers.length - 1;
+                lastHeader.remove();
+
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells[lastIndex]) cells[lastIndex].remove();
+                });
+            }
         });
 
-        // Get the cleaned content
         const content = cloneContainer.innerHTML;
+
+        // ------------------------------------------------------------------
+        // 4) Build the printable HTML
+        // ------------------------------------------------------------------
+        const dateObj = new Date(date + 'T00:00:00');
+        const filename = `duty_schedule_${dateObj.toISOString().split('T')[0]}`;
 
         const htmlContent = `
 <!DOCTYPE html>
@@ -3976,44 +4032,40 @@ async function exportDutyPDF() {
     <title>Duty Schedule Report - ${filename}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: Arial, Helvetica, sans-serif; 
-            padding: 30px; 
-            background: white; 
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 30px;
+            background: white;
             font-size: 12px;
             line-height: 1.5;
         }
-        .report { 
-            max-width: 1100px; 
-            margin: 0 auto; 
+        .report {
+            max-width: 1100px;
+            margin: 0 auto;
         }
-        .header { 
-            text-align: center; 
-            border-bottom: 2px solid #000; 
-            padding-bottom: 15px; 
-            margin-bottom: 20px; 
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
         }
-        .header h2 { 
-            margin: 0; 
-            font-size: 18px; 
+        .header h2 {
+            margin: 0;
+            font-size: 18px;
             font-weight: bold;
         }
-        .header h3 { 
-            margin: 5px 0; 
-            font-size: 16px; 
+        .header h3 {
+            margin: 5px 0;
+            font-size: 16px;
             font-weight: 600;
         }
-        .header .info { 
-            margin: 8px 0 0 0; 
-            color: #333; 
-            font-size: 13px; 
+        .header .info {
+            margin: 8px 0 0 0;
+            color: #333;
+            font-size: 13px;
         }
-        .header .info span { 
-            margin: 0 10px; 
-        }
-        .header .info .label { 
-            font-weight: bold; 
-        }
+        .header .info span { margin: 0 10px; }
+        .header .info .label { font-weight: bold; }
         .session-section {
             margin: 25px 0 15px 0;
         }
@@ -4025,55 +4077,38 @@ async function exportDutyPDF() {
             border-radius: 4px;
             display: inline-block;
         }
-        .session-title.blue {
-            background: #dbeafe;
-            color: #1e40af;
+        .session-title.blue   { background: #dbeafe; color: #1e40af; }
+        .session-title.purple { background: #f3e8ff; color: #6b21a8; }
+        .session-title.amber  { background: #fef3c7; color: #92400e; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 10px 0;
         }
-        .session-title.purple {
-            background: #f3e8ff;
-            color: #6b21a8;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 12px; 
-            margin: 10px 0; 
-        }
-        thead th { 
-            background: #34495e; 
-            color: white; 
-            padding: 8px 12px; 
-            text-align: left; 
-            border: 1px solid #34495e; 
+        thead th {
+            background: #34495e;
+            color: white;
+            padding: 8px 12px;
+            text-align: left;
+            border: 1px solid #34495e;
             font-weight: 600;
         }
-        thead th.center { 
-            text-align: center; 
+        thead th.center { text-align: center; }
+        tbody td {
+            padding: 7px 12px;
+            border: 1px solid #ddd;
         }
-        tbody td { 
-            padding: 7px 12px; 
-            border: 1px solid #ddd; 
-        }
-        tbody td.center { 
-            text-align: center; 
-        }
-        tbody tr:nth-child(even) { 
-            background: #f9fafb; 
-        }
-        tbody tr:nth-child(odd) { 
-            background: #ffffff; 
-        }
-        .text-center { 
-            text-align: center; 
-        }
-        .text-muted { 
-            color: #6b7280; 
-        }
-        .no-data { 
-            text-align: center; 
-            padding: 20px; 
-            color: #999; 
-            font-style: italic; 
+        tbody td.center { text-align: center; }
+        tbody tr:nth-child(even) { background: #f9fafb; }
+        tbody tr:nth-child(odd)  { background: #ffffff; }
+        .text-center { text-align: center; }
+        .text-muted  { color: #6b7280; }
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-style: italic;
         }
         .badge {
             display: inline-block;
@@ -4083,19 +4118,44 @@ async function exportDutyPDF() {
             font-size: 11px;
             font-weight: 600;
         }
-        .footer { 
-            text-align: center; 
-            font-size: 11px; 
-            color: #999; 
-            border-top: 1px solid #ddd; 
-            padding-top: 15px; 
-            margin-top: 20px; 
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+            margin-top: 20px;
         }
         .no-print { display: none; }
-        
+
+        /* The Tailwind utility classes used in the cloned report are not
+           available in this print window, so map the most common ones used
+           in the session header pills and badges to plain styles. */
+        .bg-blue-100    { background: #dbeafe !important; }
+        .text-blue-700  { color: #1e40af !important; }
+        .bg-purple-100  { background: #f3e8ff !important; }
+        .text-purple-700{ color: #6b21a8 !important; }
+        .bg-amber-100   { background: #fef3c7 !important; }
+        .text-amber-800 { color: #92400e !important; }
+        .rounded-full   { border-radius: 9999px !important; }
+
         @media print {
             body { padding: 20px; }
             .no-print { display: none !important; }
+            thead th {
+                background: #34495e !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            tbody tr:nth-child(even) {
+                background: #f9fafb !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .session-title {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
 </head>
@@ -4109,7 +4169,7 @@ async function exportDutyPDF() {
                 <span><span class="label">DATE:</span> ${formatDateForReport(date)}</span>
             </div>
             <div class="info">
-                <span class="label">SESSION:</span> (9AM-12PM) | (12PM-3PM)
+                <span class="label">SESSION:</span> ${sessionHeader}
             </div>
         </div>
 
@@ -4122,19 +4182,11 @@ async function exportDutyPDF() {
     </div>
     <script>
         window.onload = function() {
-            // Remove any remaining buttons
+            // Final safety sweep — no interactivity in the printed doc
             document.querySelectorAll('button').forEach(el => el.remove());
-            
-            // Remove any remaining onclick attributes
             document.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
-            
-            // Remove any icon elements that might remain
             document.querySelectorAll('i[data-lucide]').forEach(el => el.remove());
-            
-            // NOTE: The ACTIONS column is already stripped from the cloned table
-            // before this HTML is built (see exportDutyPDF above). Do NOT strip
-            // the last column again here, or it will remove CLASS instead.
-            
+
             setTimeout(function() {
                 window.print();
             }, 800);
