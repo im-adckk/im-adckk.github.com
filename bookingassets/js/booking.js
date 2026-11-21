@@ -29,18 +29,16 @@ const LESSON_OPTIONS = {
     'KPP02': [
         '1st KPP02',
         '2nd KPP02',
-        '3rd KPP02',
-        '4th KPP02',
-        '5th KPP02'
+        '3rd KPP02'
     ],
     'KPP03': [
         '1st KPP03',
-        '2nd KPP03',
-        '3rd KPP03'
+        '2nd KPP03'
     ],
     'TM': [
         'TM 1JAM',
-        'TM 2JAM'
+        'TM 2JAM',
+        'TM 3JAM'
     ]
 };
 
